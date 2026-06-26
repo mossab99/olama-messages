@@ -35,6 +35,9 @@ class Olama_Messages_Plugin {
 	/** @var Olama_Messages_Campaign_Service */
 	private $campaigns;
 
+	/** @var Olama_Messages_Agent_Service */
+	private $agents;
+
 	/** @var bool */
 	private $initialized = false;
 
@@ -77,6 +80,9 @@ class Olama_Messages_Plugin {
 
 		// Query vars can be registered at any time via filter.
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
+
+		// Register REST routes
+		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
 	}
 
 	// ─── Rewrite ─────────────────────────────────────────────────────────────
@@ -171,5 +177,23 @@ class Olama_Messages_Plugin {
 			$this->campaigns = new Olama_Messages_Campaign_Service();
 		}
 		return $this->campaigns;
+	}
+
+	/**
+	 * Register agent REST API routes.
+	 */
+	public function register_rest_routes() {
+		$controller = new Olama_Messages_Agent_Rest_Controller();
+		$controller->register_routes();
+	}
+
+	/**
+	 * @return Olama_Messages_Agent_Service
+	 */
+	public function agents() {
+		if ( ! $this->agents ) {
+			$this->agents = new Olama_Messages_Agent_Service();
+		}
+		return $this->agents;
 	}
 }

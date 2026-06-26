@@ -50,6 +50,10 @@ class Olama_Messages_Admin {
 		add_action( 'admin_post_olama_msg_reset_campaign',    array( $this, 'handle_reset_campaign' ) );
 		add_action( 'admin_post_olama_msg_cancel_campaign',   array( $this, 'handle_cancel_campaign' ) );
 
+		// Agent actions (Phase 3)
+		add_action( 'admin_post_olama_msg_save_agent',        array( $this, 'handle_save_agent' ) );
+		add_action( 'admin_post_olama_msg_revoke_agent',      array( $this, 'handle_revoke_agent' ) );
+
 		// AJAX actions
 		add_action( 'wp_ajax_olama_msg_preview_sms',             array( $this, 'ajax_preview_sms' ) );
 		add_action( 'wp_ajax_olama_msg_preview_report',          array( $this, 'ajax_preview_report' ) );
@@ -130,6 +134,15 @@ class Olama_Messages_Admin {
 			'manage_options',
 			'olama-messages-settings',
 			array( $this, 'page_settings' )
+		);
+
+		add_submenu_page(
+			'olama-messages',
+			__( 'Sending Agents', 'olama-messages' ),
+			__( 'Sending Agents', 'olama-messages' ),
+			'manage_options',
+			'olama-messages-agents',
+			array( $this, 'page_agents' )
 		);
 
 		// Hidden page for Add/Edit Campaign
@@ -237,6 +250,9 @@ class Olama_Messages_Admin {
 		$total_templates = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_templates" );
 		$queue_prepared  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_queue WHERE status = %s", 'prepared' ) );
 
+		// Phase 3 dashboard metrics
+		$agent_stats = $this->plugin->agents()->count_agents_by_status();
+
 		$this->print_flash();
 		?>
 		<div class="wrap olama-msg-wrap">
@@ -319,6 +335,29 @@ class Olama_Messages_Admin {
 						<div class="olama-msg-stat">
 							<span class="olama-msg-stat__num"><?php echo esc_html( number_format( $total_views ) ); ?></span>
 							<span class="olama-msg-stat__label"><?php esc_html_e( 'Total Report Views', 'olama-messages' ); ?></span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Sending Agents Stats (Phase 3) -->
+				<div class="olama-msg-card">
+					<div class="olama-msg-card__header"><?php esc_html_e( 'Sending Agents', 'olama-messages' ); ?></div>
+					<div class="olama-msg-card__body">
+						<div class="olama-msg-stat">
+							<span class="olama-msg-stat__num"><?php echo esc_html( number_format( $agent_stats['total'] ) ); ?></span>
+							<span class="olama-msg-stat__label"><?php esc_html_e( 'Registered Agents', 'olama-messages' ); ?></span>
+						</div>
+						<div class="olama-msg-stat">
+							<span class="olama-msg-stat__num"><?php echo esc_html( number_format( $agent_stats['online'] ) ); ?></span>
+							<span class="olama-msg-stat__label"><?php esc_html_e( 'Online Agents', 'olama-messages' ); ?></span>
+						</div>
+						<div class="olama-msg-status-row">
+							<span><?php esc_html_e( 'KDE Ready Agents', 'olama-messages' ); ?></span>
+							<span><strong><?php echo esc_html( $agent_stats['kde_ready'] ); ?></strong></span>
+						</div>
+						<div class="olama-msg-status-row">
+							<span><?php esc_html_e( 'Last Agent Seen', 'olama-messages' ); ?></span>
+							<span style="font-size: 0.9em;"><strong><?php echo esc_html( $agent_stats['last_seen'] ); ?></strong></span>
 						</div>
 					</div>
 				</div>
@@ -2045,5 +2084,445 @@ class Olama_Messages_Admin {
 		} catch ( Exception $e ) {
 			wp_send_json_error( $e->getMessage() );
 		}
+	}
+
+	// ─── Page: Sending Agents (Phase 3) ──────────────────────────────────────
+
+	public function page_agents() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
+		}
+
+		$agent_svc = $this->plugin->agents();
+		$action    = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
+
+		$this->print_flash();
+
+		if ( $action === 'view' ) {
+			$agent_id = isset( $_GET['agent_id'] ) ? absint( $_GET['agent_id'] ) : 0;
+			$agent    = $agent_svc->get_agent( $agent_id );
+			if ( ! $agent ) {
+				$this->notice( __( 'Agent not found.', 'olama-messages' ), 'error' );
+				return;
+			}
+
+			$events = $agent_svc->get_events( $agent['agent_uuid'], 50 );
+			$this->render_agent_detail( $agent, $events );
+			return;
+		}
+
+		// List view: check if a new agent was just created to display credentials
+		$user_id = get_current_user_id();
+		$new_agent = get_transient( 'olama_msg_new_agent_' . $user_id );
+		if ( $new_agent ) {
+			delete_transient( 'olama_msg_new_agent_' . $user_id );
+			?>
+			<div class="notice notice-warning olama-msg-agent-credentials-card" style="border-right-color: #ffb900; padding: 15px; margin: 20px 0;">
+				<h2 style="margin-top: 0; color: #d54e21;">⚠️ <?php esc_html_e( 'API Credentials Created — COPY NOW', 'olama-messages' ); ?></h2>
+				<p><?php printf( __( 'Credentials for agent <strong>%s</strong> are shown below. Copy them now; the API secret key is hashed and cannot be recovered later.', 'olama-messages' ), esc_html( $new_agent['name'] ) ); ?></p>
+				<table class="form-table" style="margin-top: 10px;">
+					<tr>
+						<th scope="row" style="width: 150px; font-weight: bold; padding: 5px 0;"><?php esc_html_e( 'Agent UUID:', 'olama-messages' ); ?></th>
+						<td style="padding: 5px 0;"><code><?php echo esc_html( $new_agent['uuid'] ); ?></code></td>
+					</tr>
+					<tr>
+						<th scope="row" style="width: 150px; font-weight: bold; padding: 5px 0;"><?php esc_html_e( 'API Secret Key:', 'olama-messages' ); ?></th>
+						<td style="padding: 5px 0;"><code style="background: #fff; padding: 4px 8px; border: 1px solid #ccc; font-weight: bold; color: #111; font-size: 1.1em; display: inline-block; word-break: break-all;"><?php echo esc_html( $new_agent['raw_key'] ); ?></code></td>
+					</tr>
+				</table>
+				<p style="margin-bottom: 0; font-style: italic; color: #666; margin-top: 10px;">
+					<?php esc_html_e( 'Instructions: Paste these values into the Windows Agent local settings screen to authenticate.', 'olama-messages' ); ?>
+				</p>
+			</div>
+			<?php
+		}
+
+		$agents = $agent_svc->list_agents();
+		$this->render_agents_list( $agents );
+	}
+
+	private function render_agents_list( array $agents ) {
+		?>
+		<div class="wrap olama-msg-wrap">
+			<h1 class="olama-msg-page-title">
+				<span class="dashicons dashicons-networking"></span>
+				<?php esc_html_e( 'Sending Agents', 'olama-messages' ); ?>
+			</h1>
+
+			<div class="olama-msg-split-layout" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+				<!-- Add Agent Form (Left Column) -->
+				<div class="olama-msg-split-left" style="flex: 1; min-width: 280px; max-width: 380px;">
+					<div class="olama-msg-card">
+						<div class="olama-msg-card__header"><?php esc_html_e( 'Register New Agent', 'olama-messages' ); ?></div>
+						<div class="olama-msg-card__body">
+							<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+								<?php wp_nonce_field( 'olama_msg_save_agent' ); ?>
+								<input type="hidden" name="action" value="olama_msg_save_agent">
+								
+								<div class="olama-msg-form-group" style="margin-bottom: 15px;">
+									<label style="display: block; font-weight: bold; margin-bottom: 5px;" for="agent_name"><?php esc_html_e( 'Agent Name', 'olama-messages' ); ?></label>
+									<input type="text" id="agent_name" name="agent_name" class="regular-text" style="width: 100%;" placeholder="<?php esc_attr_e( 'e.g. Office Front Desk PC', 'olama-messages' ); ?>" required>
+									<p class="description"><?php esc_html_e( 'A user-friendly label to identify this sending device.', 'olama-messages' ); ?></p>
+								</div>
+								
+								<p class="submit" style="margin: 0; padding: 0;">
+									<?php submit_button( __( 'Register Agent', 'olama-messages' ), 'primary', 'submit', false ); ?>
+								</p>
+							</form>
+						</div>
+					</div>
+				</div>
+
+				<!-- Registered Agents List (Right Column) -->
+				<div class="olama-msg-split-right" style="flex: 2; min-width: 500px;">
+					<div class="olama-msg-card">
+						<div class="olama-msg-card__header"><?php esc_html_e( 'Registered Desktop Agents', 'olama-messages' ); ?></div>
+						<div class="olama-msg-card__body" style="padding: 0;">
+							<table class="wp-list-table widefat fixed striped posts">
+								<thead>
+									<tr>
+										<th><?php esc_html_e( 'Agent Name', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'UUID Prefix', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'Status', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'Machine / User', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'KDE CLI', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'KDE Device', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'Last Seen', 'olama-messages' ); ?></th>
+										<th style="width: 150px; text-align: center;"><?php esc_html_e( 'Actions', 'olama-messages' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php if ( empty( $agents ) ) : ?>
+										<tr>
+											<td colspan="8" class="olama-msg-muted" style="text-align: center; padding: 15px;">
+												<?php esc_html_e( 'No sending agents registered yet.', 'olama-messages' ); ?>
+											</td>
+										</tr>
+									<?php else : ?>
+										<?php foreach ( $agents as $a ) :
+											$is_online = false;
+											if ( $a['status'] === 'online' ) {
+												$active_threshold = time() - 300; // 5 minutes
+												$is_online = ( ! empty( $a['last_seen_at'] ) && strtotime( $a['last_seen_at'] ) >= $active_threshold );
+											}
+											$computed_status = $is_online ? 'online' : ( $a['status'] === 'online' ? 'offline' : $a['status'] );
+											
+											$status_label = $computed_status;
+											$status_class = '';
+											if ( $computed_status === 'online' ) {
+												$status_label = __( 'Online', 'olama-messages' );
+												$status_class = 'olama-msg-pill--ok';
+											} elseif ( $computed_status === 'offline' ) {
+												$status_label = __( 'Offline', 'olama-messages' );
+												$status_class = 'olama-msg-pill--warn';
+											} elseif ( $computed_status === 'inactive' ) {
+												$status_label = __( 'Inactive', 'olama-messages' );
+												$status_class = 'olama-msg-muted';
+											} elseif ( $computed_status === 'revoked' ) {
+												$status_label = __( 'Revoked', 'olama-messages' );
+												$status_class = 'olama-msg-pill--err';
+											}
+											
+											$view_url = admin_url( 'admin.php?page=olama-messages-agents&action=view&agent_id=' . $a['id'] );
+											$revoke_url = wp_nonce_url(
+												admin_url( 'admin-post.php?action=olama_msg_revoke_agent&agent_id=' . $a['id'] ),
+												'olama_msg_revoke_agent_' . $a['id']
+											);
+										?>
+										<tr>
+											<td>
+												<strong><a href="<?php echo esc_url( $view_url ); ?>"><?php echo esc_html( $a['agent_name'] ); ?></a></strong>
+											</td>
+											<td><code><?php echo esc_html( substr( $a['agent_uuid'], 0, 8 ) ); ?>...</code></td>
+											<td>
+												<span class="olama-msg-pill <?php echo esc_attr( $status_class ); ?>">
+													<?php echo esc_html( $status_label ); ?>
+												</span>
+											</td>
+											<td>
+												<?php if ( $a['machine_name'] ) : ?>
+													<?php echo esc_html( $a['machine_name'] ); ?> / <code><?php echo esc_html( $a['windows_user'] ); ?></code>
+												<?php else : ?>
+													<span class="olama-msg-muted">—</span>
+												<?php endif; ?>
+											</td>
+											<td>
+												<?php if ( $a['status'] === 'inactive' ) : ?>
+													<span class="olama-msg-muted">—</span>
+												<?php elseif ( $a['kde_cli_found'] ) : ?>
+													<span class="olama-msg-pill olama-msg-pill--ok"><?php esc_html_e( 'Found', 'olama-messages' ); ?></span>
+												<?php else : ?>
+													<span class="olama-msg-pill olama-msg-pill--err"><?php esc_html_e( 'Missing', 'olama-messages' ); ?></span>
+												<?php endif; ?>
+											</td>
+											<td>
+												<?php if ( $a['kde_device_name'] ) : ?>
+													<?php echo esc_html( $a['kde_device_name'] ); ?>
+													<?php echo $a['kde_device_reachable']
+														? '<span class="olama-msg-pill olama-msg-pill--ok" style="font-size: 0.8em; margin-right: 4px;">' . esc_html__( 'Connected', 'olama-messages' ) . '</span>'
+														: '<span class="olama-msg-pill olama-msg-pill--err" style="font-size: 0.8em; margin-right: 4px;">' . esc_html__( 'Offline', 'olama-messages' ) . '</span>'; ?>
+												<?php else : ?>
+													<span class="olama-msg-muted">—</span>
+												<?php endif; ?>
+											</td>
+											<td><?php echo esc_html( $a['last_seen_at'] ? date( 'Y-m-d H:i:s', strtotime( $a['last_seen_at'] ) ) : '—' ); ?></td>
+											<td class="olama-msg-actions" style="text-align: center;">
+												<a href="<?php echo esc_url( $view_url ); ?>" class="button button-small">
+													<?php esc_html_e( 'View', 'olama-messages' ); ?>
+												</a>
+												<?php if ( $a['status'] !== 'revoked' ) : ?>
+													<a href="<?php echo esc_url( $revoke_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to revoke this agent? It will immediately stop authenticating.', 'olama-messages' ); ?>');">
+														<?php esc_html_e( 'Revoke', 'olama-messages' ); ?>
+													</a>
+												<?php endif; ?>
+											</td>
+										</tr>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	private function render_agent_detail( array $agent, array $events ) {
+		$is_online = false;
+		if ( $agent['status'] === 'online' ) {
+			$active_threshold = time() - 300;
+			$is_online = ( ! empty( $agent['last_seen_at'] ) && strtotime( $agent['last_seen_at'] ) >= $active_threshold );
+		}
+		$computed_status = $is_online ? 'online' : ( $agent['status'] === 'online' ? 'offline' : $agent['status'] );
+		
+		$status_label = $computed_status;
+		$status_class = '';
+		if ( $computed_status === 'online' ) {
+			$status_label = __( 'Online', 'olama-messages' );
+			$status_class = 'olama-msg-pill--ok';
+		} elseif ( $computed_status === 'offline' ) {
+			$status_label = __( 'Offline', 'olama-messages' );
+			$status_class = 'olama-msg-pill--warn';
+		} elseif ( $computed_status === 'inactive' ) {
+			$status_label = __( 'Inactive', 'olama-messages' );
+			$status_class = 'olama-msg-muted';
+		} elseif ( $computed_status === 'revoked' ) {
+			$status_label = __( 'Revoked', 'olama-messages' );
+			$status_class = 'olama-msg-pill--err';
+		}
+
+		$revoke_url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=olama_msg_revoke_agent&agent_id=' . $agent['id'] ),
+			'olama_msg_revoke_agent_' . $agent['id']
+		);
+		?>
+		<div class="wrap olama-msg-wrap">
+			<h1 class="olama-msg-page-title">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-agents' ) ); ?>" class="button button-secondary" style="margin-left: 10px; font-weight: normal; vertical-align: middle;">
+					← <?php esc_html_e( 'Back to Agents', 'olama-messages' ); ?>
+				</a>
+				<?php esc_html_e( 'Agent Details: ', 'olama-messages' ); ?> <?php echo esc_html( $agent['agent_name'] ); ?>
+			</h1>
+
+			<div class="olama-msg-split-layout" style="display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; margin-top: 20px;">
+				<!-- Agent Card (Left) -->
+				<div class="olama-msg-agent-details-left" style="flex: 1; min-width: 320px; max-width: 450px;">
+					<div class="olama-msg-card" style="height: 100%;">
+						<div class="olama-msg-card__header"><?php esc_html_e( 'Configuration & Health', 'olama-messages' ); ?></div>
+						<div class="olama-msg-card__body">
+							<table class="form-table" style="margin: 0;">
+								<tr>
+									<th scope="row" style="width: 140px; font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Status', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;">
+										<span class="olama-msg-pill <?php echo esc_attr( $status_class ); ?>">
+											<?php echo esc_html( $status_label ); ?>
+										</span>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Agent UUID', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;"><code><?php echo esc_html( $agent['agent_uuid'] ); ?></code></td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Platform / Version', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;">
+										<?php if ( $agent['platform'] ) : ?>
+											<?php echo esc_html( $agent['platform'] ); ?> / v<?php echo esc_html( $agent['app_version'] ); ?>
+										<?php else : ?>
+											<span class="olama-msg-muted">—</span>
+										<?php endif; ?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Machine / OS User', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;">
+										<?php if ( $agent['machine_name'] ) : ?>
+											<code><?php echo esc_html( $agent['machine_name'] ); ?></code> / <code><?php echo esc_html( $agent['windows_user'] ); ?></code>
+										<?php else : ?>
+											<span class="olama-msg-muted">—</span>
+										<?php endif; ?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'KDE CLI Path', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;">
+										<?php if ( $agent['kde_cli_path'] ) : ?>
+											<code style="word-break: break-all; font-size: 0.9em;"><?php echo esc_html( $agent['kde_cli_path'] ); ?></code>
+											<?php echo $agent['kde_cli_found']
+												? '<br><span class="olama-msg-pill olama-msg-pill--ok" style="font-size: 0.8em; margin-top: 4px; display: inline-block;">' . esc_html__( 'Found', 'olama-messages' ) . '</span>'
+												: '<br><span class="olama-msg-pill olama-msg-pill--err" style="font-size: 0.8em; margin-top: 4px; display: inline-block;">' . esc_html__( 'Not Found', 'olama-messages' ) . '</span>'; ?>
+										<?php else : ?>
+											<span class="olama-msg-muted">—</span>
+										<?php endif; ?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Target Device', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;">
+										<?php if ( $agent['kde_device_name'] ) : ?>
+											<strong><?php echo esc_html( $agent['kde_device_name'] ); ?></strong><br>
+											<code style="font-size: 0.85em; color: #666;"><?php echo esc_html( $agent['kde_device_id'] ); ?></code><br>
+											<?php echo $agent['kde_device_reachable']
+												? '<span class="olama-msg-pill olama-msg-pill--ok" style="font-size: 0.8em; margin-top: 4px; display: inline-block;">' . esc_html__( 'Reachable', 'olama-messages' ) . '</span>'
+												: '<span class="olama-msg-pill olama-msg-pill--err" style="font-size: 0.8em; margin-top: 4px; display: inline-block;">' . esc_html__( 'Unreachable', 'olama-messages' ) . '</span>'; ?>
+										<?php else : ?>
+											<span class="olama-msg-muted">—</span>
+										<?php endif; ?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Last Seen', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;"><?php echo esc_html( $agent['last_seen_at'] ? date( 'Y-m-d H:i:s', strtotime( $agent['last_seen_at'] ) ) : '—' ); ?></td>
+								</tr>
+								<tr>
+									<th scope="row" style="font-weight: bold; padding: 8px 0;"><?php esc_html_e( 'Registered On', 'olama-messages' ); ?></th>
+									<td style="padding: 8px 0;"><?php echo esc_html( date( 'Y-m-d H:i:s', strtotime( $agent['created_at'] ) ) ); ?></td>
+								</tr>
+							</table>
+							
+							<?php if ( $agent['status'] !== 'revoked' ) : ?>
+								<div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+									<a href="<?php echo esc_url( $revoke_url ); ?>" class="button button-link-delete" style="color: #a00; font-weight: bold;" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to revoke this agent? It will immediately stop authenticating.', 'olama-messages' ); ?>');">
+										<?php esc_html_e( 'Revoke Agent Authorization', 'olama-messages' ); ?>
+									</a>
+								</div>
+							<?php endif; ?>
+						</div>
+					</div>
+				</div>
+
+				<!-- Event Logs (Right) -->
+				<div class="olama-msg-agent-details-right" style="flex: 2; min-width: 400px; display: flex; flex-direction: column;">
+					<div class="olama-msg-card" style="flex: 1; display: flex; flex-direction: column;">
+						<div class="olama-msg-card__header"><?php esc_html_e( 'Recent Events Audit Log (Max 50)', 'olama-messages' ); ?></div>
+						<div class="olama-msg-card__body" style="padding: 0; overflow-y: auto; max-height: 500px;">
+							<table class="wp-list-table widefat fixed striped posts" style="border: 0;">
+								<thead>
+									<tr>
+										<th style="width: 140px;"><?php esc_html_e( 'Timestamp', 'olama-messages' ); ?></th>
+										<th style="width: 100px;"><?php esc_html_e( 'Event Type', 'olama-messages' ); ?></th>
+										<th style="width: 80px;"><?php esc_html_e( 'Severity', 'olama-messages' ); ?></th>
+										<th><?php esc_html_e( 'Message', 'olama-messages' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php if ( empty( $events ) ) : ?>
+										<tr>
+											<td colspan="4" class="olama-msg-muted" style="text-align: center; padding: 15px;">
+												<?php esc_html_e( 'No events recorded for this agent.', 'olama-messages' ); ?>
+											</td>
+										</tr>
+									<?php else : ?>
+										<?php foreach ( $events as $e ) :
+											$severity_class = '';
+											if ( $e['severity'] === 'error' ) {
+												$severity_class = 'olama-msg-pill--err';
+											} elseif ( $e['severity'] === 'warning' ) {
+												$severity_class = 'olama-msg-pill--warn';
+											} else {
+												$severity_class = 'olama-msg-muted';
+											}
+										?>
+										<tr>
+											<td style="font-size: 0.9em;"><?php echo esc_html( date( 'Y-m-d H:i:s', strtotime( $e['created_at'] ) ) ); ?></td>
+											<td><code><?php echo esc_html( $e['event_type'] ); ?></code></td>
+											<td>
+												<span class="olama-msg-pill <?php echo esc_attr( $severity_class ); ?>" style="font-size: 0.8em;">
+													<?php echo esc_html( $e['severity'] ); ?>
+												</span>
+											</td>
+											<td style="font-size: 0.95em;">
+												<?php echo esc_html( $e['message'] ); ?>
+												<?php if ( ! empty( $e['context_json'] ) && $e['context_json'] !== '[]' ) : ?>
+													<br>
+													<code style="font-size: 0.8em; color: #555; background: #fafafa; display: block; padding: 4px; margin-top: 4px; overflow-x: auto; white-space: pre-wrap;"><?php echo esc_html( $e['context_json'] ); ?></code>
+												<?php endif; ?>
+											</td>
+										</tr>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/** Save/Register Agent POST Action. */
+	public function handle_save_agent() {
+		check_admin_referer( 'olama_msg_save_agent' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
+		}
+
+		$agent_name = sanitize_text_field( $_POST['agent_name'] ?? '' );
+		if ( empty( $agent_name ) ) {
+			$agent_name = __( 'New Windows Agent', 'olama-messages' );
+		}
+
+		try {
+			$reg = $this->plugin->agents()->create_agent( array(
+				'agent_name' => $agent_name,
+				'platform'   => 'Windows',
+			) );
+
+			$user_id = get_current_user_id();
+			set_transient( 'olama_msg_new_agent_' . $user_id, array(
+				'uuid'    => $reg['uuid'],
+				'raw_key' => $reg['raw_key'],
+				'name'    => $agent_name
+			), 60 );
+
+			$this->set_flash( __( 'Agent registered successfully. Please copy the API credentials below.', 'olama-messages' ), 'success' );
+		} catch ( Exception $e ) {
+			$this->set_flash( __( 'Failed to register agent: ', 'olama-messages' ) . $e->getMessage(), 'error' );
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-agents' ) );
+		exit;
+	}
+
+	/** Revoke Agent POST Action. */
+	public function handle_revoke_agent() {
+		$agent_id = isset( $_GET['agent_id'] ) ? absint( $_GET['agent_id'] ) : 0;
+		check_admin_referer( 'olama_msg_revoke_agent_' . $agent_id );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
+		}
+
+		$ok = $this->plugin->agents()->revoke_agent( $agent_id );
+		if ( $ok ) {
+			$this->set_flash( __( 'Agent revoked successfully.', 'olama-messages' ), 'success' );
+		} else {
+			$this->set_flash( __( 'Failed to revoke agent.', 'olama-messages' ), 'error' );
+		}
+
+		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-agents' ) );
+		exit;
 	}
 }

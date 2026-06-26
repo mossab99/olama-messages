@@ -30,6 +30,8 @@ require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-financial-api-provi
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-core-provider.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-token-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-template-renderer.php';
+require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-service.php';
+require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-rest-controller.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-plugin.php';
 require_once OLAMA_MSG_PATH . 'admin/class-olama-messages-admin.php';
 require_once OLAMA_MSG_PATH . 'public/class-olama-messages-public-report.php';

@@ -57,6 +57,9 @@ class Olama_Messages_Activator {
 		$campaigns       = $wpdb->prefix . 'olama_msg_campaigns';
 		$recipients      = $wpdb->prefix . 'olama_msg_campaign_recipients';
 		$queue           = $wpdb->prefix . 'olama_msg_queue';
+		$agents          = $wpdb->prefix . 'olama_msg_agents';
+		$agent_events    = $wpdb->prefix . 'olama_msg_agent_events';
+		$agent_test_msgs = $wpdb->prefix . 'olama_msg_agent_test_messages';
 
 		// ── Tokens table ─────────────────────────────────────────────────────
 		dbDelta( "CREATE TABLE {$tokens} (
@@ -199,6 +202,70 @@ class Olama_Messages_Activator {
 			KEY idx_status (status),
 			KEY idx_phone_e164 (phone_e164)
 		) {$charset_collate};" );
+
+		// ── Agents table ─────────────────────────────────────────────────────
+		dbDelta( "CREATE TABLE {$agents} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			agent_uuid VARCHAR(100) NOT NULL,
+			agent_name VARCHAR(190) NOT NULL,
+			agent_key_hash VARCHAR(255) NOT NULL,
+			status VARCHAR(30) NOT NULL DEFAULT 'inactive',
+			platform VARCHAR(50) NULL,
+			app_version VARCHAR(50) NULL,
+			machine_name VARCHAR(190) NULL,
+			windows_user VARCHAR(190) NULL,
+			kde_cli_path VARCHAR(255) NULL,
+			kde_cli_found TINYINT(1) NOT NULL DEFAULT 0,
+			kde_device_id VARCHAR(190) NULL,
+			kde_device_name VARCHAR(190) NULL,
+			kde_device_reachable TINYINT(1) NOT NULL DEFAULT 0,
+			last_seen_at DATETIME NULL,
+			last_heartbeat_json LONGTEXT NULL,
+			created_by BIGINT UNSIGNED NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NULL,
+			revoked_at DATETIME NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY agent_uuid (agent_uuid),
+			KEY idx_status (status),
+			KEY idx_last_seen_at (last_seen_at)
+		) {$charset_collate};" );
+
+		// ── Agent events table ────────────────────────────────────────────────
+		dbDelta( "CREATE TABLE {$agent_events} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			agent_id BIGINT UNSIGNED NULL,
+			agent_uuid VARCHAR(100) NULL,
+			event_type VARCHAR(50) NOT NULL,
+			severity VARCHAR(20) NOT NULL DEFAULT 'info',
+			message TEXT NULL,
+			context_json LONGTEXT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_agent_id (agent_id),
+			KEY idx_agent_uuid (agent_uuid),
+			KEY idx_event_type (event_type),
+			KEY idx_severity (severity),
+			KEY idx_created_at (created_at)
+		) {$charset_collate};" );
+
+		// ── Agent test messages table ─────────────────────────────────────────
+		dbDelta( "CREATE TABLE {$agent_test_msgs} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			agent_id BIGINT UNSIGNED NOT NULL,
+			phone_e164 VARCHAR(30) NOT NULL,
+			message_body TEXT NOT NULL,
+			status VARCHAR(30) NOT NULL,
+			result_code VARCHAR(100) NULL,
+			stdout_text TEXT NULL,
+			stderr_text TEXT NULL,
+			created_by BIGINT UNSIGNED NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_agent_id (agent_id),
+			KEY idx_status (status),
+			KEY idx_created_at (created_at)
+		) {$charset_collate};" );
 	}
 
 	/**
@@ -216,6 +283,9 @@ class Olama_Messages_Activator {
 			$wpdb->prefix . 'olama_msg_campaigns',
 			$wpdb->prefix . 'olama_msg_campaign_recipients',
 			$wpdb->prefix . 'olama_msg_queue',
+			$wpdb->prefix . 'olama_msg_agents',
+			$wpdb->prefix . 'olama_msg_agent_events',
+			$wpdb->prefix . 'olama_msg_agent_test_messages',
 		);
 	}
 }
