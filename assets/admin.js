@@ -274,4 +274,302 @@
             .replace(/'/g, '&#039;');
     }
 
+    // ── Phase 4 Run 4B: Confirm Campaign Sending Modal ──────────────────
+    var $confirmModal  = $('#olama-msg-confirm-send-modal');
+    var $confirmTitle  = $('#olama-msg-confirm-campaign-title');
+    var $confirmRec    = $('#olama-msg-confirm-recipients');
+    var $confirmProceed = $('#olama-msg-confirm-proceed');
+
+    function openConfirmModal() { $confirmModal.show(); }
+    function closeConfirmModal() { $confirmModal.hide(); }
+
+    $('#olama-msg-confirm-close').on('click', closeConfirmModal);
+    $('#olama-msg-confirm-cancel').on('click', closeConfirmModal);
+    $('#olama-msg-confirm-backdrop').on('click', closeConfirmModal);
+    $(document).on('keydown', function (e) { if (e.key === 'Escape') { closeConfirmModal(); } });
+
+    $(document).on('click', '.olama-msg-start-btn', function () {
+        var $btn        = $(this);
+        var title       = $btn.data('title')       || '';
+        var recipients  = $btn.data('recipients')  || '0';
+        var startUrl    = $btn.data('start-url')   || '#';
+
+        $confirmTitle.text(title);
+        $confirmRec.text(recipients);
+        $confirmProceed.attr('href', startUrl);
+
+        openConfirmModal();
+    });
+
+    // ── Phase 4D: Direct Single SMS UI Interactive Logic ────────────────
+    var selectedFamilyData = null;
+
+    // A. Search Families
+    function performFamilySearch() {
+        var query = $('#olama-msg-direct-search-input').val().trim();
+        var studyYear = $('#olama-msg-direct-study-year-val').val() || '2026-2027';
+        var $resultsBox = $('#olama-msg-direct-search-results');
+        var $placeholder = $('#olama-msg-direct-search-placeholder');
+        var $btn = $('#olama-msg-direct-search-btn');
+
+        if (!query) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Searching...');
+        $resultsBox.html('<div class="olama-msg-muted" style="padding:20px;text-align:center;">جاري البحث (Searching)...</div>').show();
+        $placeholder.hide();
+
+        $.post(olamaMsgAdmin.ajaxUrl, {
+            action: 'olama_msg_search_families',
+            security: olamaMsgAdmin.nonce,
+            search: query,
+            study_year: studyYear
+        }, function (res) {
+            $btn.prop('disabled', false).text('Search');
+            if (res.success) {
+                var items = res.data.items || [];
+                $resultsBox.empty();
+                
+                if (items.length === 0) {
+                    $resultsBox.html('<div class="olama-msg-muted" style="padding:20px;text-align:center;">No families found matching your search.</div>');
+                    return;
+                }
+
+                items.forEach(function (family) {
+                    var fatherPhone = family.father_mobile || '';
+                    var motherPhone = family.mother_mobile || '';
+                    var students = (family.students && family.students.length > 0) ? family.students.join(', ') : 'No students';
+                    
+                    var itemHtml = $('<div class="olama-msg-direct-item"></div>')
+                        .attr('data-family-json', JSON.stringify(family))
+                        .append(
+                            $('<div class="olama-msg-direct-item__info"></div>')
+                                .append($('<div class="olama-msg-direct-item__id"></div>').text('ID: ' + family.family_id))
+                                .append($('<div class="olama-msg-direct-item__name"></div>').text(family.sponsor_name))
+                                .append($('<div class="olama-msg-direct-item__details"></div>').text('Students: ' + students))
+                        )
+                        .append($('<button type="button" class="olama-msg-direct-item__btn">Select</button>'));
+
+                    $resultsBox.append(itemHtml);
+                });
+            } else {
+                $resultsBox.html('<div style="color:var(--omsg-danger);padding:20px;text-align:center;">Error loading search results.</div>');
+            }
+        }).fail(function () {
+            $btn.prop('disabled', false).text('Search');
+            $resultsBox.html('<div style="color:var(--omsg-danger);padding:20px;text-align:center;">Connection failed.</div>');
+        });
+    }
+
+    $('#olama-msg-direct-search-btn').on('click', performFamilySearch);
+    $('#olama-msg-direct-search-input').on('keypress', function (e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            performFamilySearch();
+        }
+    });
+
+    // B. Select Family
+    $(document).on('click', '.olama-msg-direct-item', function () {
+        var $item = $(this);
+        $('.olama-msg-direct-item').removeClass('is-selected');
+        $item.addClass('is-selected');
+
+        var family = JSON.parse($item.attr('data-family-json'));
+        selectedFamilyData = family;
+
+        // Populate hidden fields
+        $('#olama-msg-direct-family-id-val').val(family.family_id);
+
+        // Build family summary HTML
+        var balText = (family.balance !== null) ? parseFloat(family.balance).toFixed(3) + ' JOD' : 'غير متوفر (Unavailable)';
+        var fatherPhone = family.father_mobile ? family.father_mobile : '—';
+        var motherPhone = family.mother_mobile ? family.mother_mobile : '—';
+        
+        var summaryHtml = 
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">' +
+                '<div>' +
+                    '<h3 style="margin:0 0 5px 0;font-size:1.15rem;font-weight:600;color:var(--omsg-primary);">' + escapeHtml(family.sponsor_name) + '</h3>' +
+                    '<p style="margin:0 0 4px 0;font-size:0.9em;"><strong>Family ID:</strong> ' + family.family_id + ' | <strong>Sponsor:</strong> ' + escapeHtml(family.sponsor_name) + '</p>' +
+                    '<p style="margin:0 0 4px 0;font-size:0.9em;"><strong>Students:</strong> ' + escapeHtml(family.students.join(', ')) + '</p>' +
+                    '<p style="margin:0;font-size:0.9em;"><strong>Mobiles:</strong> Father: <code>' + escapeHtml(fatherPhone) + '</code> | Mother: <code>' + escapeHtml(motherPhone) + '</code></p>' +
+                '</div>' +
+                '<div style="text-align:right;background:#fff;border:1px solid var(--omsg-border);padding:8px 15px;border-radius:6px;min-width:120px;">' +
+                    '<span style="font-size:0.75rem;color:var(--omsg-muted);text-transform:uppercase;display:block;">Current Balance</span>' +
+                    '<strong style="font-size:1.2rem;color:' + (family.balance < 0 ? 'var(--omsg-success)' : 'var(--omsg-danger)') + ';">' + balText + '</strong>' +
+                '</div>' +
+            '</div>';
+
+        if (family.financial_available === 0 || family.financial_available === '0') {
+            summaryHtml += 
+                '<div style="margin-top:10px;padding:6px 10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:4px;font-size:0.82em;">' +
+                '⚠️ Financial data is not connected. Showing demographic information only.' +
+                '</div>';
+        }
+
+        $('#olama-msg-direct-family-summary').html(summaryHtml);
+
+        // Parent selectors configuration (Father vs Mother mobile availability)
+        var $fatherRadio = $('#olama-msg-direct-label-father input');
+        var $motherRadio = $('#olama-msg-direct-label-mother input');
+        var $fatherLabel = $('#olama-msg-direct-label-father');
+        var $motherLabel = $('#olama-msg-direct-label-mother');
+
+        // Reset radio states
+        $fatherRadio.prop('disabled', false);
+        $motherRadio.prop('disabled', false);
+        $fatherLabel.css('opacity', 1).find('span').text('Father Only (' + fatherPhone + ')');
+        $motherLabel.css('opacity', 1).find('span').text('Mother Only (' + motherPhone + ')');
+
+        var selectRole = 'father';
+
+        if (!family.father_mobile) {
+            $fatherRadio.prop('disabled', true);
+            $fatherLabel.css('opacity', 0.5).find('span').text('Father Only (No Phone)');
+            selectRole = 'mother';
+        }
+        if (!family.mother_mobile) {
+            $motherRadio.prop('disabled', true);
+            $motherLabel.css('opacity', 0.5).find('span').text('Mother Only (No Phone)');
+        }
+
+        if (family.father_mobile) {
+            $fatherRadio.prop('checked', true);
+        } else if (family.mother_mobile) {
+            $motherRadio.prop('checked', true);
+        } else {
+            $fatherRadio.prop('checked', false);
+            $motherRadio.prop('checked', false);
+            alert('Warning: This family has no mobile numbers listed in the database.');
+        }
+
+        // Show composer, hide placeholder
+        $('#olama-msg-direct-composer-card').show();
+        $('#olama-msg-direct-composer-placeholder').hide();
+
+        // Reset template select
+        $('#olama-msg-direct-template-select').val('');
+        $('#olama-msg-direct-body-textarea').val('');
+        updateCharCount();
+    });
+
+    // C. Template Selection Change
+    $('#olama-msg-direct-template-select').on('change', function () {
+        var templateId = $(this).val();
+        var studyYear = $('#olama-msg-direct-study-year-val').val() || '2026-2027';
+        var $textarea = $('#olama-msg-direct-body-textarea');
+
+        if (!selectedFamilyData || !templateId) {
+            $textarea.val('');
+            updateCharCount();
+            return;
+        }
+
+        $textarea.val('جاري التوليد (Rendering)...').prop('disabled', true);
+
+        $.post(olamaMsgAdmin.ajaxUrl, {
+            action: 'olama_msg_render_direct_template',
+            security: olamaMsgAdmin.nonce,
+            template_id: templateId,
+            family_id: selectedFamilyData.family_id,
+            study_year: studyYear
+        }, function (res) {
+            $textarea.prop('disabled', false);
+            if (res.success) {
+                $textarea.val(res.data.rendered);
+                updateCharCount();
+            } else {
+                $textarea.val('خطأ في تحميل القالب (Error rendering template).');
+            }
+        }).fail(function () {
+            $textarea.prop('disabled', false).val('فشل الاتصال بالخادم (Connection failed).');
+        });
+    });
+
+    // D. Character Counter with JIT Placeholder Simulation
+    function updateCharCount() {
+        var text = $('#olama-msg-direct-body-textarea').val() || '';
+        
+        // Simulate a real 110-character tokenized URL if {{PAYMENT_LINK}} is found
+        var simulationText = text;
+        var paymentWarning = false;
+        if (text.indexOf('{{PAYMENT_LINK}}') !== -1) {
+            var dummyLink = 'http://olama3.local/olama-payment-report/abcdef01.abcdef01b1f37dfa4d01b0de61cec17062225010d953c52947c2db48';
+            simulationText = text.replace(/\{\{PAYMENT_LINK\}\}/g, dummyLink);
+            paymentWarning = true;
+        }
+
+        var charCount = simulationText.length;
+        
+        // Unicode/Arabic SMS parts calculation: 70 chars per part
+        var smsParts = 0;
+        if (charCount > 0) {
+            smsParts = Math.ceil(charCount / 70);
+        }
+
+        $('#olama-msg-direct-char-count').text(charCount);
+        $('#olama-msg-direct-part-count').text(smsParts);
+
+        // Highlight if too long (> 3 parts, 210 chars)
+        if (smsParts > 3) {
+            $('#olama-msg-direct-counters').addClass('olama-msg-counter-alert');
+        } else {
+            $('#olama-msg-direct-counters').removeClass('olama-msg-counter-alert');
+        }
+
+        if (paymentWarning) {
+            $('#olama-msg-direct-payment-warning').show();
+        } else {
+            $('#olama-msg-direct-payment-warning').hide();
+        }
+    }
+
+    $('#olama-msg-direct-body-textarea').on('input propertychange', updateCharCount);
+
+    // E. Form Submission Confirmation Modal
+    $('#olama-msg-direct-send-form').on('submit', function (e) {
+        if (!selectedFamilyData) {
+            e.preventDefault();
+            alert('Please select a family first.');
+            return;
+        }
+
+        var role = $('input[name="recipient_role"]:checked').val();
+        if (!role) {
+            e.preventDefault();
+            alert('Please select a recipient.');
+            return;
+        }
+
+        var phoneRaw = (role === 'father') ? selectedFamilyData.father_mobile : selectedFamilyData.mother_mobile;
+        var name = (role === 'father') 
+            ? (selectedFamilyData.father_name || selectedFamilyData.sponsor_name)
+            : (selectedFamilyData.mother_name || selectedFamilyData.sponsor_name);
+
+        if (!phoneRaw) {
+            e.preventDefault();
+            alert('The selected parent does not have a phone number.');
+            return;
+        }
+
+        // Mask the phone number for display safety
+        var masked = phoneRaw.toString();
+        if (masked.length > 6) {
+            masked = masked.substring(0, 5) + '***' + masked.substring(masked.length - 3);
+        }
+
+        var confirmMsg = 
+            '⚠️ WARNING: Send Direct SMS Now\n\n' +
+            'This action will create a micro-campaign and immediately queue exactly one SMS for dispatch by the active Windows agent.\n\n' +
+            'Recipient: ' + name + ' (' + role.toUpperCase() + ')\n' +
+            'Phone Number: ' + masked + '\n\n' +
+            'Do you want to proceed and send this SMS now?';
+
+        if (!confirm(confirmMsg)) {
+            e.preventDefault();
+        }
+    });
+
 }(jQuery));
+

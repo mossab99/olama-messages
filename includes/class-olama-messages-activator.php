@@ -192,6 +192,21 @@ class Olama_Messages_Activator {
 			requires_payment_link TINYINT(1) NOT NULL DEFAULT 1,
 			payment_token_id BIGINT UNSIGNED NULL,
 			status VARCHAR(30) NOT NULL DEFAULT 'prepared',
+			reserved_by_agent_id BIGINT UNSIGNED NULL,
+			reserved_by_agent_uuid VARCHAR(100) NULL,
+			reserved_at DATETIME NULL,
+			reservation_expires_at DATETIME NULL,
+			send_started_at DATETIME NULL,
+			sent_at DATETIME NULL,
+			failed_at DATETIME NULL,
+			attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
+			max_attempts INT UNSIGNED NOT NULL DEFAULT 3,
+			last_error_code VARCHAR(100) NULL,
+			last_error_message TEXT NULL,
+			last_stdout TEXT NULL,
+			last_stderr TEXT NULL,
+			kde_exit_code INT NULL,
+			provider_message_id VARCHAR(100) NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NULL,
 			cancelled_at DATETIME NULL,
@@ -200,7 +215,9 @@ class Olama_Messages_Activator {
 			KEY idx_campaign_recipient_id (campaign_recipient_id),
 			KEY idx_family_id (family_id),
 			KEY idx_status (status),
-			KEY idx_phone_e164 (phone_e164)
+			KEY idx_phone_e164 (phone_e164),
+			KEY idx_agent_id (reserved_by_agent_id),
+			KEY idx_updated_at (updated_at)
 		) {$charset_collate};" );
 
 		// ── Agents table ─────────────────────────────────────────────────────

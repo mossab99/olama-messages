@@ -553,3 +553,295 @@
     z-index: 10;
 }
 
+/* ── Phase 4 Badge Extensions ───────────────────────────────── */
+.olama-msg-badge--draft            { background: #f1f5f9; color: #475569; }
+.olama-msg-badge--prepared         { background: #dbeafe; color: #1d4ed8; }
+.olama-msg-badge--sending          { background: #e0f2fe; color: #0369a1; animation: olama-pulse 2s infinite; }
+.olama-msg-badge--paused           { background: #fef3c7; color: #92400e; }
+.olama-msg-badge--completed        { background: #d1fae5; color: #065f46; }
+.olama-msg-badge--completed-errors { background: #fef3c7; color: #b45309; }
+
+@keyframes olama-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .65; }
+}
+
+/* ── Confirm Campaign Sending Modal ─────────────────────────── */
+.olama-msg-confirm-box {
+    max-width: 520px;
+}
+
+.olama-msg-confirm-body {
+    margin-bottom: 1.5rem;
+}
+
+.olama-msg-confirm-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--omsg-primary);
+    background: var(--omsg-bg);
+    border: 1px solid var(--omsg-border);
+    border-radius: 6px;
+    padding: .6rem .85rem;
+    margin: .5rem 0 1rem;
+}
+
+.olama-msg-confirm-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.olama-msg-confirm-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: .75rem;
+    background: var(--omsg-bg);
+    border-radius: 8px;
+    border: 1px solid var(--omsg-border);
+}
+
+.olama-msg-confirm-stat__num {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--omsg-primary);
+    line-height: 1;
+}
+
+.olama-msg-confirm-stat__label {
+    font-size: .75rem;
+    color: var(--omsg-muted);
+    margin-top: .2rem;
+}
+
+.olama-msg-confirm-warning {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: .6rem .85rem;
+    font-size: .85rem;
+    color: #92400e;
+    line-height: 1.5;
+    margin: 0 !important;
+}
+
+.olama-msg-confirm-actions {
+    display: flex;
+    gap: .6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.olama-msg-confirm-proceed-btn {
+    background: var(--omsg-primary) !important;
+    border-color: var(--omsg-primary-dark) !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    padding: .5rem 1.25rem !important;
+    font-size: .9rem !important;
+}
+
+.olama-msg-confirm-proceed-btn:hover {
+    background: var(--omsg-primary-dark) !important;
+}
+
+/* ── Campaign Progress Page ─────────────────────────────────── */
+.olama-msg-progress-controls {
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.olama-msg-btn-pause {
+    border-color: var(--omsg-warning) !important;
+    color: var(--omsg-warning) !important;
+}
+
+.olama-msg-btn-pause:hover {
+    background: #fef3c7 !important;
+}
+
+.olama-msg-progress-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+}
+
+.olama-msg-progress-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: .85rem .5rem;
+    background: var(--omsg-surface);
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    box-shadow: var(--omsg-shadow);
+    transition: transform .12s;
+}
+
+.olama-msg-progress-stat:hover { transform: translateY(-2px); }
+
+.olama-msg-progress-stat__num {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--omsg-text);
+    line-height: 1;
+}
+
+.olama-msg-progress-stat__label {
+    font-size: .72rem;
+    color: var(--omsg-muted);
+    margin-top: .2rem;
+    text-align: center;
+}
+
+.olama-msg-progress-stat--total    .olama-msg-progress-stat__num { color: var(--omsg-primary); }
+.olama-msg-progress-stat--sent     .olama-msg-progress-stat__num { color: var(--omsg-success); }
+.olama-msg-progress-stat--failed   .olama-msg-progress-stat__num { color: var(--omsg-danger); }
+.olama-msg-progress-stat--reserved .olama-msg-progress-stat__num { color: #0369a1; }
+.olama-msg-progress-stat--paused   .olama-msg-progress-stat__num { color: var(--omsg-warning); }
+
+/* ── Progress Bar ───────────────────────────────────────────── */
+.olama-msg-progressbar-wrap {
+    margin-bottom: 1.5rem;
+}
+
+.olama-msg-progressbar {
+    display: flex;
+    height: 16px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--omsg-bg);
+    border: 1px solid var(--omsg-border);
+}
+
+.olama-msg-progressbar__sent     { background: var(--omsg-success); transition: width .5s ease; }
+.olama-msg-progressbar__reserved { background: #0369a1; transition: width .5s ease; }
+.olama-msg-progressbar__failed   { background: var(--omsg-danger); transition: width .5s ease; }
+
+.olama-msg-progressbar-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8rem;
+    margin-top: .4rem;
+    color: var(--omsg-muted);
+}
+
+.olama-msg-progressbar__legend--sent { color: var(--omsg-success); font-weight: 600; }
+.olama-msg-progressbar__legend--eta  { font-style: italic; }
+
+/* ── Agent Info Strip ───────────────────────────────────────── */
+.olama-msg-agent-info {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+    color: var(--omsg-muted);
+    background: var(--omsg-bg);
+    border: 1px solid var(--omsg-border);
+    border-radius: 6px;
+    padding: .5rem .85rem;
+    margin-bottom: 1rem;
+}
+
+/* ── Queue Error Cell ───────────────────────────────────────── */
+.olama-msg-error-cell {
+    font-size: .8rem;
+    color: var(--omsg-danger);
+    cursor: help;
+    text-decoration: underline dotted;
+}
+
+/* ── Direct Message Page (Phase 4D) ─────────────────────────── */
+.olama-msg-direct-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--omsg-border);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.olama-msg-direct-item:last-child {
+    border-bottom: none;
+}
+
+.olama-msg-direct-item:hover {
+    background: #f1f5f9;
+}
+
+.olama-msg-direct-item.is-selected {
+    background: #e0e7ff;
+    border-left: 3px solid var(--omsg-primary);
+}
+
+.olama-msg-direct-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.olama-msg-direct-item__id {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--omsg-primary);
+}
+
+.olama-msg-direct-item__name {
+    font-weight: 500;
+    font-size: 0.95em;
+}
+
+.olama-msg-direct-item__details {
+    font-size: 0.82rem;
+    color: var(--omsg-muted);
+}
+
+.olama-msg-direct-item__btn {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: #e2e8f0;
+    color: var(--omsg-text);
+    border: none;
+    font-weight: 600;
+}
+
+.olama-msg-direct-item:hover .olama-msg-direct-item__btn,
+.olama-msg-direct-item.is-selected .olama-msg-direct-item__btn {
+    background: var(--omsg-primary);
+    color: #fff;
+}
+
+.olama-msg-direct-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 4px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.olama-msg-direct-badge--father {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+
+.olama-msg-direct-badge--mother {
+    background: #fce7f3;
+    color: #be185d;
+}
+
+/* Counter Alert State */
+.olama-msg-counter-alert {
+    color: var(--omsg-danger) !important;
+    font-weight: 600;
+}
+
+

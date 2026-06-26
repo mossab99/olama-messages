@@ -70,6 +70,44 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 				),
 			)
 		);
+
+		// ─── Dispatcher REST Endpoints (Phase 4) ────────────────────────────────
+
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/jobs/reserve',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'handle_reserve_jobs' ),
+					'permission_callback' => array( $this, 'check_authentication' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/jobs/result',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( $this, 'handle_report_result' ),
+					'permission_callback' => array( $this, 'check_authentication' ),
+				),
+			)
+		);
+
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/jobs/config',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'handle_get_dispatcher_config' ),
+					'permission_callback' => array( $this, 'check_authentication' ),
+				),
+			)
+		);
 	}
 
 	/**
@@ -241,6 +279,130 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 					'allow_manual_test_sms'        => true,
 					'max_test_sms_length'          => 160,
 				),
+			),
+			200
+		);
+	}
+
+	// ─── Dispatcher REST Endpoints handlers (Phase 4) ───────────────────────
+
+	/**
+	 * Reserve SMS jobs for the agent.
+	 *
+	 * @param  WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function handle_reserve_jobs( $request ) {
+		$agent = $request->get_param( '_authorized_agent' );
+		$params = $request->get_json_params() ?: array();
+
+		$max_jobs = 1; // Strict Run 4D safety mode: force max_jobs = 1 server-side.
+
+		// Check KDE readiness from:
+		//  1. Capabilities sent in request body (C# app may send these)
+		//  2. Agent DB record (updated by heartbeat — authoritative fallback)
+		$req_capabilities = $params['capabilities'] ?? array();
+		$kde_cli_found        = ! empty( $req_capabilities['kde_cli_found'] )       || ! empty( $agent['kde_cli_found'] );
+		$kde_device_reachable = ! empty( $req_capabilities['kde_device_reachable'] ) || ! empty( $agent['kde_device_reachable'] );
+		$kde_ready            = $kde_cli_found && $kde_device_reachable;
+
+		if ( ! $kde_ready ) {
+			return new WP_REST_Response(
+				array(
+					'status'             => 'ok',
+					'jobs'               => array(),
+					'server_time'        => current_time( 'mysql' ),
+					'poll_after_seconds' => 30,
+					'reason'             => 'kde_not_ready',
+				),
+				200
+			);
+		}
+
+		$dispatcher = Olama_Messages_Plugin::instance()->dispatcher();
+		$jobs = $dispatcher->reserve_batch( $agent, $max_jobs );
+
+		return new WP_REST_Response(
+			array(
+				'status'             => 'ok',
+				'jobs'               => $jobs,
+				'server_time'        => current_time( 'mysql' ),
+				'poll_after_seconds' => 15,
+			),
+			200
+		);
+	}
+
+	/**
+	 * Report output result for a reserved queue item.
+	 *
+	 * @param  WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function handle_report_result( $request ) {
+		$agent = $request->get_param( '_authorized_agent' );
+		$params = $request->get_json_params() ?: array();
+
+		$required = array( 'queue_id', 'status', 'kde_exit_code' );
+		foreach ( $required as $f ) {
+			if ( ! isset( $params[ $f ] ) ) {
+				return new WP_REST_Response(
+					array(
+						'status'  => 'error',
+						'message' => sprintf( 'Missing parameter: %s', $f ),
+					),
+					400
+				);
+			}
+		}
+
+		$queue_id      = intval( $params['queue_id'] );
+		$status        = sanitize_text_field( $params['status'] );
+		$kde_exit_code = intval( $params['kde_exit_code'] );
+		$stdout        = isset( $params['stdout'] ) ? (string) $params['stdout'] : '';
+		$stderr        = isset( $params['stderr'] ) ? (string) $params['stderr'] : '';
+
+		if ( $status !== 'sent_by_kde' && $status !== 'failed' ) {
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Invalid status value.',
+				),
+				400
+			);
+		}
+
+		$dispatcher = Olama_Messages_Plugin::instance()->dispatcher();
+		$response = $dispatcher->update_send_status( $agent, $queue_id, $status, $kde_exit_code, $stdout, $stderr );
+
+		if ( false === $response ) {
+			return new WP_REST_Response(
+				array(
+					'status'  => 'error',
+					'message' => 'Action forbidden. Reporting agent is not matching lock owner or record is not in reserved state.',
+				),
+				403
+			);
+		}
+
+		return new WP_REST_Response( $response, 200 );
+	}
+
+	/**
+	 * Return dispatcher configuration limits.
+	 *
+	 * @param  WP_REST_Request $request REST request.
+	 * @return WP_REST_Response
+	 */
+	public function handle_get_dispatcher_config( $request ) {
+		return new WP_REST_Response(
+			array(
+				'status'                  => 'ok',
+				'poll_interval_seconds'   => 15,
+				'max_jobs_per_poll'       => 1,
+				'min_seconds_between_sms' => 20,
+				'max_sms_per_hour'        => 60,
+				'reservation_ttl_seconds' => 120,
 			),
 			200
 		);

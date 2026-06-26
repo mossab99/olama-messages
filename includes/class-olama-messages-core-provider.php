@@ -143,7 +143,8 @@ class Olama_Messages_Core_Provider {
 		}
 
 		// Phase 1.5: Use bulk API endpoint when financial provider is available.
-		if ( $this->is_financial_provider_ready() ) {
+		// Bypassed if 'search' filter is present, as the Flask API bulk endpoint does not support fuzzy search.
+		if ( $this->is_financial_provider_ready() && empty( $filters['search'] ) ) {
 			$study_year = $filters['study_year'] ?? '';
 			if ( empty( $study_year ) ) {
 				$years      = $this->get_available_study_years();
@@ -228,6 +229,22 @@ class Olama_Messages_Core_Provider {
 		if ( ! empty( $filters['section_name'] ) ) {
 			$where_clauses[] = 'sy.section_name LIKE %s';
 			$where_values[]  = '%' . $wpdb->esc_like( sanitize_text_field( $filters['section_name'] ) ) . '%';
+		}
+
+		if ( ! empty( $filters['search'] ) ) {
+			$search = sanitize_text_field( $filters['search'] );
+			$like_val = '%' . $wpdb->esc_like( $search ) . '%';
+			if ( is_numeric( $search ) ) {
+				$where_clauses[] = '( f.oracle_family_id = %s OR f.father_mobile LIKE %s OR f.mother_mobile LIKE %s )';
+				$where_values[]  = $search;
+				$where_values[]  = $like_val;
+				$where_values[]  = $like_val;
+			} else {
+				$where_clauses[] = '( f.sponsor_full_name LIKE %s OR f.father_name LIKE %s OR f.mother_name LIKE %s )';
+				$where_values[]  = $like_val;
+				$where_values[]  = $like_val;
+				$where_values[]  = $like_val;
+			}
 		}
 
 		$where_sql = $where_clauses ? 'WHERE ' . implode( ' AND ', $where_clauses ) : '';

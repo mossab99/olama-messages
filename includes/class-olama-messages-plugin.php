@@ -38,6 +38,9 @@ class Olama_Messages_Plugin {
 	/** @var Olama_Messages_Agent_Service */
 	private $agents;
 
+	/** @var Olama_Messages_Dispatcher_Service */
+	private $dispatcher;
+
 	/** @var bool */
 	private $initialized = false;
 
@@ -195,5 +198,15 @@ class Olama_Messages_Plugin {
 			$this->agents = new Olama_Messages_Agent_Service();
 		}
 		return $this->agents;
+	}
+
+	/**
+	 * @return Olama_Messages_Dispatcher_Service
+	 */
+	public function dispatcher() {
+		if ( ! $this->dispatcher ) {
+			$this->dispatcher = new Olama_Messages_Dispatcher_Service();
+		}
+		return $this->dispatcher;
 	}
 }

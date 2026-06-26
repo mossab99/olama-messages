@@ -252,6 +252,177 @@ class Olama_Messages_Campaign_Service {
 		}
 	}
 
+	/**
+	 * Create a direct SMS campaign for a specific family parent.
+	 *
+	 * @param  int    $family_id      Family ID.
+	 * @param  string $recipient_role 'father' or 'mother'.
+	 * @param  string $message_body   SMS message content.
+	 * @param  string $study_year     Optional study year.
+	 * @return int                    The new campaign ID.
+	 * @throws Exception              If parameters, validation, normalization, duplicate check, or database fails.
+	 */
+	public function create_direct_message_campaign( $family_id, $recipient_role, $message_body, $study_year = '' ) {
+		global $wpdb;
+
+		// 1. Parameter Validation
+		if ( ! $family_id || ! in_array( $recipient_role, array( 'father', 'mother' ), true ) || empty( $message_body ) ) {
+			throw new Exception( __( 'Invalid parameters for direct campaign.', 'olama-messages' ) );
+		}
+
+		if ( ! $study_year ) {
+			$years       = Olama_Messages_Plugin::instance()->provider()->get_available_study_years();
+			$study_year = ! empty( $years ) ? $years[0] : '2026-2027';
+		}
+
+		// 2. Fetch family recipient details using Core Provider
+		$res = Olama_Messages_Plugin::instance()->provider()->get_recipients_preview( array(
+			'family_id'  => $family_id,
+			'study_year' => $study_year,
+			'limit'      => 1,
+		) );
+		if ( empty( $res['items'] ) ) {
+			throw new Exception( __( 'Family not found.', 'olama-messages' ) );
+		}
+		$family = $res['items'][0];
+
+		$phone_raw = ( $recipient_role === 'father' ) ? $family['father_mobile'] : $family['mother_mobile'];
+		$recipient_name = ( $recipient_role === 'father' ) ? ( $family['father_name'] ?: $family['sponsor_name'] ) : ( $family['mother_name'] ?: $family['sponsor_name'] );
+
+		if ( empty( trim( (string) $phone_raw ) ) ) {
+			throw new Exception( sprintf( __( 'The selected parent (%s) does not have a mobile number in the database.', 'olama-messages' ), $recipient_role ) );
+		}
+
+		// 3. Normalize mobile number
+		$norm = Olama_Messages_Plugin::instance()->normalizer()->normalize_jordan_mobile( $phone_raw );
+		if ( ! $norm['valid'] ) {
+			throw new Exception( sprintf( __( 'Invalid phone number for %s: %s (%s)', 'olama-messages' ), $recipient_role, $phone_raw, $norm['reason'] ) );
+		}
+		$phone_e164 = $norm['e164'];
+
+		// 4. Duplicate protection check with normalized message body hash
+		$normalized_body = trim( preg_replace( '/\s+/', ' ', $message_body ) );
+		$message_body_hash = hash( 'sha256', $normalized_body );
+		$five_minutes_ago = date( 'Y-m-d H:i:s', time() - 300 );
+
+		$duplicate_exists = $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) 
+			 FROM {$this->table_queue} q
+			 JOIN {$this->table_campaigns} c ON q.campaign_id = c.id
+			 WHERE q.family_id = %d
+			   AND q.phone_e164 = %s
+			   AND q.message_body_hash = %s
+			   AND ( q.status IN ('prepared', 'reserved', 'retry_wait') OR c.status IN ('sending', 'prepared') )
+			   AND q.created_at >= %s",
+			$family_id,
+			$phone_e164,
+			$message_body_hash,
+			$five_minutes_ago
+		) );
+
+		if ( $duplicate_exists > 0 ) {
+			throw new Exception( __( 'A duplicate direct SMS for this parent was already queued or sent within the last 5 minutes. Please wait before resending.', 'olama-messages' ) );
+		}
+
+		// 5. Database Transaction
+		$wpdb->query( 'START TRANSACTION' );
+
+		try {
+			// Direct message metadata
+			$metadata = array(
+				'type'      => 'direct',
+				'family_id' => $family_id,
+				'recipient' => $recipient_role,
+			);
+
+			$campaign_data = array(
+				'title'            => sprintf( 'Direct Message - Family %d (%s)', $family_id, $recipient_role ),
+				'channel'          => 'sms',
+				'status'           => 'sending', // Immediately active
+				'study_year'       => $study_year,
+				'filters_json'     => wp_json_encode( $metadata ),
+				'recipient_policy' => $recipient_role === 'father' ? 'father_only' : 'mother_only',
+				'total_candidates' => 1,
+				'total_included'   => 1,
+				'total_excluded'   => 0,
+				'total_prepared'   => 1,
+				'created_by'       => get_current_user_id(),
+				'created_at'       => current_time( 'mysql' ),
+				'prepared_at'      => current_time( 'mysql' ),
+			);
+
+			$campaign_inserted = $wpdb->insert( $this->table_campaigns, $campaign_data );
+			if ( false === $campaign_inserted ) {
+				throw new Exception( $wpdb->last_error ?: __( 'Failed to create campaign record.', 'olama-messages' ) );
+			}
+			$campaign_id = (int) $wpdb->insert_id;
+
+			// Recipient Snapshot
+			$recipient_data = array(
+				'campaign_id'         => $campaign_id,
+				'family_id'           => $family_id,
+				'oracle_family_id'    => $family['oracle_family_id'] ?? (string) $family_id,
+				'recipient_type'      => $recipient_role,
+				'recipient_name'      => $recipient_name,
+				'phone_raw'           => $phone_raw,
+				'phone_e164'          => $phone_e164,
+				'sponsor_name'        => $family['sponsor_name'],
+				'father_name'         => $family['father_name'],
+				'father_mobile'       => $family['father_mobile'],
+				'mother_name'         => $family['mother_name'],
+				'mother_mobile'       => $family['mother_mobile'],
+				'students_json'       => wp_json_encode( $family['students'] ),
+				'student_rows_json'   => wp_json_encode( $family['student_rows'] ),
+				'balance'             => $family['balance'],
+				'monthly_due'         => $family['monthly_due'],
+				'monthly_due_source'  => $family['monthly_due_source'],
+				'currency'            => 'JOD',
+				'financial_available' => $family['financial_available'] ? 1 : 0,
+				'included'            => 1,
+				'created_at'          => current_time( 'mysql' ),
+			);
+
+			$recipient_inserted = $wpdb->insert( $this->table_recipients, $recipient_data );
+			if ( false === $recipient_inserted ) {
+				throw new Exception( $wpdb->last_error ?: __( 'Failed to create campaign recipient snapshot.', 'olama-messages' ) );
+			}
+			$recipient_db_id = (int) $wpdb->insert_id;
+
+			// SMS metrics calculation
+			$sms_info = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body );
+			$requires_payment_link = ( strpos( $message_body, '{{PAYMENT_LINK}}' ) !== false ) ? 1 : 0;
+
+			// Queue Item
+			$queue_data = array(
+				'campaign_id'           => $campaign_id,
+				'campaign_recipient_id' => $recipient_db_id,
+				'family_id'             => $family_id,
+				'channel'               => 'sms',
+				'phone_e164'            => $phone_e164,
+				'message_body_preview'  => $message_body,
+				'message_body_hash'     => $message_body_hash,
+				'message_char_count'    => $sms_info['char_count'],
+				'message_sms_parts'     => $sms_info['sms_parts'],
+				'requires_payment_link' => $requires_payment_link,
+				'status'                => 'prepared',
+				'created_at'            => current_time( 'mysql' ),
+			);
+
+			$queue_inserted = $wpdb->insert( $this->table_queue, $queue_data );
+			if ( false === $queue_inserted ) {
+				throw new Exception( $wpdb->last_error ?: __( 'Failed to create queue record.', 'olama-messages' ) );
+			}
+
+			$wpdb->query( 'COMMIT' );
+			return $campaign_id;
+
+		} catch ( Exception $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			throw $e;
+		}
+	}
+
+
 	// ─── Candidate Evaluation & Previews ─────────────────────────────────────
 
 	/**
@@ -773,6 +944,155 @@ class Olama_Messages_Campaign_Service {
 		}
 	}
 
+	// ─── Sending Lifecycle Operations (Phase 4) ───────────────────────────────
+
+	/**
+	 * Start sending a prepared campaign.
+	 *
+	 * Transitions campaign status from 'prepared' to 'sending'.
+	 *
+	 * @param  int $campaign_id Campaign ID.
+	 * @return bool             True on success.
+	 * @throws Exception        If campaign is not in 'prepared' status.
+	 */
+	public function start_campaign_sending( int $campaign_id ) {
+		global $wpdb;
+
+		$campaign = $this->get_campaign( $campaign_id );
+		if ( ! $campaign ) {
+			return false;
+		}
+
+		if ( $campaign['status'] !== 'prepared' ) {
+			throw new Exception( 'Only prepared campaigns can be started.' );
+		}
+
+		// Count queue records for the campaign.
+		$queue_count = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$this->table_queue} WHERE campaign_id = %d",
+			$campaign_id
+		) );
+
+		if ( $queue_count !== 1 ) {
+			throw new Exception( 'Run 4D safety mode allows only campaigns with exactly 1 prepared message to be sent.' );
+		}
+
+		$result = $wpdb->update(
+			$this->table_campaigns,
+			array(
+				'status'     => 'sending',
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array( 'id' => $campaign_id )
+		);
+
+		if ( false === $result ) {
+			throw new Exception( 'Failed to update campaign status to sending: ' . $wpdb->last_error );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Pause a campaign that is currently sending.
+	 *
+	 * Transitions campaign status from 'sending' to 'paused'.
+	 * Reserved queue records are returned to 'prepared' status so the agent
+	 * will not pick them up again until the campaign is resumed.
+	 *
+	 * @param  int $campaign_id Campaign ID.
+	 * @return bool             True on success.
+	 * @throws Exception        If campaign is not in 'sending' status.
+	 */
+	public function pause_campaign_sending( int $campaign_id ) {
+		global $wpdb;
+
+		$campaign = $this->get_campaign( $campaign_id );
+		if ( ! $campaign ) {
+			return false;
+		}
+
+		if ( $campaign['status'] !== 'sending' ) {
+			throw new Exception( 'Only sending campaigns can be paused.' );
+		}
+
+		$wpdb->query( 'START TRANSACTION' );
+
+		try {
+			// Return any currently reserved (but not yet sent) records back to prepared.
+			$wpdb->update(
+				$this->table_queue,
+				array(
+					'status'              => 'prepared',
+					'reserved_by_agent_id' => null,
+					'reserved_at'         => null,
+					'updated_at'          => current_time( 'mysql' ),
+				),
+				array(
+					'campaign_id' => $campaign_id,
+					'status'      => 'reserved',
+				)
+			);
+
+			$result = $wpdb->update(
+				$this->table_campaigns,
+				array(
+					'status'     => 'paused',
+					'updated_at' => current_time( 'mysql' ),
+				),
+				array( 'id' => $campaign_id )
+			);
+
+			if ( false === $result ) {
+				throw new Exception( 'Failed to update campaign status to paused: ' . $wpdb->last_error );
+			}
+
+			$wpdb->query( 'COMMIT' );
+			return true;
+
+		} catch ( Exception $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			throw $e;
+		}
+	}
+
+	/**
+	 * Resume a paused campaign.
+	 *
+	 * Transitions campaign status from 'paused' to 'sending'.
+	 *
+	 * @param  int $campaign_id Campaign ID.
+	 * @return bool             True on success.
+	 * @throws Exception        If campaign is not in 'paused' status.
+	 */
+	public function resume_campaign_sending( int $campaign_id ) {
+		global $wpdb;
+
+		$campaign = $this->get_campaign( $campaign_id );
+		if ( ! $campaign ) {
+			return false;
+		}
+
+		if ( $campaign['status'] !== 'paused' ) {
+			throw new Exception( 'Only paused campaigns can be resumed.' );
+		}
+
+		$result = $wpdb->update(
+			$this->table_campaigns,
+			array(
+				'status'     => 'sending',
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array( 'id' => $campaign_id )
+		);
+
+		if ( false === $result ) {
+			throw new Exception( 'Failed to update campaign status to sending: ' . $wpdb->last_error );
+		}
+
+		return true;
+	}
+
 	// ─── Reset & Cancel Operations ───────────────────────────────────────────
 
 	/**
@@ -839,13 +1159,14 @@ class Olama_Messages_Campaign_Service {
 	}
 
 	/**
-	 * Cancel a prepared campaign, preserving snapshots for audit.
+	 * Cancel a campaign, preserving snapshots for audit.
 	 *
-	 * Transitions campaign and queue statuses to 'cancelled'.
+	 * Allowed from 'prepared', 'sending', or 'paused' status.
+	 * Transitions campaign and all non-terminal queue records to 'cancelled'.
 	 *
 	 * @param  int $campaign_id Campaign ID.
 	 * @return bool             True on success, false on failure.
-	 * @throws Exception        If campaign status is not prepared.
+	 * @throws Exception        If campaign status is not cancellable.
 	 */
 	public function cancel_campaign( int $campaign_id ) {
 		global $wpdb;
@@ -855,28 +1176,27 @@ class Olama_Messages_Campaign_Service {
 			return false;
 		}
 
-		if ( $campaign['status'] !== 'prepared' ) {
-			throw new Exception( 'Only prepared campaigns can be cancelled.' );
+		$cancellable = array( 'prepared', 'sending', 'paused' );
+		if ( ! in_array( $campaign['status'], $cancellable, true ) ) {
+			throw new Exception( 'Only prepared, sending, or paused campaigns can be cancelled.' );
 		}
 
 		$wpdb->query( 'START TRANSACTION' );
 
 		try {
-			$cancelled_time = current_time( 'mysql' );
-
-			// Update queue records status to cancelled.
-			$wpdb->update(
-				$this->table_queue,
-				array(
-					'status'       => 'cancelled',
-					'cancelled_at' => $cancelled_time,
-					'updated_at'   => $cancelled_time,
-				),
-				array(
-					'campaign_id' => $campaign_id,
-					'status'      => 'prepared',
+			$cancelled_time    = current_time( 'mysql' );
+			// Cancel all non-terminal queue records.
+			$non_terminal      = array( 'prepared', 'reserved', 'retry_wait' );
+			$placeholders      = implode( ',', array_fill( 0, count( $non_terminal ), '%s' ) );
+			$wpdb->query( $wpdb->prepare(
+				"UPDATE {$this->table_queue}
+				 SET status = 'cancelled', cancelled_at = %s, updated_at = %s
+				 WHERE campaign_id = %d AND status IN ({$placeholders})",
+				array_merge(
+					array( $cancelled_time, $cancelled_time, $campaign_id ),
+					$non_terminal
 				)
-			);
+			) );
 
 			// Update campaign status to cancelled.
 			$result = $wpdb->update(
