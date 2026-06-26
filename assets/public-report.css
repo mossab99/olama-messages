@@ -1,0 +1,406 @@
+/* ============================================================
+   Olama Messages — Public Payment Report CSS
+   Arabic RTL · Mobile-first · Print-friendly
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+
+/* ── Reset & base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --rpt-primary:    #1e3a5f;
+    --rpt-accent:     #2563eb;
+    --rpt-gold:       #b45309;
+    --rpt-danger:     #dc2626;
+    --rpt-success:    #059669;
+    --rpt-muted:      #6b7280;
+    --rpt-border:     #e5e7eb;
+    --rpt-surface:    #ffffff;
+    --rpt-bg:         #f0f4f8;
+    --rpt-text:       #1f2937;
+    --rpt-radius:     12px;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body.olama-report-body {
+    font-family: 'Cairo', 'Tahoma', Arial, sans-serif;
+    background: var(--rpt-bg);
+    color: var(--rpt-text);
+    direction: rtl;
+    text-align: right;
+    min-height: 100vh;
+    padding: 1rem;
+    line-height: 1.7;
+}
+
+/* ── Container ──────────────────────────────────────────────── */
+.olama-report-container {
+    max-width: 680px;
+    margin: 0 auto;
+    background: var(--rpt-surface);
+    border-radius: var(--rpt-radius);
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(0,0,0,.12);
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.olama-report-header {
+    background: linear-gradient(135deg, var(--rpt-primary) 0%, #1e4976 100%);
+    color: #fff;
+    padding: 2rem 1.75rem 1.5rem;
+    text-align: center;
+}
+
+.olama-report-school-name {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin-bottom: .35rem;
+}
+
+.olama-report-doc-title {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: .85;
+}
+
+.olama-report-year {
+    margin-top: .5rem;
+    font-size: .85rem;
+    opacity: .7;
+    background: rgba(255,255,255,.12);
+    display: inline-block;
+    padding: .2rem .75rem;
+    border-radius: 999px;
+    margin-top: .65rem;
+}
+
+/* ── Sections ───────────────────────────────────────────────── */
+.olama-report-section {
+    padding: 1.25rem 1.75rem;
+    border-bottom: 1px solid var(--rpt-border);
+}
+
+.olama-report-section:last-of-type { border-bottom: none; }
+
+.olama-report-section__title {
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--rpt-accent);
+    margin-bottom: .85rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.olama-report-section__title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rpt-border);
+}
+
+/* ── Info grid ──────────────────────────────────────────────── */
+.olama-report-info-grid { display: flex; flex-direction: column; gap: .4rem; }
+
+.olama-report-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    font-size: .9rem;
+    padding: .3rem 0;
+    border-bottom: 1px dashed var(--rpt-border);
+}
+
+.olama-report-info-row:last-child { border-bottom: none; }
+
+.olama-report-info-label {
+    color: var(--rpt-muted);
+    font-weight: 600;
+    font-size: .8rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.olama-report-info-value {
+    font-weight: 600;
+    text-align: left;
+}
+
+/* ── Students list ──────────────────────────────────────────── */
+.olama-report-students-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.olama-report-student-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--rpt-bg);
+    border-radius: 8px;
+    padding: .6rem 1rem;
+    font-size: .9rem;
+}
+
+.olama-report-student-name { font-weight: 700; }
+.olama-report-student-meta { font-size: .78rem; color: var(--rpt-muted); }
+
+/* ── Balance section ────────────────────────────────────────── */
+.olama-report-section--balance { background: #fafafa; }
+
+.olama-report-balance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: .5rem;
+}
+
+@media (max-width: 420px) {
+    .olama-report-balance-grid { grid-template-columns: 1fr; }
+}
+
+.olama-report-balance-card {
+    background: var(--rpt-surface);
+    border: 1px solid var(--rpt-border);
+    border-radius: var(--rpt-radius);
+    padding: 1.1rem;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+.olama-report-balance-card__label {
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--rpt-muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: .5rem;
+}
+
+.olama-report-balance-card__amount {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: var(--rpt-text);
+    line-height: 1.1;
+}
+
+.olama-report-balance-card__amount--due {
+    color: var(--rpt-danger);
+}
+
+.olama-report-balance-card__amount small {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--rpt-muted);
+    margin-right: .2rem;
+}
+
+.olama-report-balance-card__unavailable {
+    font-size: .85rem;
+    color: var(--rpt-muted);
+    font-style: italic;
+}
+
+.olama-report-financial-note {
+    font-size: .78rem;
+    color: var(--rpt-muted);
+    text-align: center;
+    margin-top: .75rem;
+    padding: .5rem;
+    background: #fffbeb;
+    border-radius: 6px;
+    border: 1px solid #fde68a;
+}
+
+/* Financial data unavailable — shown in place of balance cards in Phase 1 */
+.olama-report-financial-unavailable {
+    background: #fffbeb;
+    border: 2px solid #fbbf24;
+    border-radius: var(--rpt-radius);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.olama-report-fin-icon {
+    font-size: 2rem;
+    margin-bottom: .5rem;
+}
+
+.olama-report-fin-msg {
+    font-size: .95rem;
+    color: #92400e;
+    font-weight: 600;
+    line-height: 1.75;
+}
+
+/* ── Table ──────────────────────────────────────────────────── */
+.olama-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+}
+
+.olama-report-table th {
+    background: var(--rpt-primary);
+    color: #fff;
+    padding: .6rem .85rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+.olama-report-table td {
+    padding: .55rem .85rem;
+    border-bottom: 1px solid var(--rpt-border);
+}
+
+.olama-report-table tbody tr:nth-child(even) { background: var(--rpt-bg); }
+
+/* ── Instructions ───────────────────────────────────────────── */
+.olama-report-section--instructions { background: #eff6ff; }
+
+.olama-report-instructions {
+    font-size: .9rem;
+    line-height: 1.75;
+    color: var(--rpt-primary);
+}
+
+/* ── Contact ────────────────────────────────────────────────── */
+.olama-report-contact { text-align: center; }
+
+.olama-report-phone-link {
+    display: inline-block;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--rpt-accent);
+    text-decoration: none;
+    padding: .6rem 1.5rem;
+    border: 2px solid var(--rpt-accent);
+    border-radius: 999px;
+    transition: background .15s, color .15s;
+}
+
+.olama-report-phone-link:hover {
+    background: var(--rpt-accent);
+    color: #fff;
+}
+
+.olama-report-phone-link--large { font-size: 1.25rem; }
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.olama-report-footer {
+    padding: 1.5rem 1.75rem;
+    text-align: center;
+    background: var(--rpt-primary);
+    color: rgba(255,255,255,.75);
+}
+
+.olama-report-print-btn {
+    display: inline-block;
+    padding: .7rem 2rem;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border: 2px solid rgba(255,255,255,.4);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: .95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s;
+    margin-bottom: 1rem;
+}
+
+.olama-report-print-btn:hover { background: rgba(255,255,255,.25); }
+
+.olama-report-footer-note {
+    font-size: .78rem;
+    margin-top: .35rem;
+    opacity: .6;
+}
+
+/* ── Invalid token page ─────────────────────────────────────── */
+.olama-report-body--invalid {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.olama-report-container--invalid {
+    max-width: 420px;
+    padding: 0;
+}
+
+.olama-report-invalid-box {
+    text-align: center;
+    padding: 3rem 2rem;
+}
+
+.olama-report-invalid-icon {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+}
+
+.olama-report-invalid-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--rpt-danger);
+    margin-bottom: .75rem;
+}
+
+.olama-report-invalid-msg {
+    color: var(--rpt-muted);
+    margin-bottom: 1.5rem;
+    font-size: .9rem;
+}
+
+.olama-report-school-footer {
+    margin-top: 1.5rem;
+    font-size: .8rem;
+    color: var(--rpt-muted);
+}
+
+/* ── Print styles ───────────────────────────────────────────── */
+@media print {
+    body.olama-report-body {
+        background: #fff;
+        padding: 0;
+    }
+
+    .olama-report-container {
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
+    }
+
+    .olama-report-header {
+        background: var(--rpt-primary) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .olama-report-print-btn { display: none; }
+
+    .olama-report-section { break-inside: avoid; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+    body.olama-report-body { padding: 0; }
+    .olama-report-container { border-radius: 0; }
+    .olama-report-header { padding: 1.5rem 1.25rem 1.25rem; }
+    .olama-report-section { padding: 1rem 1.25rem; }
+    .olama-report-school-name { font-size: 1.15rem; }
+    .olama-report-balance-card__amount { font-size: 1.35rem; }
+    .olama-report-info-row { flex-direction: column; gap: .15rem; }
+    .olama-report-info-value { text-align: right; }
+}

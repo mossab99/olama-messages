@@ -1,0 +1,555 @@
+/* ============================================================
+   Olama Messages — Admin CSS
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+    --omsg-primary:      #4f46e5;
+    --omsg-primary-dark: #3730a3;
+    --omsg-success:      #059669;
+    --omsg-warning:      #d97706;
+    --omsg-danger:       #dc2626;
+    --omsg-muted:        #6b7280;
+    --omsg-border:       #e5e7eb;
+    --omsg-surface:      #ffffff;
+    --omsg-bg:           #f8fafc;
+    --omsg-text:         #111827;
+    --omsg-radius:       10px;
+    --omsg-shadow:       0 1px 4px rgba(0,0,0,.08), 0 4px 24px rgba(79,70,229,.06);
+}
+
+/* ── Wrap ───────────────────────────────────────────────────── */
+.olama-msg-wrap {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--omsg-text);
+    max-width: 1200px;
+}
+
+.olama-msg-page-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: var(--omsg-primary) !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.olama-msg-page-title .dashicons {
+    font-size: 1.5rem;
+    width: auto;
+    height: auto;
+    color: var(--omsg-primary);
+}
+
+/* ── Cards (Dashboard) ──────────────────────────────────────── */
+.olama-msg-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.olama-msg-card {
+    background: var(--omsg-surface);
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    box-shadow: var(--omsg-shadow);
+    overflow: hidden;
+}
+
+.olama-msg-card__header {
+    background: var(--omsg-primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: .85rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: .65rem 1rem;
+}
+
+.olama-msg-card__body {
+    padding: 1rem;
+}
+
+/* ── Status rows ────────────────────────────────────────────── */
+.olama-msg-status-row,
+.olama-msg-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .45rem 0;
+    border-bottom: 1px solid var(--omsg-border);
+    font-size: .88rem;
+}
+
+.olama-msg-status-row:last-of-type,
+.olama-msg-stat-row:last-of-type {
+    border-bottom: none;
+}
+
+.olama-msg-warning-text {
+    font-size: .8rem;
+    color: var(--omsg-warning);
+    margin-top: .75rem !important;
+    padding: .5rem .75rem;
+    background: #fffbeb;
+    border-radius: 6px;
+    border: 1px solid #fde68a;
+}
+
+.olama-msg-warning-text--financial {
+    color: var(--omsg-muted);
+    background: #f9fafb;
+    border-color: var(--omsg-border);
+}
+
+/* ── Pills ──────────────────────────────────────────────────── */
+.olama-msg-pill {
+    display: inline-block;
+    padding: .2rem .6rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.olama-msg-pill--ok   { background: #d1fae5; color: #065f46; }
+.olama-msg-pill--err  { background: #fee2e2; color: #991b1b; }
+.olama-msg-pill--warn { background: #fef3c7; color: #92400e; }
+
+/* ── Stat blocks ────────────────────────────────────────────── */
+.olama-msg-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    margin-bottom: .5rem;
+    background: var(--omsg-bg);
+    border-radius: 8px;
+}
+
+.olama-msg-stat__num {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--omsg-primary);
+    line-height: 1;
+}
+
+.olama-msg-stat__label {
+    font-size: .78rem;
+    color: var(--omsg-muted);
+    margin-top: .25rem;
+}
+
+/* ── Quick links ────────────────────────────────────────────── */
+.olama-msg-quicklinks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.olama-msg-quicklinks li a {
+    display: block;
+    padding: .55rem .25rem;
+    color: var(--omsg-primary);
+    text-decoration: none;
+    font-size: .9rem;
+    border-bottom: 1px solid var(--omsg-border);
+    transition: padding-left .15s;
+}
+
+.olama-msg-quicklinks li:last-child a { border-bottom: none; }
+.olama-msg-quicklinks li a:hover { padding-left: .5rem; color: var(--omsg-primary-dark); }
+
+/* ── Filters ────────────────────────────────────────────────── */
+.olama-msg-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    align-items: flex-end;
+    background: var(--omsg-surface);
+    padding: 1rem;
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    margin-bottom: 1rem;
+    box-shadow: var(--omsg-shadow);
+}
+
+.olama-msg-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 160px;
+}
+
+.olama-msg-filter-group label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--omsg-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.olama-msg-filter-group input,
+.olama-msg-filter-group select {
+    font-family: inherit;
+    font-size: .88rem;
+    border: 1px solid var(--omsg-border);
+    border-radius: 6px;
+    padding: .4rem .6rem;
+    background: var(--omsg-bg);
+    color: var(--omsg-text);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.olama-msg-filter-group input:focus,
+.olama-msg-filter-group select:focus {
+    outline: none;
+    border-color: var(--omsg-primary);
+    box-shadow: 0 0 0 3px rgba(79,70,229,.15);
+}
+
+.olama-msg-filter-actions { display: flex; gap: .5rem; align-items: flex-end; padding-top: 1.35rem; }
+
+.olama-msg-total-count {
+    font-size: .85rem;
+    color: var(--omsg-muted);
+    margin-bottom: .75rem !important;
+}
+
+/* ── Table ──────────────────────────────────────────────────── */
+.olama-msg-table-wrap {
+    overflow-x: auto;
+    border-radius: var(--omsg-radius);
+    box-shadow: var(--omsg-shadow);
+    border: 1px solid var(--omsg-border);
+    margin-bottom: 1rem;
+}
+
+.olama-msg-table {
+    border: none !important;
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .86rem;
+}
+
+.olama-msg-table thead th {
+    background: var(--omsg-primary) !important;
+    color: #fff !important;
+    font-weight: 600;
+    padding: .65rem .85rem;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.olama-msg-table tbody tr { background: var(--omsg-surface); transition: background .12s; }
+.olama-msg-table tbody tr:nth-child(even) { background: var(--omsg-bg); }
+.olama-msg-table tbody tr:hover { background: #eef2ff; }
+
+.olama-msg-table td {
+    padding: .6rem .85rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--omsg-border);
+}
+
+.olama-msg-student-list {
+    margin: 0; padding: 0; list-style: none;
+}
+
+.olama-msg-student-list li {
+    font-size: .82rem;
+    padding: .1rem 0;
+    color: var(--omsg-text);
+}
+
+.olama-msg-muted { color: var(--omsg-muted); }
+.olama-msg-prefix { font-size: .78rem; opacity: .8; }
+
+/* N/A — financial data not available yet */
+.olama-msg-unavailable {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    padding: .1rem .4rem;
+    cursor: help;
+}
+
+/* ── Actions ────────────────────────────────────────────────── */
+.olama-msg-actions {
+    white-space: nowrap;
+}
+
+.olama-msg-actions .button {
+    margin-right: .25rem;
+    font-size: .78rem !important;
+}
+
+/* ── Badges ─────────────────────────────────────────────────── */
+.olama-msg-badge {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+
+.olama-msg-badge--active  { background: #d1fae5; color: #065f46; }
+.olama-msg-badge--revoked { background: #fee2e2; color: #991b1b; }
+.olama-msg-badge--expired { background: #fef3c7; color: #92400e; }
+.olama-msg-badge--maxed   { background: #e0e7ff; color: #3730a3; }
+
+/* ── Pagination ─────────────────────────────────────────────── */
+.olama-msg-pagination {
+    display: flex;
+    gap: .35rem;
+    margin-top: .75rem;
+    flex-wrap: wrap;
+}
+
+.olama-msg-pagination a,
+.olama-msg-page-current {
+    display: inline-block;
+    min-width: 32px;
+    padding: .3rem .5rem;
+    text-align: center;
+    border-radius: 6px;
+    font-size: .85rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid var(--omsg-border);
+    background: var(--omsg-surface);
+    color: var(--omsg-primary);
+    transition: background .12s, color .12s;
+}
+
+.olama-msg-pagination a:hover { background: var(--omsg-primary); color: #fff; }
+.olama-msg-page-current { background: var(--omsg-primary); color: #fff; border-color: var(--omsg-primary); }
+
+/* ── Empty state ────────────────────────────────────────────── */
+.olama-msg-empty {
+    padding: 2.5rem;
+    text-align: center;
+    color: var(--omsg-muted);
+    background: var(--omsg-surface);
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    font-size: .9rem;
+    margin: 1rem 0;
+}
+
+/* ── New token box ──────────────────────────────────────────── */
+.olama-msg-new-token-box {
+    background: #fffbeb;
+    border: 2px solid #f59e0b;
+    border-radius: var(--omsg-radius);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.olama-msg-new-token-box h3 {
+    margin: 0 0 .75rem;
+    color: #92400e;
+    font-size: 1rem;
+}
+
+.olama-msg-token-url-row {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.olama-msg-token-url-input {
+    flex: 1;
+    min-width: 200px;
+    font-family: 'Courier New', monospace;
+    font-size: .82rem;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    padding: .45rem .65rem;
+    background: #fff;
+}
+
+/* ── Settings ───────────────────────────────────────────────── */
+.form-table th { vertical-align: top; padding-top: .9rem; }
+
+.olama-msg-template-default {
+    margin-top: .75rem;
+    font-size: .82rem;
+}
+
+.olama-msg-template-default summary {
+    cursor: pointer;
+    color: var(--omsg-primary);
+}
+
+.olama-msg-template-default pre {
+    background: var(--omsg-bg);
+    border: 1px solid var(--omsg-border);
+    border-radius: 6px;
+    padding: .75rem;
+    margin-top: .5rem;
+    font-size: .82rem;
+    white-space: pre-wrap;
+    direction: rtl;
+    text-align: right;
+}
+
+/* ── SMS Modal ──────────────────────────────────────────────── */
+.olama-msg-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.olama-msg-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+}
+
+.olama-msg-modal__box {
+    position: relative;
+    background: var(--omsg-surface);
+    border-radius: var(--omsg-radius);
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    padding: 1.75rem;
+    max-width: 480px;
+    width: 90%;
+    z-index: 1;
+}
+
+.olama-msg-modal__box h2 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+    color: var(--omsg-primary);
+}
+
+.olama-msg-modal__close {
+    position: absolute;
+    top: .75rem;
+    right: .75rem;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--omsg-muted);
+    line-height: 1;
+    padding: .25rem .4rem;
+    border-radius: 4px;
+    transition: background .12s;
+}
+
+.olama-msg-modal__close:hover { background: var(--omsg-bg); color: var(--omsg-text); }
+
+.olama-msg-sms-bubble {
+    background: #e0e7ff;
+    border-radius: 12px 12px 4px 12px;
+    padding: 1rem 1.25rem;
+    font-size: .92rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    direction: rtl;
+    text-align: right;
+    margin-bottom: .75rem;
+    min-height: 80px;
+}
+
+.olama-msg-sms-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: .78rem;
+    color: var(--omsg-muted);
+}
+
+/* ── Phase 2 Campaign Preview Styles ────────────────────────── */
+.olama-campaign-preview-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.olama-campaign-preview-stat-card {
+    background: var(--omsg-surface);
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    transition: transform 0.15s ease;
+}
+
+.olama-campaign-preview-stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.olama-campaign-preview-stat-val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--omsg-text);
+    display: block;
+    line-height: 1.2;
+}
+
+.olama-campaign-preview-stat-label {
+    font-size: 0.75rem;
+    color: var(--omsg-muted);
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.olama-campaign-preview-table-wrap {
+    max-height: 32rem;
+    overflow-y: auto;
+    border: 1px solid var(--omsg-border);
+    border-radius: var(--omsg-radius);
+    background: var(--omsg-surface);
+}
+
+.olama-campaign-preview-table-wrap::-webkit-scrollbar {
+    width: 6px;
+}
+
+.olama-campaign-preview-table-wrap::-webkit-scrollbar-track {
+    background: var(--omsg-bg);
+}
+
+.olama-campaign-preview-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--omsg-border);
+    border-radius: 3px;
+}
+
+.olama-campaign-preview-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: var(--omsg-muted);
+}
+
+#olama-campaign-preview-table th {
+    position: sticky;
+    top: 0;
+    background: var(--omsg-bg);
+    z-index: 2;
+    border-bottom: 2px solid var(--omsg-border);
+}
+
+/* loading container state */
+.olama-loading {
+    position: relative;
+}
+
+.olama-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.4);
+    z-index: 10;
+}
+
