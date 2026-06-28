@@ -108,6 +108,46 @@ class Olama_Messages_Core_Provider {
 		return is_array( $rows ) ? $rows : array();
 	}
 
+	public function get_available_class_names( $study_year = '' ) {
+		if ( ! $this->is_core_available() ) {
+			return array();
+		}
+		global $wpdb;
+		$table = $wpdb->prefix . 'olama_core_student_years';
+		$where = '';
+		$values = array();
+		if ( $study_year !== '' ) {
+			$where = 'WHERE study_year = %s';
+			$values[] = sanitize_text_field( $study_year );
+		}
+		$sql = "SELECT DISTINCT class_name FROM `" . esc_sql( $table ) . "` {$where} AND class_name IS NOT NULL AND class_name <> '' ORDER BY class_name ASC";
+		if ( $study_year === '' ) {
+			$sql = "SELECT DISTINCT class_name FROM `" . esc_sql( $table ) . "` WHERE class_name IS NOT NULL AND class_name <> '' ORDER BY class_name ASC";
+		}
+		$rows = $values ? $wpdb->get_col( $wpdb->prepare( $sql, $values ) ) : $wpdb->get_col( $sql );
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	public function get_available_section_names( $study_year = '' ) {
+		if ( ! $this->is_core_available() ) {
+			return array();
+		}
+		global $wpdb;
+		$table = $wpdb->prefix . 'olama_core_student_years';
+		$where = '';
+		$values = array();
+		if ( $study_year !== '' ) {
+			$where = 'WHERE study_year = %s';
+			$values[] = sanitize_text_field( $study_year );
+		}
+		$sql = "SELECT DISTINCT section_name FROM `" . esc_sql( $table ) . "` {$where} AND section_name IS NOT NULL AND section_name <> '' ORDER BY section_name ASC";
+		if ( $study_year === '' ) {
+			$sql = "SELECT DISTINCT section_name FROM `" . esc_sql( $table ) . "` WHERE section_name IS NOT NULL AND section_name <> '' ORDER BY section_name ASC";
+		}
+		$rows = $values ? $wpdb->get_col( $wpdb->prepare( $sql, $values ) ) : $wpdb->get_col( $sql );
+		return is_array( $rows ) ? $rows : array();
+	}
+
 	// ─── Recipients preview ──────────────────────────────────────────────────
 
 	/**
@@ -142,9 +182,67 @@ class Olama_Messages_Core_Provider {
 			);
 		}
 
+		$target_type = sanitize_text_field( $filters['target_type'] ?? 'collection' );
+
+		// Transportation audiences are matched by Oracle directly. WordPress only
+		// normalizes the already-filtered family recipients for campaign rendering.
+		if ( 'transportation' === $target_type ) {
+			$study_year = sanitize_text_field( $filters['study_year'] ?? '' );
+			$api_data   = Olama_Messages_Plugin::instance()->transportation()->get_bulk_recipients( $study_year, $filters );
+			if ( ! is_array( $api_data ) || 'ok' !== ( $api_data['status'] ?? '' ) ) {
+				return array(
+					'items'               => array(),
+					'total'               => 0,
+					'financial_available' => false,
+					'financial_warning'   => 'Transportation API is unavailable.',
+				);
+			}
+
+			$items = array();
+			foreach ( $api_data['recipients'] ?? array() as $recipient ) {
+				$student_rows = array_values( $recipient['matching_students'] ?? array() );
+				$items[] = array(
+					'family_id'           => absint( $recipient['family_id'] ?? 0 ),
+					'oracle_family_id'    => (string) ( $recipient['family_id'] ?? '' ),
+					'sponsor_name'        => (string) ( $recipient['sponsor_full_name'] ?? '' ),
+					'father_name'         => (string) ( $recipient['father_name'] ?? '' ),
+					'father_mobile'       => (string) ( $recipient['father_mobile'] ?? '' ),
+					'mother_name'         => (string) ( $recipient['mother_name'] ?? '' ),
+					'mother_mobile'       => (string) ( $recipient['mother_mobile'] ?? '' ),
+					'students'            => array_values( array_filter( wp_list_pluck( $student_rows, 'student_name' ) ) ),
+					'student_rows'        => $student_rows,
+					'class_names'         => array_values( array_unique( array_filter( wp_list_pluck( $student_rows, 'class_name' ) ) ) ),
+					'section_names'       => array_values( array_unique( array_filter( wp_list_pluck( $student_rows, 'section_name' ) ) ) ),
+					'balance'             => null,
+					'monthly_due'         => null,
+					'currency'            => 'JOD',
+					'financial_available' => false,
+				);
+			}
+
+			return array(
+				'items'               => $items,
+				'total'               => absint( $api_data['count'] ?? count( $items ) ),
+				'limit'               => absint( $api_data['limit'] ?? count( $items ) ),
+				'offset'              => absint( $api_data['offset'] ?? 0 ),
+				'financial_available' => false,
+				'financial_warning'   => '',
+			);
+		}
+
+		$financial_ready = $this->is_financial_provider_ready();
+		if ( 'general' === $target_type && ! $financial_ready ) {
+			return array(
+				'items'               => array(),
+				'total'               => 0,
+				'financial_available' => false,
+				'financial_warning'   => 'Oracle recipient API is unavailable. General audiences cannot be calculated safely.',
+			);
+		}
+
 		// Phase 1.5: Use bulk API endpoint when financial provider is available.
 		// Bypassed if 'search' filter is present, as the Flask API bulk endpoint does not support fuzzy search.
-		if ( $this->is_financial_provider_ready() && empty( $filters['search'] ) ) {
+		if ( $financial_ready && empty( $filters['search'] ) ) {
 			$study_year = $filters['study_year'] ?? '';
 			if ( empty( $study_year ) ) {
 				$years      = $this->get_available_study_years();
@@ -185,6 +283,13 @@ class Olama_Messages_Core_Provider {
 					$item['students']     = $normalized_students;
 					$item['student_rows'] = $student_rows;
 					$normalized_items[]   = $item;
+				}
+
+				if ( 'transportation' === $target_type && empty( $filters['defer_transport_filter'] ) && class_exists( 'Olama_Messages_Plugin' ) && Olama_Messages_Plugin::instance() ) {
+					$transport_service = Olama_Messages_Plugin::instance()->transportation();
+					if ( $transport_service ) {
+						$normalized_items = $transport_service->filter_cached_families( $normalized_items, $study_year, $filters );
+					}
 				}
 
 				return array(
@@ -332,6 +437,14 @@ class Olama_Messages_Core_Provider {
 				'financial_available' => false,
 				'financial_warning'   => self::FINANCIAL_WARNING,
 			);
+		}
+
+		if ( 'transportation' === $target_type && empty( $filters['defer_transport_filter'] ) && class_exists( 'Olama_Messages_Plugin' ) && Olama_Messages_Plugin::instance() ) {
+			$transport_service = Olama_Messages_Plugin::instance()->transportation();
+			if ( $transport_service ) {
+				$items = $transport_service->filter_cached_families( $items, $filters['study_year'] ?? '', $filters );
+				$total = count( $items );
+			}
 		}
 
 		return array(

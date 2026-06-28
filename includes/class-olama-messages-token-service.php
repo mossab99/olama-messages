@@ -21,11 +21,28 @@ class Olama_Messages_Token_Service {
 	/** Table names (resolved in constructor). */
 	private $tokens_table;
 	private $views_table;
+	private $tokens_table_columns = null;
 
 	public function __construct() {
 		global $wpdb;
 		$this->tokens_table = $wpdb->prefix . 'olama_msg_tokens';
 		$this->views_table  = $wpdb->prefix . 'olama_msg_token_views';
+	}
+
+	private function has_column( $column_name ) {
+		global $wpdb;
+		if ( null === $this->tokens_table_columns ) {
+			$this->tokens_table_columns = array();
+			$rows = $wpdb->get_results( 'SHOW COLUMNS FROM `' . esc_sql( $this->tokens_table ) . '`', ARRAY_A );
+			if ( is_array( $rows ) ) {
+				foreach ( $rows as $row ) {
+					if ( isset( $row['Field'] ) ) {
+						$this->tokens_table_columns[ $row['Field'] ] = true;
+					}
+				}
+			}
+		}
+		return ! empty( $this->tokens_table_columns[ $column_name ] );
 	}
 
 	// ─── Generate ────────────────────────────────────────────────────────────
@@ -38,6 +55,8 @@ class Olama_Messages_Token_Service {
 	 * @param  array      $options {
 	 *     @type int|null $expiry_days   Days until expiry (null = never).
 	 *     @type int|null $max_views     Max allowed views (null = unlimited).
+	 *     @type int|null $campaign_id   Campaign ID, if campaign generated.
+	 *     @type string   $generated_source campaign|manual
 	 * }
 	 * @return array { token_id: int, public_url: string, raw_token: string }
 	 * @throws RuntimeException on generation failure.
@@ -91,26 +110,35 @@ class Olama_Messages_Token_Service {
 		}
 
 		$max_views = isset( $options['max_views'] ) ? ( $options['max_views'] === null ? null : absint( $options['max_views'] ) ) : null;
+		$campaign_id = isset( $options['campaign_id'] ) ? absint( $options['campaign_id'] ) : null;
+		$generated_source = isset( $options['generated_source'] ) && 'manual' === $options['generated_source'] ? 'manual' : 'campaign';
 
 		$now = current_time( 'mysql' );
 
-		$inserted = $wpdb->insert(
-			$this->tokens_table,
-			array(
-				'family_id'    => $family_id_int,
-				'token_hash'   => $token_hash,
-				'token_prefix' => $token_prefix,
-				'purpose'      => 'payment_report',
-				'study_year'   => sanitize_text_field( $study_year ),
-				'expires_at'   => $expires_at,
-				'max_views'    => $max_views,
-				'view_count'   => 0,
-				'created_by'   => get_current_user_id() ?: null,
-				'created_at'   => $now,
-				'updated_at'   => $now,
-			),
-			array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s' )
+		$insert_data = array(
+			'family_id'    => $family_id_int,
+			'token_hash'   => $token_hash,
+			'token_prefix' => $token_prefix,
+			'purpose'      => 'payment_report',
+			'study_year'   => sanitize_text_field( $study_year ),
+			'expires_at'   => $expires_at,
+			'max_views'    => $max_views,
+			'view_count'   => 0,
+			'created_by'   => get_current_user_id() ?: null,
+			'created_at'   => $now,
+			'updated_at'   => $now,
 		);
+		$insert_format = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s' );
+		if ( $this->has_column( 'campaign_id' ) ) {
+			$insert_data['campaign_id'] = $campaign_id ?: null;
+			$insert_format[] = '%d';
+		}
+		if ( $this->has_column( 'generated_source' ) ) {
+			$insert_data['generated_source'] = $generated_source;
+			$insert_format[] = '%s';
+		}
+
+		$inserted = $wpdb->insert( $this->tokens_table, $insert_data, $insert_format );
 
 		if ( ! $inserted ) {
 			throw new RuntimeException( 'Failed to save token to database.' );
@@ -265,8 +293,47 @@ class Olama_Messages_Token_Service {
 			array( '%s', '%s' ),
 			array( '%d' )
 		);
+		if ( false !== $result && class_exists( 'Olama_Messages_Short_Link_Service' ) ) {
+			Olama_Messages_Plugin::instance()->short_links()->revoke_for_token( absint( $token_id ) );
+		}
 
 		return false !== $result;
+	}
+
+	public function revoke_all_tokens() {
+		global $wpdb;
+		$now = current_time( 'mysql' );
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE `' . esc_sql( $this->tokens_table ) . '`
+				 SET revoked_at = %s, updated_at = %s
+				 WHERE purpose = %s AND revoked_at IS NULL',
+				$now,
+				$now,
+				'payment_report'
+			)
+		);
+		return (int) $wpdb->rows_affected;
+	}
+
+	public function delete_token( $token_id ) {
+		global $wpdb;
+		$token_id = absint( $token_id );
+		if ( ! $token_id ) {
+			return false;
+		}
+		$wpdb->delete( $this->views_table, array( 'token_id' => $token_id ), array( '%d' ) );
+		if ( class_exists( 'Olama_Messages_Short_Link_Service' ) ) {
+			$wpdb->delete( $wpdb->prefix . 'olama_msg_short_links', array( 'token_id' => $token_id ), array( '%d' ) );
+		}
+		return false !== $wpdb->delete( $this->tokens_table, array( 'id' => $token_id ), array( '%d' ) );
+	}
+
+	public function delete_all_tokens() {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM `" . esc_sql( $this->views_table ) . "` WHERE token_id IN (SELECT id FROM `" . esc_sql( $this->tokens_table ) . "`)" );
+		$wpdb->query( "DELETE FROM `" . esc_sql( $this->tokens_table ) . "` WHERE purpose = 'payment_report'" );
+		return (int) $wpdb->rows_affected;
 	}
 
 	/**
@@ -331,30 +398,43 @@ class Olama_Messages_Token_Service {
 
 		$limit  = isset( $args['limit'] )  ? max( 1, min( 200, absint( $args['limit'] ) ) ) : 50;
 		$offset = isset( $args['offset'] ) ? max( 0, absint( $args['offset'] ) )             : 0;
+		$where  = array( 't.purpose = %s' );
+		$values = array( 'payment_report' );
+		$join    = " LEFT JOIN {$wpdb->prefix}olama_msg_campaigns c ON c.id = t.campaign_id";
+		$order   = 't.created_at DESC';
 
+		if ( ! empty( $args['campaign_id'] ) ) {
+			$where[]  = 't.campaign_id = %d';
+			$values[] = absint( $args['campaign_id'] );
+		}
 		if ( ! empty( $args['family_id'] ) ) {
-			return $wpdb->get_results(
-				$wpdb->prepare(
-					'SELECT * FROM `' . esc_sql( $this->tokens_table ) . '`
-					 WHERE family_id = %d
-					 ORDER BY created_at DESC LIMIT %d OFFSET %d',
-					absint( $args['family_id'] ),
-					$limit,
-					$offset
-				),
-				ARRAY_A
-			) ?: array();
+			$where[]  = 't.family_id = %d';
+			$values[] = absint( $args['family_id'] );
+		}
+		if ( ! empty( $args['generated_source'] ) ) {
+			$where[]  = 't.generated_source = %s';
+			$values[] = sanitize_text_field( $args['generated_source'] );
+		}
+		if ( ! empty( $args['viewed_only'] ) ) {
+			$where[] = 't.view_count > 0';
+		}
+		if ( ! empty( $args['not_viewed_only'] ) ) {
+			$where[] = '(t.view_count = 0 OR t.view_count IS NULL)';
 		}
 
-		return $wpdb->get_results(
-			$wpdb->prepare(
-				'SELECT * FROM `' . esc_sql( $this->tokens_table ) . '`
-				 ORDER BY created_at DESC LIMIT %d OFFSET %d',
-				$limit,
-				$offset
-			),
-			ARRAY_A
-		) ?: array();
+		if ( ! empty( $args['campaign_name'] ) ) {
+			$where[] = 'c.title LIKE %s';
+			$values[] = '%' . $wpdb->esc_like( $args['campaign_name'] ) . '%';
+		}
+
+		$sql = "SELECT t.*, c.title AS campaign_title
+		        FROM `" . esc_sql( $this->tokens_table ) . "` t
+		        {$join}
+		        WHERE " . implode( ' AND ', $where ) . "
+		        ORDER BY {$order} LIMIT %d OFFSET %d";
+		$values[] = $limit;
+		$values[] = $offset;
+		return $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A ) ?: array();
 	}
 
 	/**
@@ -376,9 +456,29 @@ class Olama_Messages_Token_Service {
 	/**
 	 * @return int
 	 */
-	public function count_tokens() {
+	public function count_tokens( array $args = array() ) {
 		global $wpdb;
-		return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( $this->tokens_table ) . '`' );
+		$where  = array( "purpose = 'payment_report'" );
+		$values = array();
+		if ( ! empty( $args['campaign_id'] ) ) {
+			$where[]  = 'campaign_id = %d';
+			$values[] = absint( $args['campaign_id'] );
+		}
+		if ( ! empty( $args['generated_source'] ) ) {
+			$where[]  = 'generated_source = %s';
+			$values[] = sanitize_text_field( $args['generated_source'] );
+		}
+		if ( ! empty( $args['viewed_only'] ) ) {
+			$where[] = 'view_count > 0';
+		}
+		if ( ! empty( $args['not_viewed_only'] ) ) {
+			$where[] = '(view_count = 0 OR view_count IS NULL)';
+		}
+		$sql = 'SELECT COUNT(*) FROM `' . esc_sql( $this->tokens_table ) . '` WHERE ' . implode( ' AND ', $where );
+		if ( $values ) {
+			$sql = $wpdb->prepare( $sql, $values );
+		}
+		return (int) $wpdb->get_var( $sql );
 	}
 
 	/**

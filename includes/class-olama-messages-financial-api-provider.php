@@ -170,6 +170,12 @@ class Olama_Messages_Financial_Api_Provider {
 		if ( ! empty( $filters['section_id'] ) ) {
 			$query['section_id'] = intval( $filters['section_id'] );
 		}
+		if ( ! empty( $filters['class_name'] ) ) {
+			$query['class_name'] = sanitize_text_field( $filters['class_name'] );
+		}
+		if ( ! empty( $filters['section_name'] ) ) {
+			$query['section_name'] = sanitize_text_field( $filters['section_name'] );
+		}
 
 		return $this->request( '/api/messaging/recipients', $query );
 	}

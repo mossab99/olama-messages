@@ -19,12 +19,16 @@ class Olama_Messages_Plugin {
 
 	/** @var Olama_Messages_Token_Service */
 	private $tokens;
+	private $short_links;
 
 	/** @var Olama_Messages_Template_Renderer */
 	private $renderer;
 
 	/** @var Olama_Messages_Financial_Api_Provider */
 	private $financial;
+
+	/** @var Olama_Messages_Transportation_Service */
+	private $transportation;
 
 	/** @var Olama_Messages_Phone_Normalizer */
 	private $normalizer;
@@ -100,6 +104,7 @@ class Olama_Messages_Plugin {
 			'index.php?olama_payment_token=$matches[1]',
 			'top'
 		);
+		add_rewrite_rule( '^p/([A-Za-z0-9]{8})/?$', 'index.php?olama_short_code=$matches[1]', 'top' );
 	}
 
 	/**
@@ -107,6 +112,7 @@ class Olama_Messages_Plugin {
 	 */
 	public function add_query_vars( $vars ) {
 		$vars[] = 'olama_payment_token';
+		$vars[] = 'olama_short_code';
 		return $vars;
 	}
 
@@ -132,6 +138,14 @@ class Olama_Messages_Plugin {
 		return $this->tokens;
 	}
 
+	/** @return Olama_Messages_Short_Link_Service */
+	public function short_links() {
+		if ( ! $this->short_links ) {
+			$this->short_links = new Olama_Messages_Short_Link_Service();
+		}
+		return $this->short_links;
+	}
+
 	/**
 	 * @return Olama_Messages_Template_Renderer
 	 */
@@ -150,6 +164,16 @@ class Olama_Messages_Plugin {
 			$this->financial = new Olama_Messages_Financial_Api_Provider();
 		}
 		return $this->financial;
+	}
+
+	/**
+	 * @return Olama_Messages_Transportation_Service
+	 */
+	public function transportation() {
+		if ( ! $this->transportation ) {
+			$this->transportation = new Olama_Messages_Transportation_Service();
+		}
+		return $this->transportation;
 	}
 
 	/**

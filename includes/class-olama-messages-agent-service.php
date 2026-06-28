@@ -214,6 +214,9 @@ class Olama_Messages_Agent_Service {
 			return false;
 		}
 
+		// Prevent WordPress REST request parameter leakage/recursion
+		unset( $payload['_authorized_agent'] );
+
 		// Enforce heartbeat payload limit size (max 16KB for DB safety)
 		$json_payload = wp_json_encode( $payload );
 		if ( strlen( $json_payload ) > 16384 ) {
@@ -222,17 +225,23 @@ class Olama_Messages_Agent_Service {
 		}
 
 		$now = current_time( 'mysql' );
+		$kde_cli_found        = ! empty( $payload['kde_cli_found'] );
+		$kde_device_reachable = ! empty( $payload['kde_device_reachable'] );
+		// "Online" means the agent is ready to send SMS, not merely that its
+		// Windows process reached this REST endpoint. A disconnected KDE device
+		// must immediately make the sending agent offline.
+		$operational_status = ( $kde_cli_found && $kde_device_reachable ) ? 'online' : 'offline';
 		$update_data = array(
-			'status'               => 'online',
+			'status'               => $operational_status,
 			'platform'             => sanitize_text_field( $payload['platform'] ?? '' ),
 			'app_version'          => sanitize_text_field( $payload['app_version'] ?? '' ),
 			'machine_name'         => sanitize_text_field( $payload['machine_name'] ?? '' ),
 			'windows_user'         => sanitize_text_field( $payload['windows_user'] ?? '' ),
 			'kde_cli_path'         => sanitize_text_field( $payload['kde_cli_path'] ?? '' ),
-			'kde_cli_found'        => ! empty( $payload['kde_cli_found'] ) ? 1 : 0,
+			'kde_cli_found'        => $kde_cli_found ? 1 : 0,
 			'kde_device_id'        => sanitize_text_field( $payload['kde_device_id'] ?? '' ),
 			'kde_device_name'      => sanitize_text_field( $payload['kde_device_name'] ?? '' ),
-			'kde_device_reachable' => ! empty( $payload['kde_device_reachable'] ) ? 1 : 0,
+			'kde_device_reachable' => $kde_device_reachable ? 1 : 0,
 			'last_seen_at'         => $now,
 			'last_heartbeat_json'  => $json_payload,
 			'updated_at'           => $now,
@@ -463,6 +472,48 @@ class Olama_Messages_Agent_Service {
 	}
 
 	/**
+	 * Permanently remove an agent registration while preserving queue and audit history.
+	 *
+	 * @throws Exception When the agent owns a live reservation or deletion fails.
+	 */
+	public function delete_agent( int $agent_id ) {
+		global $wpdb;
+
+		$agent = $this->get_agent( $agent_id );
+		if ( ! $agent ) {
+			throw new Exception( 'Sending agent not found.' );
+		}
+
+		$table_queue = $wpdb->prefix . 'olama_msg_queue';
+		$active_jobs = (int) $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$table_queue}
+			 WHERE reserved_by_agent_id = %d AND status = 'reserved'
+			   AND (reservation_expires_at IS NULL OR reservation_expires_at >= %s)",
+			$agent_id,
+			current_time( 'mysql', true )
+		) );
+		if ( $active_jobs > 0 ) {
+			throw new Exception( 'This agent currently owns an in-progress SMS reservation. Wait for it to finish or expire before deleting it.' );
+		}
+
+		$this->log_event(
+			$agent_id,
+			$agent['agent_uuid'],
+			'deleted',
+			'Agent registration permanently deleted by admin. Historical records were preserved.',
+			array( 'agent_name' => $agent['agent_name'] ),
+			'warning'
+		);
+
+		$result = $wpdb->delete( $this->table_agents, array( 'id' => $agent_id ), array( '%d' ) );
+		if ( false === $result ) {
+			throw new Exception( 'Failed to delete sending agent: ' . $wpdb->last_error );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Log agent audit events.
 	 *
 	 * @param  int|null $agent_id    Agent ID.
@@ -565,6 +616,49 @@ class Olama_Messages_Agent_Service {
 		$counts['last_seen'] = $wpdb->get_var( "SELECT MAX(last_seen_at) FROM {$this->table_agents}" ) ?: '—';
 
 		return $counts;
+	}
+
+	/**
+	 * Retrieve a ready online agent with dispatcher enabled.
+	 *
+	 * Returns an agent array (or null if none exists) that satisfies:
+	 *  - status IN ('online', 'active')
+	 *  - last_seen_at >= 5 minutes ago
+	 *  - kde_cli_found = 1
+	 *  - kde_device_reachable = 1
+	 *  - revoked_at IS NULL
+	 *  - dispatcher_enabled = true (decoded from last_heartbeat_json)
+	 *
+	 * @return array|null Agent data or null.
+	 */
+	public function get_ready_dispatcher_agent() {
+		global $wpdb;
+
+		$five_minutes_ago = date( 'Y-m-d H:i:s', time() - 300 );
+		$rows = $wpdb->get_results( $wpdb->prepare(
+			"SELECT * FROM {$this->table_agents}
+			 WHERE status IN ('active', 'online')
+			   AND revoked_at IS NULL
+			   AND kde_cli_found = 1
+			   AND kde_device_reachable = 1
+			   AND last_seen_at >= %s
+			 ORDER BY last_seen_at DESC",
+			$five_minutes_ago
+		), ARRAY_A );
+
+		if ( empty( $rows ) ) {
+			return null;
+		}
+
+		foreach ( $rows as $row ) {
+			$agent = $this->typecast_agent( $row );
+			// Check if dispatcher is enabled in the heartbeat JSON payload
+			if ( ! empty( $agent['heartbeat']['dispatcher_enabled'] ) ) {
+				return $agent;
+			}
+		}
+
+		return null;
 	}
 
 	/**

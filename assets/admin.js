@@ -136,17 +136,190 @@
 
     // ── Campaign Live Preview AJAX [NEW] ──────────────────────────────
     var previewTimeout;
+    var campaignPreviewItems = {};
+    var campaignPreviewPage = 1;
+    var campaignPreviewTotalPages = 1;
+    var campaignSortField = 'family_id';
+    var campaignSortOrder = 'asc';
+    var campaignPreviewPerPage = 25;
+    var transportationOptions = { classes: [], sections: [] };
+
+    function getRecipientOverrides() {
+        try { return JSON.parse($('#olama-campaign-recipient-overrides').val() || '{}'); }
+        catch (e) { return {}; }
+    }
+
+    function saveRecipientOverrides(overrides) {
+        $('#olama-campaign-recipient-overrides').val(JSON.stringify(overrides));
+        updateCampaignPreview();
+    }
+
+    function renderRouteOptions($select, routes, placeholder) {
+        if (!$select.length) { return; }
+        var current = $select.val() || '';
+        var html = '<option value="">' + escapeHtml(placeholder) + '</option>';
+        $.each(routes || [], function (_, route) {
+            var label = (route.name || route.id || '') + (route.seq ? ' (' + route.seq + ')' : '');
+            html += '<option value="' + escapeHtml(route.id || '') + '">' + escapeHtml(label) + '</option>';
+        });
+        $select.html(html);
+        if (current) {
+            $select.val(current);
+        }
+    }
+
+    function renderTransportationClasses(classes) {
+        var $select = $('#campaign-transport-class-id');
+        if (!$select.length) { return; }
+        var current = String($select.val() || '');
+        var html = '<option value="">— Select Grade —</option>';
+        $.each(classes || [], function (_, item) {
+            html += '<option value="' + escapeHtml(item.id || '') + '">' + escapeHtml(item.name || '') + '</option>';
+        });
+        $select.html(html).val(current);
+    }
+
+    function renderTransportationSections() {
+        var $select = $('#campaign-transport-section-id');
+        if (!$select.length) { return; }
+        var current = String($select.val() || '');
+        var classId = String($('#campaign-transport-class-id').val() || '');
+        var html = '<option value="">— Select Section —</option>';
+        $.each(transportationOptions.sections || [], function (_, item) {
+            if (!classId || String(item.class_id || '') === classId) {
+                html += '<option value="' + escapeHtml(item.id || '') + '">' + escapeHtml(item.name || '') + '</option>';
+            }
+        });
+        $select.html(html);
+        if (current && $select.find('option[value="' + current.replace(/"/g, '\\"') + '"]').length) {
+            $select.val(current);
+        }
+    }
+
+    function refreshTransportRoutes() {
+        var studyYear = $('#campaign-study-year').val() || '';
+        if (!studyYear) { return; }
+        $.post(olamaMsgAdmin.ajaxUrl, {
+            action: 'olama_msg_transport_route_options',
+            nonce: olamaMsgAdmin.nonce,
+            study_year: studyYear
+        }).done(function (res) {
+            if (!res || !res.success) { return; }
+            var data = res.data || {};
+            transportationOptions.classes = data.classes || [];
+            transportationOptions.sections = data.sections || [];
+            renderTransportationClasses(transportationOptions.classes);
+            renderTransportationSections();
+            renderRouteOptions($('#campaign-departure-bus'), data.departure || [], '— Select Departure Bus —');
+            renderRouteOptions($('#campaign-arrival-bus'), data.arrival || [], '— Select Arrival Bus —');
+            renderRouteOptions($('#campaign-bus-round'), data.rounds || [], '— Select Round —');
+        });
+    }
+
+    function ensureCampaignDefaults() {
+        var $study = $('#campaign-study-year');
+        var $template = $('#campaign-template');
+        if ($study.length && !$study.val()) {
+            var firstStudy = $study.find('option[value!=""]').first().val();
+            if (firstStudy) { $study.val(firstStudy); }
+        }
+        if ($template.length && !$template.val()) {
+            var firstTemplate = $template.find('option[value!=""]').first().val();
+            if (firstTemplate) { $template.val(firstTemplate); }
+        }
+    }
     $(document).on('input change', '#olama-campaign-form input, #olama-campaign-form select', function () {
+        if (!$(this).is('#olama-campaign-recipient-overrides')) { campaignPreviewPage = 1; }
         clearTimeout(previewTimeout);
         previewTimeout = setTimeout(updateCampaignPreview, 400);
+    });
+
+    $(document).on('change', '#campaign-study-year', function () {
+        refreshTransportRoutes();
+    });
+
+    $(document).on('change', '#campaign-transport-class-id', function () {
+        $('#campaign-transport-section-id').val('');
+        renderTransportationSections();
     });
 
     // Run preview immediately if form is loaded on edit page
     $(document).ready(function () {
         if ($('#olama-campaign-form').length) {
+            ensureCampaignDefaults();
+            refreshTransportRoutes();
             updateCampaignPreview();
         }
     });
+
+    // Campaign progress live updates (no manual browser refresh required).
+    var $progressPage = $('#olama-msg-campaign-progress');
+    if ($progressPage.length) {
+        var progressPollTimer = null;
+        var progressRequestActive = false;
+
+        function scheduleProgressPoll(delay) {
+            clearTimeout(progressPollTimer);
+            progressPollTimer = setTimeout(pollCampaignProgress, delay);
+        }
+
+        function formatEta(seconds) {
+            if (!seconds) { return ''; }
+            return '~' + Math.floor(seconds / 60) + ' min ' + (seconds % 60) + ' sec';
+        }
+
+        function pollCampaignProgress() {
+            if (progressRequestActive) { return; }
+            progressRequestActive = true;
+
+            $.post(olamaMsgAdmin.ajaxUrl, {
+                action: 'olama_msg_campaign_progress',
+                nonce: olamaMsgAdmin.nonce,
+                campaign_id: $progressPage.data('campaign-id'),
+                paged: $progressPage.data('paged') || 1
+            }).done(function (res) {
+                if (!res.success) {
+                    scheduleProgressPoll(5000);
+                    return;
+                }
+                var d = res.data;
+
+                $.each(d.counts, function (name, value) {
+                    $('[data-progress-count="' + name + '"]').text(value);
+                });
+
+                $('#olama-msg-campaign-status').html(d.campaign_status_html);
+                $('.olama-msg-progressbar__sent').css('width', d.percent.sent + '%');
+                $('.olama-msg-progressbar__reserved').css('width', d.percent.reserved + '%');
+                $('.olama-msg-progressbar__failed').css('width', d.percent.failed + '%');
+                $('#olama-msg-progress-sent-label').text(d.percent.sent + '% Sent');
+
+                var eta = formatEta(d.eta_seconds);
+                $('#olama-msg-progress-eta').text(eta ? 'Est. remaining: ' + eta : '').toggle(!!eta);
+
+                $.each(d.rows, function (_, row) {
+                    var $row = $('tr[data-queue-id="' + row.id + '"]');
+                    $row.find('[data-queue-field="status"]').html(row.status_html);
+                    $row.find('[data-queue-field="attempts"]').text(row.attempts);
+                    $row.find('[data-queue-field="last_error"]').text(row.last_error);
+                    $row.find('[data-queue-field="sent_at"]').text(row.sent_at);
+                    $row.find('[data-queue-field="updated_at"]').text(row.updated_at);
+                });
+
+                if (d.terminal) {
+                    $('#olama-msg-progress-controls').hide();
+                } else {
+                    scheduleProgressPoll(2000);
+                }
+            }).fail(function () {
+                scheduleProgressPoll(5000);
+            }).always(function () {
+                progressRequestActive = false;
+            });
+        }
+
+        scheduleProgressPoll(1000);
+    }
 
     function updateCampaignPreview() {
         var $form = $('#olama-campaign-form');
@@ -157,11 +330,20 @@
 
         var studyYear  = $('#campaign-study-year').val();
         var templateId = $('#campaign-template').val();
+        var targetType = $('#campaign-target-type').val() || 'collection';
+        var className  = $('#campaign-class-name').val() || '';
+        var sectionName = $('#campaign-section-name').val() || '';
+        var classId = $('#campaign-transport-class-id').val() || '';
+        var sectionId = $('#campaign-transport-section-id').val() || '';
+        var departureBus = $('#campaign-departure-bus').val() || '';
+        var arrivalBus = $('#campaign-arrival-bus').val() || '';
+        var busName = $('#campaign-bus-name').val() || departureBus || '';
+        var roundName = $('#campaign-bus-round').val() || '';
 
         // Avoid running empty requests
         if (!studyYear || !templateId) {
             $('#olama-campaign-preview-tbody').html(
-                '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#64748b;">' +
+                '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:#64748b;">' +
                 'يرجى تحديد العام الدراسي واختيار نموذج الرسالة لتشغيل المعاينة المباشرة.' +
                 '</td></tr>'
             );
@@ -176,16 +358,37 @@
         var payload = $form.serializeArray();
         payload.push({ name: 'action', value: 'olama_msg_preview_campaign_ajax' });
         payload.push({ name: 'nonce', value: olamaMsgAdmin.nonce });
+        payload.push({ name: 'target_type', value: targetType });
+        payload.push({ name: 'preview_page', value: campaignPreviewPage });
+		payload.push({ name: 'preview_per_page', value: campaignPreviewPerPage });
+		payload.push({ name: 'show_excluded', value: $('#olama-campaign-show-excluded').is(':checked') ? '1' : '' });
+		payload.push({ name: 'sort_field', value: campaignSortField });
+		payload.push({ name: 'sort_order', value: campaignSortOrder });
+        payload.push({ name: 'class_name', value: className });
+        payload.push({ name: 'section_name', value: sectionName });
+        payload.push({ name: 'class_id', value: classId });
+        payload.push({ name: 'section_id', value: sectionId });
+        payload.push({ name: 'departure_bus', value: departureBus });
+        payload.push({ name: 'arrival_bus', value: arrivalBus });
+        payload.push({ name: 'bus_name', value: busName });
+        payload.push({ name: 'round_name', value: roundName });
 
         $.post(olamaMsgAdmin.ajaxUrl, payload, function (res) {
             $container.css('opacity', 1);
             if (res.success) {
                 var d = res.data;
+                campaignPreviewPage = d.page || 1;
+                campaignPreviewTotalPages = d.total_pages || 1;
                 
                 // Update stats
                 $('#olama-campaign-stat-candidates').text(d.total_candidates);
                 $('#olama-campaign-stat-included').text(d.total_included);
                 $('#olama-campaign-stat-excluded').text(d.total_excluded);
+                $('#olama-campaign-preview-guidance')
+                    .toggle(d.total_included === 0 && d.total_candidates > 0)
+                    .find('p').text(targetType === 'collection'
+                        ? 'No recipients are currently eligible. Adjust the balance exclusions or choose recipients with available financial data before SMS text can be edited.'
+                        : 'No recipients are currently eligible. Adjust the audience filters before SMS text can be edited.');
 
                 // Update table
                 var $tbody = $('#olama-campaign-preview-tbody');
@@ -193,6 +396,12 @@
 
                 if (d.items && d.items.length > 0) {
                     $.each(d.items, function (idx, item) {
+                        var overrideKey = item.oracle_family_id + ':' + item.recipient_type;
+                        campaignPreviewItems[overrideKey] = item;
+						var manuallyExcluded = item.excluded_reason === 'manually_excluded';
+						var selectable = item.included === 1 || manuallyExcluded;
+						var selectBox = '<input type="checkbox" class="olama-campaign-recipient-check" data-override-key="' + escapeHtml(overrideKey) + '" ' +
+							(item.included === 1 ? 'checked ' : '') + (selectable ? '' : 'disabled ') + '>';
                         var badgeClass = item.included === 1 ? 'olama-msg-badge--active' : 'olama-msg-badge--revoked';
                         var badgeText  = item.included === 1 ? 'مشمول' : 'مستثنى (' + translateReason(item.excluded_reason) + ')';
                         var statusHtml = '<span class="olama-msg-badge ' + badgeClass + '">' + badgeText + '</span>';
@@ -206,10 +415,16 @@
                               'data-balance="' + (item.balance !== null ? item.balance : '') + '" ' +
                               'data-monthly-due="' + (item.monthly_due !== null ? item.monthly_due : '') + '" ' +
                               'data-study-year="' + escapeHtml(studyYear) + '"' +
-                              '>معاينة SMS</button>'
-                            : '—';
+                              '>معاينة SMS</button> ' +
+                              '<button type="button" class="button button-small olama-campaign-edit-sms" data-override-key="' + escapeHtml(overrideKey) + '">Edit</button> ' +
+                              '<button type="button" class="button button-small button-link-delete olama-campaign-toggle-recipient" data-override-key="' + escapeHtml(overrideKey) + '" data-exclude="1">Remove</button>'
+                            : (item.excluded_reason === 'manually_excluded'
+                                ? '<button type="button" class="button button-small olama-campaign-toggle-recipient" data-override-key="' + escapeHtml(overrideKey) + '" data-exclude="0">Restore</button>'
+                                : '<button type="button" class="button button-small" disabled title="This recipient is excluded by the campaign filters">Edit SMS</button> ' +
+                                  '<span class="description">Fix eligibility filters first</span>');
 
                         var row = '<tr>' +
+							'<th class="check-column">' + selectBox + '</th>' +
                             '<td><code>' + escapeHtml(item.oracle_family_id) + '</code></td>' +
                             '<td>' + escapeHtml(item.recipient_name) + ' <span class="description" style="font-size:0.85em;">(' + translateType(item.recipient_type) + ')</span></td>' +
                             '<td><code>' + escapeHtml(item.phone_e164 || item.phone_raw || '—') + '</code></td>' +
@@ -221,11 +436,20 @@
                         $tbody.append(row);
                     });
                 } else {
-                    $tbody.append('<tr><td colspan="6" style="text-align:center;padding:1.5rem;">لا توجد نتائج مطابقة للفلاتر.</td></tr>');
+					$tbody.append('<tr><td colspan="7" style="text-align:center;padding:1.5rem;">لا توجد نتائج مطابقة للفلاتر.</td></tr>');
                 }
+
+				$('#olama-campaign-preview-page-label').text('Page ' + campaignPreviewPage + ' of ' + campaignPreviewTotalPages);
+				renderCampaignPageNumbers();
+				$('#olama-campaign-preview-prev').prop('disabled', campaignPreviewPage <= 1);
+				$('#olama-campaign-preview-next').prop('disabled', campaignPreviewPage >= campaignPreviewTotalPages);
+				$('#olama-campaign-selection-summary').text(d.total_included + ' selected for sending');
+				$('.olama-campaign-sort').removeClass('is-active').find('span').text('');
+				$('.olama-campaign-sort[data-sort-field="' + campaignSortField + '"]')
+					.addClass('is-active').find('span').text(campaignSortOrder === 'asc' ? '▲' : '▼');
             } else {
                 $('#olama-campaign-preview-tbody').html(
-                    '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#dc2626;">' +
+                    '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:#dc2626;">' +
                     'خطأ في تحميل المعاينة: ' + escapeHtml(res.data) +
                     '</td></tr>'
                 );
@@ -233,12 +457,161 @@
         }).fail(function () {
             $container.css('opacity', 1);
             $('#olama-campaign-preview-tbody').html(
-                '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#dc2626;">' +
+                '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:#dc2626;">' +
                 'فشل الاتصال بالخادم لتحميل المعاينة المباشرة.' +
                 '</td></tr>'
             );
         });
     }
+
+	function renderCampaignPageNumbers() {
+		var $pages = $('#olama-campaign-preview-pages').empty();
+		var visible = {};
+		visible[1] = true;
+		visible[campaignPreviewTotalPages] = true;
+		for (var page = Math.max(1, campaignPreviewPage - 2); page <= Math.min(campaignPreviewTotalPages, campaignPreviewPage + 2); page++) {
+			visible[page] = true;
+		}
+		var numbers = Object.keys(visible).map(Number).sort(function (a, b) { return a - b; });
+		var previous = 0;
+		numbers.forEach(function (pageNumber) {
+			if (previous && pageNumber - previous > 1) {
+				$pages.append('<span class="olama-campaign-page-ellipsis">…</span>');
+			}
+			$pages.append(
+				$('<button type="button" class="button olama-campaign-page-number"></button>')
+					.text(pageNumber)
+					.attr('data-page', pageNumber)
+					.attr('aria-current', pageNumber === campaignPreviewPage ? 'page' : null)
+					.toggleClass('button-primary', pageNumber === campaignPreviewPage)
+			);
+			previous = pageNumber;
+		});
+	}
+
+    $(document).on('click', '.olama-campaign-toggle-recipient', function () {
+        var key = String($(this).data('override-key'));
+        var overrides = getRecipientOverrides();
+        overrides[key] = overrides[key] || {};
+        overrides[key].excluded = String($(this).data('exclude')) === '1';
+        saveRecipientOverrides(overrides);
+    });
+
+	$(document).on('change', '.olama-campaign-recipient-check', function () {
+		var key = String($(this).data('override-key'));
+		var overrides = getRecipientOverrides();
+		overrides[key] = overrides[key] || {};
+		overrides[key].excluded = !this.checked;
+		saveRecipientOverrides(overrides);
+	});
+
+	function setCurrentPageSelection(selected) {
+		var overrides = getRecipientOverrides();
+		$('.olama-campaign-recipient-check:not(:disabled)').each(function () {
+			var key = String($(this).data('override-key'));
+			overrides[key] = overrides[key] || {};
+			overrides[key].excluded = !selected;
+		});
+		saveRecipientOverrides(overrides);
+	}
+
+	$('#olama-campaign-select-page').on('click', function () {
+		setCurrentPageSelection(true);
+	});
+
+	$('#olama-campaign-toggle-page').on('change', function () {
+		setCurrentPageSelection(this.checked);
+	});
+
+	$('#olama-campaign-clear-page').on('click', function () {
+		setCurrentPageSelection(false);
+	});
+
+	$('#olama-campaign-preview-prev').on('click', function () {
+		if (campaignPreviewPage > 1) { campaignPreviewPage--; updateCampaignPreview(); }
+	});
+
+	$('#olama-campaign-preview-next').on('click', function () {
+		if (campaignPreviewPage < campaignPreviewTotalPages) { campaignPreviewPage++; updateCampaignPreview(); }
+	});
+
+	$(document).on('click', '.olama-campaign-page-number', function () {
+		campaignPreviewPage = parseInt($(this).data('page'), 10) || 1;
+		updateCampaignPreview();
+	});
+
+	$('#olama-campaign-preview-per-page').on('change', function () {
+		campaignPreviewPerPage = parseInt($(this).val(), 10) || 25;
+		campaignPreviewPage = 1;
+		updateCampaignPreview();
+	});
+
+    $('#olama-campaign-show-excluded').on('change', function () {
+        campaignPreviewPage = 1;
+        updateCampaignPreview();
+    });
+
+    function toggleCampaignFilterSections() {
+        var targetType = $('#campaign-target-type').val() || 'collection';
+        $('.olama-msg-collection-only').toggle(targetType === 'collection');
+        $('.olama-msg-general-only').toggle(targetType === 'general');
+        $('.olama-msg-transport-only').toggle(targetType === 'transportation');
+        $('.olama-msg-general-only').toggle(targetType === 'general' || targetType === 'transportation');
+        $('.olama-msg-target-general').toggle(targetType === 'general');
+        $('.olama-msg-target-transport').toggle(targetType === 'transportation');
+    }
+
+    $('#campaign-target-type').on('change', function () {
+        toggleCampaignFilterSections();
+        campaignPreviewPage = 1;
+        updateCampaignPreview();
+    });
+
+    toggleCampaignFilterSections();
+
+	$(document).on('click', '.olama-campaign-sort', function () {
+		var field = String($(this).data('sort-field'));
+		if (campaignSortField === field) {
+			campaignSortOrder = campaignSortOrder === 'asc' ? 'desc' : 'asc';
+		} else {
+			campaignSortField = field;
+			campaignSortOrder = 'asc';
+		}
+		campaignPreviewPage = 1;
+		updateCampaignPreview();
+	});
+
+    $(document).on('click', '.olama-campaign-edit-sms', function () {
+        var $button = $(this);
+        var key = String($(this).data('override-key'));
+        var item = campaignPreviewItems[key];
+        if (!item) { return; }
+        var overrides = getRecipientOverrides();
+        var current = overrides[key] && overrides[key].message ? overrides[key].message : item.message_body_preview;
+        var $cell = $button.closest('td');
+        $cell.empty().append(
+            $('<textarea class="olama-campaign-inline-sms" rows="7" dir="rtl"></textarea>').val(current),
+            $('<div style="margin-top:6px;display:flex;gap:6px;"></div>').append(
+                $('<button type="button" class="button button-primary olama-campaign-save-sms">Save text</button>').attr('data-override-key', key),
+                $('<button type="button" class="button olama-campaign-cancel-sms">Cancel</button>')
+            )
+        );
+    });
+
+    $(document).on('click', '.olama-campaign-save-sms', function () {
+        var key = String($(this).data('override-key'));
+        var edited = $(this).closest('td').find('.olama-campaign-inline-sms').val().trim();
+        if (!edited) { window.alert('The SMS text cannot be empty.'); return; }
+        var overrides = getRecipientOverrides();
+        overrides[key] = overrides[key] || {};
+        overrides[key].message = edited;
+        overrides[key].excluded = false;
+        saveRecipientOverrides(overrides);
+    });
+
+    $(document).on('click', '.olama-campaign-cancel-sms', function () {
+        updateCampaignPreview();
+    });
 
     function translateReason(reason) {
         var reasons = {
@@ -250,7 +623,8 @@
             'landline_rejected': 'استبعاد أرضي',
             'invalid_mobile': 'هاتف خاطئ',
             'invalid_phone': 'هاتف خاطئ',
-            'duplicate_phone': 'رقم مكرر'
+            'duplicate_phone': 'رقم مكرر',
+            'manually_excluded': 'تمت إزالته يدوياً'
         };
         return reasons[reason] || reason || 'غير معروف';
     }
@@ -491,11 +865,11 @@
     function updateCharCount() {
         var text = $('#olama-msg-direct-body-textarea').val() || '';
         
-        // Simulate a real 110-character tokenized URL if {{PAYMENT_LINK}} is found
+		// Estimate using the first-party 10-character short-link route.
         var simulationText = text;
         var paymentWarning = false;
         if (text.indexOf('{{PAYMENT_LINK}}') !== -1) {
-            var dummyLink = 'http://olama3.local/olama-payment-report/abcdef01.abcdef01b1f37dfa4d01b0de61cec17062225010d953c52947c2db48';
+			var dummyLink = window.location.origin + '/p/A7kP9xQ2';
             simulationText = text.replace(/\{\{PAYMENT_LINK\}\}/g, dummyLink);
             paymentWarning = true;
         }
@@ -560,11 +934,11 @@
         }
 
         var confirmMsg = 
-            '⚠️ WARNING: Send Direct SMS Now\n\n' +
-            'This action will create a micro-campaign and immediately queue exactly one SMS for dispatch by the active Windows agent.\n\n' +
+            '⚠️ WARNING: Queue Direct SMS\n\n' +
+            'This action will create a micro-campaign and queue exactly one SMS for dispatch by the active Windows agent.\n\n' +
             'Recipient: ' + name + ' (' + role.toUpperCase() + ')\n' +
             'Phone Number: ' + masked + '\n\n' +
-            'Do you want to proceed and send this SMS now?';
+            'Do you want to proceed and queue this SMS?';
 
         if (!confirm(confirmMsg)) {
             e.preventDefault();
@@ -572,4 +946,3 @@
     });
 
 }(jQuery));
-

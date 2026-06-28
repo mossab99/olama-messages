@@ -22,20 +22,29 @@ class Olama_Messages_Public_Report {
 	}
 
 	public function init() {
+		add_filter( 'redirect_canonical', array( $this, 'preserve_short_url' ), 10, 2 );
 		add_action( 'template_redirect', array( $this, 'maybe_render_report' ) );
+	}
+
+	/** Keep the compact no-trailing-slash SMS URL from gaining a redirect. */
+	public function preserve_short_url( $redirect_url, $requested_url ) {
+		return get_query_var( 'olama_short_code', '' ) ? false : $redirect_url;
 	}
 
 	// ─── Route handler ───────────────────────────────────────────────────────
 
 	public function maybe_render_report() {
 		$url_token = get_query_var( 'olama_payment_token', '' );
-		if ( ! $url_token ) {
+		$short_code = get_query_var( 'olama_short_code', '' );
+		if ( ! $url_token && ! $short_code ) {
 			return;
 		}
 
-		// Validate token.
+		// Validate either the legacy one-time raw URL or the first-party short code.
 		$token_svc = $this->plugin->tokens();
-		$token     = $token_svc->validate_token( $url_token );
+		$token     = $short_code
+			? $this->plugin->short_links()->resolve_short_code( $short_code )
+			: $token_svc->validate_token( $url_token );
 
 		if ( ! $token ) {
 			$this->render_invalid();
@@ -228,6 +237,7 @@ class Olama_Messages_Public_Report {
 		<table class="olama-report-table">
 			<thead>
 				<tr>
+					<th>التاريخ</th>
 					<th>البيان</th>
 					<th>المبلغ</th>
 					<th>الحالة</th>
@@ -235,7 +245,11 @@ class Olama_Messages_Public_Report {
 			</thead>
 			<tbody>
 				<?php foreach ( $due_items as $item ) : ?>
+				<?php
+					$item_date = $item['date'] ?? ( $item['payment_date'] ?? ( $item['installment_date'] ?? ( $item['due_date'] ?? '' ) ) );
+				?>
 				<tr>
+					<td><?php echo esc_html( $item_date ?: '—' ); ?></td>
 					<td><?php echo esc_html( $item['title'] ?? ( $item['description'] ?? '' ) ); ?></td>
 					<td><?php echo esc_html( number_format( (float) ( $item['amount'] ?? 0 ), 3 ) ); ?> <?php echo $currency; ?></td>
 					<td><?php echo esc_html( $item['status'] ?? '' ); ?></td>

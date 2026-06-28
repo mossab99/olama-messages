@@ -25,6 +25,7 @@ class Olama_Messages_Activator {
 			'index.php?olama_payment_token=$matches[1]',
 			'top'
 		);
+		add_rewrite_rule( '^p/([A-Za-z0-9]{8})/?$', 'index.php?olama_short_code=$matches[1]', 'top' );
 		flush_rewrite_rules();
 
 		// Insert default templates if template service is available.
@@ -53,6 +54,8 @@ class Olama_Messages_Activator {
 		$charset_collate = $wpdb->get_charset_collate();
 		$tokens          = $wpdb->prefix . 'olama_msg_tokens';
 		$token_views     = $wpdb->prefix . 'olama_msg_token_views';
+		$short_links     = $wpdb->prefix . 'olama_msg_short_links';
+		$transportation  = $wpdb->prefix . 'olama_core_student_transportation';
 		$templates       = $wpdb->prefix . 'olama_msg_templates';
 		$campaigns       = $wpdb->prefix . 'olama_msg_campaigns';
 		$recipients      = $wpdb->prefix . 'olama_msg_campaign_recipients';
@@ -69,6 +72,8 @@ class Olama_Messages_Activator {
 			token_prefix VARCHAR(20) NOT NULL,
 			purpose VARCHAR(50) NOT NULL DEFAULT 'payment_report',
 			study_year VARCHAR(20) NULL,
+			campaign_id BIGINT UNSIGNED NULL,
+			generated_source VARCHAR(20) NOT NULL DEFAULT 'campaign',
 			expires_at DATETIME NULL,
 			max_views INT UNSIGNED NULL,
 			view_count INT UNSIGNED NOT NULL DEFAULT 0,
@@ -98,7 +103,58 @@ class Olama_Messages_Activator {
 			KEY idx_viewed_at (viewed_at)
 		) {$charset_collate};" );
 
+		dbDelta( "CREATE TABLE {$short_links} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			token_id BIGINT UNSIGNED NOT NULL,
+			family_id BIGINT UNSIGNED NOT NULL,
+			study_year VARCHAR(20) NULL,
+			short_code_hash VARCHAR(255) NOT NULL,
+			short_code_prefix VARCHAR(12) NOT NULL,
+			purpose VARCHAR(50) NOT NULL DEFAULT 'payment_report',
+			expires_at DATETIME NULL,
+			revoked_at DATETIME NULL,
+			generated_source VARCHAR(20) NOT NULL DEFAULT 'campaign',
+			use_count INT UNSIGNED NOT NULL DEFAULT 0,
+			last_used_at DATETIME NULL,
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NULL,
+			PRIMARY KEY  (id),
+			KEY idx_short_code_prefix (short_code_prefix),
+			KEY idx_token_id (token_id),
+			KEY idx_family_id (family_id),
+			KEY idx_expires_at (expires_at),
+			KEY idx_revoked_at (revoked_at)
+		) {$charset_collate};" );
+
 		// ── Templates table ───────────────────────────────────────────────────
+		dbDelta( "CREATE TABLE {$transportation} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			study_year VARCHAR(20) NULL,
+			family_id BIGINT UNSIGNED NOT NULL,
+			student_id BIGINT UNSIGNED NOT NULL,
+			class_id VARCHAR(50) NULL,
+			class_name VARCHAR(190) NULL,
+			section_id VARCHAR(50) NULL,
+			section_name VARCHAR(190) NULL,
+			departure_bus VARCHAR(100) NULL,
+			departure_bus_name VARCHAR(190) NULL,
+			departure_bus_seq VARCHAR(50) NULL,
+			arrival_bus VARCHAR(100) NULL,
+			arrival_bus_name VARCHAR(190) NULL,
+			arrival_bus_seq VARCHAR(50) NULL,
+			trans_route VARCHAR(100) NULL,
+			trans_route_name VARCHAR(190) NULL,
+			synced_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY idx_study_year (study_year),
+			KEY idx_family_id (family_id),
+			KEY idx_student_id (student_id),
+			KEY idx_departure_bus (departure_bus),
+			KEY idx_arrival_bus (arrival_bus),
+			KEY idx_trans_route (trans_route),
+			KEY idx_synced_at (synced_at)
+		) {$charset_collate};" );
+
 		dbDelta( "CREATE TABLE {$templates} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			name VARCHAR(190) NOT NULL,
@@ -121,6 +177,7 @@ class Olama_Messages_Activator {
 			channel VARCHAR(30) NOT NULL DEFAULT 'sms',
 			status VARCHAR(30) NOT NULL DEFAULT 'draft',
 			study_year VARCHAR(20) NULL,
+			target_type VARCHAR(20) NOT NULL DEFAULT 'collection',
 			template_id BIGINT UNSIGNED NULL,
 			template_name_snapshot VARCHAR(190) NULL,
 			template_body_snapshot LONGTEXT NULL,
@@ -296,6 +353,7 @@ class Olama_Messages_Activator {
 		return array(
 			$wpdb->prefix . 'olama_msg_tokens',
 			$wpdb->prefix . 'olama_msg_token_views',
+			$wpdb->prefix . 'olama_msg_short_links',
 			$wpdb->prefix . 'olama_msg_templates',
 			$wpdb->prefix . 'olama_msg_campaigns',
 			$wpdb->prefix . 'olama_msg_campaign_recipients',

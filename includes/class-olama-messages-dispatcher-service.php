@@ -106,11 +106,9 @@ class Olama_Messages_Dispatcher_Service {
 				try {
 					$token_data = $token_service->generate_token( $family_id, $study_year );
 					$payment_token_id = $token_data['token_id'];
-					$raw_token = $token_data['raw_token'];
-
-					// Construct the absolute report link with the prefix + raw token
-					$url_token = substr( $raw_token, 0, 8 ) . '.' . $raw_token;
-					$link = home_url( '/olama-payment-report/' . $url_token );
+					$short_data = Olama_Messages_Plugin::instance()->short_links()
+						->get_or_create_for_family_token( $payment_token_id, $family_id, $study_year );
+					$link = $short_data['short_url'];
 
 					$final_body = str_replace( '{{PAYMENT_LINK}}', $link, $template_body );
 				} catch ( Exception $e ) {

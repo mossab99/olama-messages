@@ -734,6 +734,185 @@
 .olama-msg-progressbar__legend--sent { color: var(--omsg-success); font-weight: 600; }
 .olama-msg-progressbar__legend--eta  { font-style: italic; }
 
+.olama-campaign-inline-sms {
+	width: 22rem;
+	max-width: 100%;
+	min-height: 8rem;
+	font-family: Tahoma, Arial, sans-serif;
+	line-height: 1.6;
+}
+
+/* Campaign builder: give the editable recipient list real working space. */
+#olama-campaign-builder #poststuff #post-body.columns-2 {
+	display: block;
+	margin-right: 0;
+}
+
+#olama-campaign-builder #poststuff #post-body.columns-2 #post-body-content,
+#olama-campaign-builder #poststuff #post-body.columns-2 #postbox-container-1 {
+	float: none;
+	width: auto;
+	min-width: 0;
+	margin: 0;
+}
+
+#olama-campaign-builder #postbox-container-1 {
+	margin-top: 24px !important;
+}
+
+/* Compact campaign configuration into three easy-to-scan columns. */
+#olama-campaign-builder #olama-campaign-form > .form-table,
+#olama-campaign-builder #olama-campaign-form > .form-table > tbody {
+	display: block;
+	width: 100%;
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table > tbody {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 18px 18px;
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table tr,
+#olama-campaign-builder #olama-campaign-form > .form-table th,
+#olama-campaign-builder #olama-campaign-form > .form-table td {
+	display: block;
+	width: auto;
+	padding: 0;
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table th {
+	margin-bottom: 8px;
+	font-size: 13px;
+	font-weight: 700;
+	color: #1f2937;
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table tr {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 14px;
+	padding: 14px;
+	box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table input[type="text"],
+#olama-campaign-builder #olama-campaign-form > .form-table input[type="number"],
+#olama-campaign-builder #olama-campaign-form > .form-table select {
+	width: 100% !important;
+	max-width: none !important;
+}
+
+#olama-campaign-builder #olama-campaign-form > .form-table .description {
+	margin-top: 6px;
+	color: #667085;
+}
+
+#olama-campaign-preview-table {
+	min-width: 760px;
+}
+
+#olama-campaign-preview-table td:last-child {
+	min-width: 210px;
+}
+
+.olama-campaign-preview-table-wrap {
+	overflow: auto;
+}
+
+.olama-campaign-selection-toolbar,
+.olama-campaign-preview-pagination {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 0;
+}
+
+.olama-campaign-preview-controls {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding: 10px 12px;
+	margin-bottom: 4px;
+	background: #f8fafc;
+	border: 1px solid var(--omsg-border);
+	border-radius: 6px;
+}
+
+.olama-campaign-sort {
+	appearance: none;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.olama-campaign-sort:hover,
+.olama-campaign-sort.is-active {
+	color: var(--omsg-primary);
+}
+
+.olama-campaign-sort span {
+	display: inline-block;
+	min-width: 12px;
+	font-size: 10px;
+}
+
+.olama-campaign-selection-toolbar strong {
+	margin-left: auto;
+}
+
+.olama-campaign-preview-pagination {
+	justify-content: center;
+	flex-wrap: wrap;
+}
+
+.olama-campaign-per-page {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-right: 10px;
+}
+
+.olama-campaign-page-numbers {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.olama-campaign-page-number {
+	min-width: 34px;
+	text-align: center;
+}
+
+.olama-campaign-page-ellipsis {
+	padding: 0 3px;
+	color: var(--omsg-muted);
+}
+
+@media screen and (max-width: 1100px) {
+	#olama-campaign-builder #poststuff #post-body.columns-2 {
+		display: block;
+	}
+
+	#olama-campaign-builder #poststuff #post-body.columns-2 #postbox-container-1 {
+		margin-top: 20px;
+	}
+
+	#olama-campaign-builder #olama-campaign-form > .form-table > tbody {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media screen and (max-width: 700px) {
+	#olama-campaign-builder #olama-campaign-form > .form-table > tbody {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* ── Agent Info Strip ───────────────────────────────────────── */
 .olama-msg-agent-info {
     display: flex;
@@ -843,5 +1022,3 @@
     color: var(--omsg-danger) !important;
     font-weight: 600;
 }
-
-

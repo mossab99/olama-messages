@@ -47,6 +47,7 @@ class Olama_Messages_Campaign_Service {
 			'channel'                 => 'sms',
 			'status'                  => 'draft',
 			'study_year'              => '',
+			'target_type'             => 'collection',
 			'template_id'             => null,
 			'template_name_snapshot'  => null,
 			'template_body_snapshot'  => null,
@@ -135,6 +136,7 @@ class Olama_Messages_Campaign_Service {
 		// Type cast numeric values.
 		$row['id']                      = (int) $row['id'];
 		$row['template_id']             = $row['template_id'] ? (int) $row['template_id'] : null;
+		$row['target_type']             = $row['target_type'] ?? 'collection';
 		$row['min_balance']             = null !== $row['min_balance'] ? (float) $row['min_balance'] : null;
 		$row['exclude_credit_balances'] = (int) $row['exclude_credit_balances'];
 		$row['exclude_zero_balances']   = (int) $row['exclude_zero_balances'];
@@ -205,6 +207,7 @@ class Olama_Messages_Campaign_Service {
 		foreach ( $rows as &$row ) {
 			$row['id']                      = (int) $row['id'];
 			$row['template_id']             = $row['template_id'] ? (int) $row['template_id'] : null;
+			$row['target_type']             = $row['target_type'] ?? 'collection';
 			$row['min_balance']             = null !== $row['min_balance'] ? (float) $row['min_balance'] : null;
 			$row['exclude_credit_balances'] = (int) $row['exclude_credit_balances'];
 			$row['exclude_zero_balances']   = (int) $row['exclude_zero_balances'];
@@ -446,6 +449,7 @@ class Olama_Messages_Campaign_Service {
 		} elseif ( is_array( $campaign_id_or_data ) ) {
 			$defaults = array(
 				'study_year'              => '',
+				'target_type'             => 'collection',
 				'template_id'             => null,
 				'template_body_snapshot'  => null,
 				'recipient_policy'        => 'father_first',
@@ -460,6 +464,7 @@ class Olama_Messages_Campaign_Service {
 		}
 
 		$study_year = $campaign['study_year'];
+		$target_type = $campaign['target_type'] ?? 'collection';
 		if ( empty( $study_year ) ) {
 			$years      = Olama_Messages_Plugin::instance()->provider()->get_available_study_years();
 			$study_year = ! empty( $years ) ? $years[0] : '2025/2026';
@@ -481,7 +486,7 @@ class Olama_Messages_Campaign_Service {
 			$template_body = Olama_Messages_Plugin::instance()->renderer()->get_active_template( true );
 		}
 
-		// Extract filters (class_name, section_name, family_id).
+		// Extract filters (class_name, section_name, family_id, transport fields).
 		$filters = isset( $campaign['filters'] ) && is_array( $campaign['filters'] ) ? $campaign['filters'] : array();
 
 		// Fetch candidates in chunks.
@@ -489,21 +494,25 @@ class Olama_Messages_Campaign_Service {
 		$chunk_size = 200;
 		$offset     = 0;
 		$provider   = Olama_Messages_Plugin::instance()->provider();
+		$page_signatures = array();
+		$page_count      = 0;
 
-		while ( true ) {
+		while ( $page_count < 100 ) {
+			$page_count++;
 			$query_filters = array(
-				'study_year' => $study_year,
-				'limit'      => $chunk_size,
-				'offset'     => $offset,
+				'study_year'            => $study_year,
+				'target_type'           => $target_type,
+				'limit'                 => $chunk_size,
+				'offset'                => $offset,
 			);
 
 			if ( ! empty( $filters['family_id'] ) ) {
 				$query_filters['family_id'] = $filters['family_id'];
 			}
-			if ( ! empty( $filters['class_name'] ) ) {
+			if ( ! empty( $filters['class_name'] ) && 'transportation' !== $target_type ) {
 				$query_filters['class_name'] = $filters['class_name'];
 			}
-			if ( ! empty( $filters['section_name'] ) ) {
+			if ( ! empty( $filters['section_name'] ) && 'transportation' !== $target_type ) {
 				$query_filters['section_name'] = $filters['section_name'];
 			}
 			if ( ! empty( $filters['class_id'] ) ) {
@@ -512,19 +521,42 @@ class Olama_Messages_Campaign_Service {
 			if ( ! empty( $filters['section_id'] ) ) {
 				$query_filters['section_id'] = $filters['section_id'];
 			}
+			if ( ! empty( $filters['class_name'] ) && 'general' === $target_type ) {
+				$query_filters['class_name'] = $filters['class_name'];
+			}
+			if ( ! empty( $filters['section_name'] ) && 'general' === $target_type ) {
+				$query_filters['section_name'] = $filters['section_name'];
+			}
+			if ( ! empty( $filters['bus_name'] ) && 'transportation' === $target_type ) {
+				$query_filters['bus_name'] = $filters['bus_name'];
+			}
+			if ( ! empty( $filters['round_name'] ) && 'transportation' === $target_type ) {
+				$query_filters['round_name'] = $filters['round_name'];
+			}
+			if ( ! empty( $filters['departure_bus'] ) && 'transportation' === $target_type ) {
+				$query_filters['departure_bus'] = $filters['departure_bus'];
+			}
+			if ( ! empty( $filters['arrival_bus'] ) && 'transportation' === $target_type ) {
+				$query_filters['arrival_bus'] = $filters['arrival_bus'];
+			}
 
 			$res = $provider->get_recipients_preview( $query_filters );
 			if ( empty( $res['items'] ) ) {
 				break;
 			}
+			$signature = md5( wp_json_encode( array_map( static function ( $row ) {
+				return $row['oracle_family_id'] ?? $row['family_id'] ?? null;
+			}, $res['items'] ) ) );
+			if ( isset( $page_signatures[ $signature ] ) ) {
+				break;
+			}
+			$page_signatures[ $signature ] = true;
 
 			$all_items = array_merge( $all_items, $res['items'] );
 
-			if ( count( $res['items'] ) < $chunk_size || count( $all_items ) >= $res['total'] ) {
-				break;
-			}
-
-			$offset += $chunk_size;
+			// Some providers enforce a smaller page size than requested. Advance by
+			// the rows actually received so no families are skipped.
+			$offset += count( $res['items'] );
 		}
 
 		$evaluated_targets = array();
@@ -650,9 +682,10 @@ class Olama_Messages_Campaign_Service {
 				$excluded_reason = null;
 
 				// 1. Check financial rules (Rule 7: financial reminders require financial data).
-				$req_finance = ( isset( $campaign['min_balance'] ) && $campaign['min_balance'] !== '' )
+				$req_finance = 'collection' === $target_type
+					&& ( ( isset( $campaign['min_balance'] ) && $campaign['min_balance'] !== '' )
 					|| ! empty( $campaign['exclude_credit_balances'] )
-					|| ! empty( $campaign['exclude_zero_balances'] );
+					|| ! empty( $campaign['exclude_zero_balances'] ) );
 
 				if ( $req_finance && ! $financial_available ) {
 					$included        = false;
@@ -724,6 +757,25 @@ class Olama_Messages_Campaign_Service {
 					$sms_parts            = $sms_info['sms_parts'];
 				}
 
+				// Apply saved operator choices after normal eligibility/template evaluation.
+				$override_key = $oracle_family_id . ':' . $target['type'];
+				$overrides    = $filters['recipient_overrides'] ?? array();
+				$override     = isset( $overrides[ $override_key ] ) && is_array( $overrides[ $override_key ] )
+					? $overrides[ $override_key ]
+					: array();
+				if ( $included && ! empty( $override['excluded'] ) ) {
+					$included        = false;
+					$excluded_reason = 'manually_excluded';
+					$message_body_preview = '';
+					$char_count = 0;
+					$sms_parts  = 0;
+				} elseif ( $included && isset( $override['message'] ) && trim( $override['message'] ) !== '' ) {
+					$message_body_preview = $override['message'];
+					$sms_info             = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body_preview );
+					$char_count           = $sms_info['char_count'];
+					$sms_parts            = $sms_info['sms_parts'];
+				}
+
 				$evaluated_targets[] = array(
 					'family_id'            => $family_id,
 					'oracle_family_id'     => $oracle_family_id,
@@ -763,12 +815,41 @@ class Olama_Messages_Campaign_Service {
 			}
 		}
 
-		// Paginate the in-memory array for the response if limits are requested.
-		$paginated_targets = $evaluated_targets;
+		// Preview-only display controls are applied before pagination. Campaign
+		// preparation omits these args and always receives the complete list.
+		$display_targets = $evaluated_targets;
+		if ( isset( $args['show_excluded'] ) && ! $args['show_excluded'] ) {
+			$display_targets = array_values( array_filter( $display_targets, static function ( $target ) {
+				return ! empty( $target['included'] );
+			} ) );
+		}
+
+		$sort_field = $args['sort_field'] ?? 'family_id';
+		$sort_order = $args['sort_order'] ?? 'asc';
+		if ( in_array( $sort_field, array( 'family_id', 'recipient', 'balance' ), true ) && in_array( $sort_order, array( 'asc', 'desc' ), true ) ) {
+			usort( $display_targets, static function ( $a, $b ) use ( $sort_field, $sort_order ) {
+				if ( 'balance' === $sort_field ) {
+					$a_value = is_numeric( $a['balance'] ) ? (float) $a['balance'] : null;
+					$b_value = is_numeric( $b['balance'] ) ? (float) $b['balance'] : null;
+					if ( null === $a_value && null === $b_value ) return 0;
+					if ( null === $a_value ) return 1;
+					if ( null === $b_value ) return -1;
+					$result = $a_value <=> $b_value;
+				} elseif ( 'recipient' === $sort_field ) {
+					$result = strnatcasecmp( (string) $a['recipient_name'], (string) $b['recipient_name'] );
+				} else {
+					$result = strnatcasecmp( (string) $a['oracle_family_id'], (string) $b['oracle_family_id'] );
+				}
+				return 'desc' === $sort_order ? -$result : $result;
+			} );
+		}
+
+		// Paginate the filtered/sorted in-memory array for the response.
+		$paginated_targets = $display_targets;
 		if ( isset( $args['limit'] ) ) {
 			$limit             = absint( $args['limit'] );
 			$offset            = isset( $args['offset'] ) ? absint( $args['offset'] ) : 0;
-			$paginated_targets = array_slice( $evaluated_targets, $offset, $limit );
+			$paginated_targets = array_slice( $display_targets, $offset, $limit );
 		}
 
 		return array(
@@ -776,6 +857,7 @@ class Olama_Messages_Campaign_Service {
 			'total_candidates' => $total_candidates,
 			'total_included'   => $total_included,
 			'total_excluded'   => $total_excluded,
+			'total_displayed'  => count( $display_targets ),
 		);
 	}
 
@@ -1220,5 +1302,20 @@ class Olama_Messages_Campaign_Service {
 			$wpdb->query( 'ROLLBACK' );
 			return false;
 		}
+	}
+
+	/**
+	 * Delete one queue item if it has not been sent yet.
+	 */
+	public function delete_queue_item( int $queue_id ) {
+		global $wpdb;
+		$row = $wpdb->get_row(
+			$wpdb->prepare( "SELECT id, status FROM {$this->table_queue} WHERE id = %d", $queue_id ),
+			ARRAY_A
+		);
+		if ( ! $row || in_array( $row['status'], array( 'sent', 'failed', 'cancelled' ), true ) ) {
+			return false;
+		}
+		return false !== $wpdb->delete( $this->table_queue, array( 'id' => $queue_id ), array( '%d' ) );
 	}
 }
