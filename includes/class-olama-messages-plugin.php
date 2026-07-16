@@ -67,6 +67,12 @@ class Olama_Messages_Plugin {
 		}
 		$this->initialized = true;
 
+		// Oracle credentials belong only to Olama Oracle Sync. Remove legacy
+		// Messages options after migrating to the Core service layer.
+		foreach ( array( 'olama_msg_oracle_base_url', 'olama_msg_oracle_api_key', 'olama_msg_api_timeout', 'olama_msg_financial_enabled' ) as $legacy_option ) {
+			delete_option( $legacy_option );
+		}
+
 		// Maybe upgrade DB tables.
 		if ( get_option( 'olama_msg_db_version' ) !== OLAMA_MSG_VERSION ) {
 			Olama_Messages_Activator::activate();

@@ -1835,7 +1835,7 @@ class Olama_Messages_Admin {
 					<div class="notice notice-warning inline"><p>
 						<strong><?php esc_html_e( 'Financial Data:', 'olama-messages' ); ?></strong>
 						<?php echo esc_html( $result['financial_warning'] ?? Olama_Messages_Core_Provider::FINANCIAL_ADMIN_NOTICE ); ?>
-						<br><em><?php esc_html_e( 'Balance and monthly due columns show N/A until a financial provider is connected.', 'olama-messages' ); ?></em>
+						<br><em><?php esc_html_e( 'Balance and monthly due show N/A when financial data has not yet been synchronized into Olama Core.', 'olama-messages' ); ?></em>
 					</p></div>
 				<?php endif; ?>
 
@@ -2345,52 +2345,6 @@ class Olama_Messages_Admin {
 										class="regular-text"
 										placeholder="<?php esc_attr_e( 'e.g. 2025/2026', 'olama-messages' ); ?>">
 								<?php endif; ?>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-
-				<h2><?php esc_html_e( 'Oracle Financial API Bridge Configuration', 'olama-messages' ); ?></h2>
-				<p class="description"><?php esc_html_e( 'Connects read-only balances and due items. If left blank, settings from Olama Oracle Sync will be used automatically.', 'olama-messages' ); ?></p>
-				<table class="form-table" role="presentation">
-					<tbody>
-						<tr>
-							<th scope="row">
-								<label for="olama_msg_financial_enabled"><?php esc_html_e( 'Enable Financial Adapter', 'olama-messages' ); ?></label>
-							</th>
-							<td>
-								<label>
-									<input type="checkbox" id="olama_msg_financial_enabled" name="olama_msg_financial_enabled" value="yes" <?php checked( get_option( 'olama_msg_financial_enabled', 'yes' ), 'yes' ); ?>>
-									<?php esc_html_e( 'Load financial balances and payment reports', 'olama-messages' ); ?>
-								</label>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">
-								<label for="olama_msg_oracle_base_url"><?php esc_html_e( 'API Bridge Base URL', 'olama-messages' ); ?></label>
-							</th>
-							<td>
-								<input type="url" id="olama_msg_oracle_base_url" name="olama_msg_oracle_base_url" value="<?php echo esc_attr( get_option( 'olama_msg_oracle_base_url', '' ) ); ?>" class="regular-text" placeholder="http://192.168.0.13:5000">
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">
-								<label for="olama_msg_oracle_api_key"><?php esc_html_e( 'API Secret Key', 'olama-messages' ); ?></label>
-							</th>
-							<td>
-								<?php $saved_key = get_option( 'olama_msg_oracle_api_key', '' ); ?>
-								<input type="password" id="olama_msg_oracle_api_key" name="olama_msg_oracle_api_key" value="" class="regular-text" placeholder="<?php echo $saved_key ? '••••••••••••••••' : ''; ?>">
-								<?php if ( $saved_key ) : ?>
-									<p class="description"><?php esc_html_e( 'API key is saved. Leave blank to keep existing key.', 'olama-messages' ); ?></p>
-								<?php endif; ?>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row">
-								<label for="olama_msg_api_timeout"><?php esc_html_e( 'Request Timeout (sec)', 'olama-messages' ); ?></label>
-							</th>
-							<td>
-								<input type="number" id="olama_msg_api_timeout" name="olama_msg_api_timeout" value="<?php echo esc_attr( get_option( 'olama_msg_api_timeout', 15 ) ); ?>" min="5" max="60" class="small-text">
 							</td>
 						</tr>
 					</tbody>
@@ -2932,21 +2886,10 @@ class Olama_Messages_Admin {
 			}
 		}
 
-		// Phase 1.5 financial provider settings
-		update_option( 'olama_msg_financial_enabled', isset( $_POST['olama_msg_financial_enabled'] ) ? 'yes' : 'no' );
-		if ( isset( $_POST['olama_msg_oracle_base_url'] ) ) {
-			update_option( 'olama_msg_oracle_base_url', esc_url_raw( trim( wp_unslash( $_POST['olama_msg_oracle_base_url'] ) ) ) );
+		// Oracle credentials are exclusively owned by Olama Oracle Sync.
+		foreach ( array( 'olama_msg_oracle_base_url', 'olama_msg_oracle_api_key', 'olama_msg_api_timeout', 'olama_msg_financial_enabled' ) as $legacy_option ) {
+			delete_option( $legacy_option );
 		}
-		if ( isset( $_POST['olama_msg_oracle_api_key'] ) ) {
-			$input_key = trim( wp_unslash( $_POST['olama_msg_oracle_api_key'] ) );
-			if ( $input_key !== '' ) {
-				update_option( 'olama_msg_oracle_api_key', sanitize_text_field( $input_key ) );
-			}
-		}
-		if ( isset( $_POST['olama_msg_api_timeout'] ) ) {
-			update_option( 'olama_msg_api_timeout', max( 5, min( 60, absint( $_POST['olama_msg_api_timeout'] ) ) ) );
-		}
-		delete_transient( Olama_Messages_Financial_Api_Provider::HEALTH_TRANSIENT );
 
 		$this->set_flash( __( 'Settings saved.', 'olama-messages' ), 'success' );
 		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-settings' ) );
@@ -2978,7 +2921,7 @@ class Olama_Messages_Admin {
 		$financial_template_warning = '';
 		if ( ! $financial_available && $renderer->template_has_financial_vars( $template ) ) {
 			$financial_template_warning = __(
-				'Warning: This template contains {balance} or {monthly_due}, but the financial provider is not available yet. These will show as "غير متوفر" (unavailable).',
+				'Warning: This template contains {balance} or {monthly_due}, but financial data has not been synchronized into Olama Core. These will show as "غير متوفر" (unavailable).',
 				'olama-messages'
 			);
 		}

@@ -55,7 +55,6 @@ class Olama_Messages_Activator {
 		$tokens          = $wpdb->prefix . 'olama_msg_tokens';
 		$token_views     = $wpdb->prefix . 'olama_msg_token_views';
 		$short_links     = $wpdb->prefix . 'olama_msg_short_links';
-		$transportation  = $wpdb->prefix . 'olama_core_student_transportation';
 		$templates       = $wpdb->prefix . 'olama_msg_templates';
 		$campaigns       = $wpdb->prefix . 'olama_msg_campaigns';
 		$recipients      = $wpdb->prefix . 'olama_msg_campaign_recipients';
@@ -127,34 +126,6 @@ class Olama_Messages_Activator {
 		) {$charset_collate};" );
 
 		// ── Templates table ───────────────────────────────────────────────────
-		dbDelta( "CREATE TABLE {$transportation} (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			study_year VARCHAR(20) NULL,
-			family_id BIGINT UNSIGNED NOT NULL,
-			student_id BIGINT UNSIGNED NOT NULL,
-			class_id VARCHAR(50) NULL,
-			class_name VARCHAR(190) NULL,
-			section_id VARCHAR(50) NULL,
-			section_name VARCHAR(190) NULL,
-			departure_bus VARCHAR(100) NULL,
-			departure_bus_name VARCHAR(190) NULL,
-			departure_bus_seq VARCHAR(50) NULL,
-			arrival_bus VARCHAR(100) NULL,
-			arrival_bus_name VARCHAR(190) NULL,
-			arrival_bus_seq VARCHAR(50) NULL,
-			trans_route VARCHAR(100) NULL,
-			trans_route_name VARCHAR(190) NULL,
-			synced_at DATETIME NOT NULL,
-			PRIMARY KEY  (id),
-			KEY idx_study_year (study_year),
-			KEY idx_family_id (family_id),
-			KEY idx_student_id (student_id),
-			KEY idx_departure_bus (departure_bus),
-			KEY idx_arrival_bus (arrival_bus),
-			KEY idx_trans_route (trans_route),
-			KEY idx_synced_at (synced_at)
-		) {$charset_collate};" );
-
 		dbDelta( "CREATE TABLE {$templates} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			name VARCHAR(190) NOT NULL,
