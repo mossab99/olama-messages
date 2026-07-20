@@ -83,7 +83,7 @@ class Olama_Messages_Admin {
 		add_menu_page(
 			__( 'Olama Messages', 'olama-messages' ),
 			__( 'Olama Messages', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages',
 			array( $this, 'page_dashboard' ),
 			'dashicons-email-alt',
@@ -94,7 +94,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Dashboard', 'olama-messages' ),
 			__( 'Dashboard', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages',
 			array( $this, 'page_dashboard' )
 		);
@@ -103,7 +103,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Campaigns', 'olama-messages' ),
 			__( 'Campaigns', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-campaigns',
 			array( $this, 'page_campaigns' )
 		);
@@ -112,7 +112,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Templates', 'olama-messages' ),
 			__( 'Templates', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-templates',
 			array( $this, 'page_templates' )
 		);
@@ -121,7 +121,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'SMS Dispatch Queue', 'olama-messages' ),
 			__( 'SMS Dispatch Queue', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-queue',
 			array( $this, 'page_queue' )
 		);
@@ -130,7 +130,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Recipients Preview', 'olama-messages' ),
 			__( 'Recipients Preview', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-recipients',
 			array( $this, 'page_recipients' )
 		);
@@ -139,7 +139,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Payment Report Links', 'olama-messages' ),
 			__( 'Report Links', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-tokens',
 			array( $this, 'page_tokens' )
 		);
@@ -148,7 +148,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Settings', 'olama-messages' ),
 			__( 'Settings', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-settings',
 			array( $this, 'page_settings' )
 		);
@@ -157,7 +157,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Sending Agents', 'olama-messages' ),
 			__( 'Sending Agents', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-agents',
 			array( $this, 'page_agents' )
 		);
@@ -166,7 +166,7 @@ class Olama_Messages_Admin {
 			'olama-messages',
 			__( 'Direct Message', 'olama-messages' ),
 			__( 'Direct Message', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-direct',
 			array( $this, 'page_direct_message' )
 		);
@@ -176,7 +176,7 @@ class Olama_Messages_Admin {
 			null,
 			__( 'New Campaign', 'olama-messages' ),
 			__( 'New Campaign', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-new-campaign',
 			array( $this, 'page_new_campaign' )
 		);
@@ -186,7 +186,7 @@ class Olama_Messages_Admin {
 			null,
 			__( 'Campaign Progress', 'olama-messages' ),
 			__( 'Campaign Progress', 'olama-messages' ),
-			'manage_options',
+			'olama_access_messages',
 			'olama-messages-campaign-progress',
 			array( $this, 'page_campaign_progress' )
 		);
@@ -306,7 +306,7 @@ class Olama_Messages_Admin {
 	/** Return fresh campaign/queue state for the live progress page. */
 	public function ajax_campaign_progress() {
 		check_ajax_referer( 'olama_msg_ajax', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
 		}
 
@@ -373,7 +373,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Dashboard ─────────────────────────────────────────────────────
 
 	public function page_dashboard() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -512,7 +512,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Campaigns (Phase 2) ───────────────────────────────────────────
 
 	public function page_campaigns() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -778,7 +778,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Campaign Progress (Phase 4 Run 4B) ────────────────────────────
 
 	public function page_campaign_progress() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -1057,7 +1057,7 @@ class Olama_Messages_Admin {
 	// ─── Page: New Campaign / Edit Campaign (Phase 2) ─────────────────────────
 
 	public function page_new_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -1429,7 +1429,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Templates (Phase 2) ───────────────────────────────────────────
 
 	public function page_templates() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -1596,7 +1596,7 @@ class Olama_Messages_Admin {
 	// ─── Page: SMS Dispatch Queue (Phase 2) ──────────────────────────────────────
 
 	public function page_queue() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -1787,7 +1787,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Recipients Preview (Phase 1.5) ────────────────────────────────
 
 	public function page_recipients() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2040,7 +2040,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Payment Report Links (Tokens) ─────────────────────────────────
 
 	public function page_tokens() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2260,7 +2260,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Settings ──────────────────────────────────────────────────────
 
 	public function page_settings() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2360,7 +2360,7 @@ class Olama_Messages_Admin {
 
 	/** Handle template save/update POST. */
 	public function handle_save_template() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2406,7 +2406,7 @@ class Olama_Messages_Admin {
 
 	/** Handle template deletion POST. */
 	public function handle_delete_template() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2440,7 +2440,7 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign save/update. */
 	public function handle_save_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2497,7 +2497,7 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign deletion. */
 	public function handle_delete_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2525,7 +2525,7 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign preparation. */
 	public function handle_prepare_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2558,7 +2558,7 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign reset to draft. */
 	public function handle_reset_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2586,7 +2586,7 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign cancellation. */
 	public function handle_cancel_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2616,7 +2616,7 @@ class Olama_Messages_Admin {
 
 	/** Handle Start Campaign POST. */
 	public function handle_start_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2640,7 +2640,7 @@ class Olama_Messages_Admin {
 
 	/** Handle Pause Campaign POST. */
 	public function handle_pause_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2664,7 +2664,7 @@ class Olama_Messages_Admin {
 
 	/** Handle Resume Campaign POST. */
 	public function handle_resume_campaign() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2688,7 +2688,7 @@ class Olama_Messages_Admin {
 
 	/** Handle token generation POST. */
 	public function handle_generate_token() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2738,7 +2738,7 @@ class Olama_Messages_Admin {
 
 	/** Handle manual token generation POST. */
 	public function handle_generate_manual_token() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2779,7 +2779,7 @@ class Olama_Messages_Admin {
 
 	/** Handle token revocation POST. */
 	public function handle_revoke_token() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2803,7 +2803,7 @@ class Olama_Messages_Admin {
 
 	/** Handle token delete POST. */
 	public function handle_delete_token() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2827,7 +2827,7 @@ class Olama_Messages_Admin {
 
 	/** Clear all payment links by revoking active tokens and short links. */
 	public function handle_clear_all_tokens() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2841,7 +2841,7 @@ class Olama_Messages_Admin {
 	}
 
 	public function handle_delete_queue_item() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2865,7 +2865,7 @@ class Olama_Messages_Admin {
 
 	/** Handle settings save. */
 	public function handle_save_settings() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -2900,7 +2900,7 @@ class Olama_Messages_Admin {
 
 	public function ajax_preview_sms() {
 		check_ajax_referer( 'olama_msg_ajax', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( 'Unauthorized', 403 );
 		}
 
@@ -2964,7 +2964,7 @@ class Olama_Messages_Admin {
 	/** AJAX: preview report (placeholder). */
 	public function ajax_preview_report() {
 		check_ajax_referer( 'olama_msg_ajax', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( 'Unauthorized', 403 );
 		}
 		$family_id = sanitize_text_field( wp_unslash( $_POST['family_id'] ?? '' ) );
@@ -2976,7 +2976,7 @@ class Olama_Messages_Admin {
 	/** AJAX: live preview campaign candidates. */
 	public function ajax_preview_campaign() {
 		check_ajax_referer( 'olama_msg_ajax', 'nonce' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( 'Unauthorized', 403 );
 		}
 
@@ -3043,7 +3043,7 @@ class Olama_Messages_Admin {
 	// ─── Page: Sending Agents (Phase 3) ──────────────────────────────────────
 
 	public function page_agents() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3513,7 +3513,7 @@ class Olama_Messages_Admin {
 	/** Save/Register Agent POST Action. */
 	public function handle_save_agent() {
 		check_admin_referer( 'olama_msg_save_agent' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3548,7 +3548,7 @@ class Olama_Messages_Admin {
 	public function handle_revoke_agent() {
 		$agent_id = isset( $_GET['agent_id'] ) ? absint( $_GET['agent_id'] ) : 0;
 		check_admin_referer( 'olama_msg_revoke_agent_' . $agent_id );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3567,7 +3567,7 @@ class Olama_Messages_Admin {
 	public function handle_delete_agent() {
 		$agent_id = isset( $_GET['agent_id'] ) ? absint( $_GET['agent_id'] ) : 0;
 		check_admin_referer( 'olama_msg_delete_agent_' . $agent_id );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3586,7 +3586,7 @@ class Olama_Messages_Admin {
 
 	/** Render Direct Message Page. */
 	public function page_direct_message() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3786,7 +3786,7 @@ class Olama_Messages_Admin {
 	/** Save/Queue Direct Message. */
 	public function handle_send_direct() {
 		check_admin_referer( 'olama_msg_send_direct' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
@@ -3835,7 +3835,7 @@ class Olama_Messages_Admin {
 	/** AJAX Action: Search Families for Direct Message. */
 	public function ajax_search_families() {
 		check_ajax_referer( 'olama_msg_ajax', 'security' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ) );
 		}
 
@@ -3862,7 +3862,7 @@ class Olama_Messages_Admin {
 	/** AJAX Action: Render Template for Direct Message. */
 	public function ajax_render_direct_template() {
 		check_ajax_referer( 'olama_msg_ajax', 'security' );
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ) );
 		}
 
