@@ -37,6 +37,57 @@ class Olama_Messages_Core_Provider {
 		return $this->is_core_available() ? olama_core()->audiences()->get_section_names( $study_year ) : array();
 	}
 
+	/**
+	 * Read the active-family phone book from Olama Core.
+	 */
+	public function get_phone_book( $study_year, array $args = array() ) {
+		if ( ! $this->is_core_available() || ! method_exists( olama_core()->audiences(), 'query_phone_book' ) ) {
+			return array(
+				'items'       => array(),
+				'total'       => 0,
+				'limit'       => absint( $args['limit'] ?? 50 ),
+				'offset'      => absint( $args['offset'] ?? 0 ),
+				'study_year'  => sanitize_text_field( (string) $study_year ),
+				'data_source' => 'unavailable',
+			);
+		}
+		return olama_core()->audiences()->query_phone_book( $study_year, $args );
+	}
+
+	/**
+	 * Return target-specific Olama Core synchronization health.
+	 */
+	public function get_sync_health( $target_type = 'general', $study_year = '' ) {
+		if ( ! $this->is_core_available() ) {
+			return array(
+				'ready'          => false,
+				'target_type'    => sanitize_key( (string) $target_type ),
+				'study_year'     => sanitize_text_field( (string) $study_year ),
+				'last_synced_at' => null,
+				'checked_at'     => current_time( 'mysql' ),
+				'sources'        => array(),
+				'message'        => 'Olama Core is inactive or its audience tables are unavailable.',
+			);
+		}
+
+		$audiences = olama_core()->audiences();
+		if ( method_exists( $audiences, 'get_sync_health' ) ) {
+			return $audiences->get_sync_health( $target_type, $study_year );
+		}
+
+		// Compatibility with older Olama Core releases: audience readiness is
+		// known, but per-source freshness is not yet exposed.
+		return array(
+			'ready'          => true,
+			'target_type'    => sanitize_key( (string) $target_type ),
+			'study_year'     => sanitize_text_field( (string) $study_year ),
+			'last_synced_at' => null,
+			'checked_at'     => current_time( 'mysql' ),
+			'sources'        => array(),
+			'message'        => 'Olama Core is ready; detailed synchronization timestamps are unavailable.',
+		);
+	}
+
 	public function get_recipients_preview( array $filters = array() ) {
 		if ( ! $this->is_core_available() ) {
 			return array(

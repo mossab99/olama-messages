@@ -78,6 +78,19 @@ class Olama_Messages_Phone_Normalizer {
 			);
 		}
 
+		// Distinguish foreign/international destinations from malformed local
+		// numbers so campaign operators can see why they are never eligible.
+		$is_international = preg_match( '/^\s*(?:\+|00)/', $trimmed )
+			|| ( strlen( $digits ) >= 11 && 0 !== strpos( $digits, '962' ) );
+		if ( $is_international ) {
+			return array(
+				'valid'  => false,
+				'raw'    => $raw,
+				'e164'   => null,
+				'reason' => 'international_phone',
+			);
+		}
+
 		// Otherwise general invalid mobile reason
 		return array(
 			'valid'  => false,

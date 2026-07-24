@@ -384,6 +384,16 @@
                 $('#olama-campaign-stat-candidates').text(d.total_candidates);
                 $('#olama-campaign-stat-included').text(d.total_included);
                 $('#olama-campaign-stat-excluded').text(d.total_excluded);
+                if (d.sync_health) {
+                    var healthReady = !!d.sync_health.ready;
+                    var healthText = healthReady
+                        ? 'Ready. Oldest required source sync: ' + (d.sync_health.last_synced_at || 'timestamp unavailable')
+                        : 'Not ready for this campaign type and study year. Synchronize Olama Core before preparing.';
+                    $('#olama-campaign-core-health')
+                        .toggleClass('notice-success', healthReady)
+                        .toggleClass('notice-error', !healthReady)
+                        .find('[data-core-health-message]').text(healthText);
+                }
                 $('#olama-campaign-preview-guidance')
                     .toggle(d.total_included === 0 && d.total_candidates > 0)
                     .find('p').text(targetType === 'collection'
@@ -927,17 +937,11 @@
             return;
         }
 
-        // Mask the phone number for display safety
-        var masked = phoneRaw.toString();
-        if (masked.length > 6) {
-            masked = masked.substring(0, 5) + '***' + masked.substring(masked.length - 3);
-        }
-
         var confirmMsg = 
             '⚠️ WARNING: Queue Direct SMS\n\n' +
             'This action will create a micro-campaign and queue exactly one SMS for dispatch by the active Windows agent.\n\n' +
             'Recipient: ' + name + ' (' + role.toUpperCase() + ')\n' +
-            'Phone Number: ' + masked + '\n\n' +
+            'Phone Number: ' + phoneRaw + '\n\n' +
             'Do you want to proceed and queue this SMS?';
 
         if (!confirm(confirmMsg)) {

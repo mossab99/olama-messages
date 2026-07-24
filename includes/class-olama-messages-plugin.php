@@ -30,6 +30,9 @@ class Olama_Messages_Plugin {
 	/** @var Olama_Messages_Transportation_Service */
 	private $transportation;
 
+	/** @var Olama_Messages_Phone_Book_Exporter */
+	private $phone_book_exporter;
+
 	/** @var Olama_Messages_Phone_Normalizer */
 	private $normalizer;
 
@@ -38,6 +41,7 @@ class Olama_Messages_Plugin {
 
 	/** @var Olama_Messages_Campaign_Service */
 	private $campaigns;
+	private $operations;
 
 	/** @var Olama_Messages_Agent_Service */
 	private $agents;
@@ -183,6 +187,19 @@ class Olama_Messages_Plugin {
 	}
 
 	/**
+	 * @return Olama_Messages_Phone_Book_Exporter
+	 */
+	public function phone_book_exporter() {
+		if ( ! $this->phone_book_exporter ) {
+			$this->phone_book_exporter = new Olama_Messages_Phone_Book_Exporter(
+				$this->provider(),
+				$this->transportation()
+			);
+		}
+		return $this->phone_book_exporter;
+	}
+
+	/**
 	 * @return Olama_Messages_Phone_Normalizer
 	 */
 	public function normalizer() {
@@ -210,6 +227,14 @@ class Olama_Messages_Plugin {
 			$this->campaigns = new Olama_Messages_Campaign_Service();
 		}
 		return $this->campaigns;
+	}
+
+	/** @return Olama_Messages_Operations_Service */
+	public function operations() {
+		if ( ! $this->operations ) {
+			$this->operations = new Olama_Messages_Operations_Service();
+		}
+		return $this->operations;
 	}
 
 	/**

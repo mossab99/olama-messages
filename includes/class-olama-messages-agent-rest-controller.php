@@ -296,7 +296,7 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 		$agent = $request->get_param( '_authorized_agent' );
 		$params = $request->get_json_params() ?: array();
 
-		$max_jobs = 1; // Strict Run 4D safety mode: force max_jobs = 1 server-side.
+		$max_jobs = 1; // Enforce sequential device dispatch server-side.
 
 		// Check KDE readiness from:
 		//  1. Capabilities sent in request body (C# app may send these)

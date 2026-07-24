@@ -49,6 +49,7 @@ class Olama_Messages_Campaign_Service {
 			'study_year'              => '',
 			'target_type'             => 'collection',
 			'template_id'             => null,
+			'message_body_draft'      => null,
 			'template_name_snapshot'  => null,
 			'template_body_snapshot'  => null,
 			'filters_json'            => null,
@@ -150,8 +151,37 @@ class Olama_Messages_Campaign_Service {
 		} else {
 			$row['filters'] = array();
 		}
+		$row['core_sync_health'] = ! empty( $row['core_sync_health_json'] )
+			? json_decode( $row['core_sync_health_json'], true )
+			: array();
 
 		return $row;
+	}
+
+	/**
+	 * Return the editable message for drafts and the immutable snapshot for
+	 * prepared or historical campaigns.
+	 *
+	 * @param array $campaign Campaign row.
+	 * @return string
+	 */
+	public function get_effective_message_body( array $campaign ) {
+		if ( 'draft' !== ( $campaign['status'] ?? 'draft' ) && ! empty( $campaign['template_body_snapshot'] ) ) {
+			return (string) $campaign['template_body_snapshot'];
+		}
+
+		if ( ! empty( $campaign['message_body_draft'] ) ) {
+			return (string) $campaign['message_body_draft'];
+		}
+
+		if ( ! empty( $campaign['template_id'] ) ) {
+			$template = Olama_Messages_Plugin::instance()->templates()->get_template( (int) $campaign['template_id'] );
+			if ( $template && isset( $template['body'] ) ) {
+				return (string) $template['body'];
+			}
+		}
+
+		return ! empty( $campaign['template_body_snapshot'] ) ? (string) $campaign['template_body_snapshot'] : '';
 	}
 
 	/**
@@ -166,6 +196,8 @@ class Olama_Messages_Campaign_Service {
 		$defaults = array(
 			'status'     => '',
 			'study_year' => '',
+			'search'     => '',
+			'target_type'=> '',
 			'limit'      => 50,
 			'offset'     => 0,
 			'orderby'    => 'created_at',
@@ -178,8 +210,12 @@ class Olama_Messages_Campaign_Service {
 		$values = array();
 
 		if ( ! empty( $args['status'] ) ) {
-			$where[]  = 'status = %s';
-			$values[] = sanitize_text_field( $args['status'] );
+			if ( 'completed' === $args['status'] ) {
+				$where[] = "status IN ('completed', 'completed_with_errors')";
+			} else {
+				$where[]  = 'status = %s';
+				$values[] = sanitize_text_field( $args['status'] );
+			}
 		}
 
 		if ( ! empty( $args['study_year'] ) ) {
@@ -216,6 +252,17 @@ class Olama_Messages_Campaign_Service {
 			$row['total_excluded']          = (int) $row['total_excluded'];
 			$row['total_prepared']          = (int) $row['total_prepared'];
 			$row['filters']                 = $row['filters_json'] ? json_decode( $row['filters_json'], true ) : array();
+			$row['core_sync_health']        = ! empty( $row['core_sync_health_json'] ) ? json_decode( $row['core_sync_health_json'], true ) : array();
+		}
+
+		if ( ! empty( $args['target_type'] ) ) {
+			$where[]  = 'target_type = %s';
+			$values[] = sanitize_key( $args['target_type'] );
+		}
+
+		if ( ! empty( $args['search'] ) ) {
+			$where[]  = 'title LIKE %s';
+			$values[] = '%' . $wpdb->esc_like( sanitize_text_field( $args['search'] ) ) . '%';
 		}
 
 		return $rows;
@@ -341,8 +388,12 @@ class Olama_Messages_Campaign_Service {
 			$campaign_data = array(
 				'title'            => sprintf( 'Direct Message - Family %d (%s)', $family_id, $recipient_role ),
 				'channel'          => 'sms',
-				'status'           => 'sending', // Immediately active
+				'status'           => 'prepared',
 				'study_year'       => $study_year,
+				'target_type'      => 'direct',
+				'message_body_draft' => $message_body,
+				'template_name_snapshot' => 'Direct message',
+				'template_body_snapshot' => $message_body,
 				'filters_json'     => wp_json_encode( $metadata ),
 				'recipient_policy' => $recipient_role === 'father' ? 'father_only' : 'mother_only',
 				'total_candidates' => 1,
@@ -352,6 +403,7 @@ class Olama_Messages_Campaign_Service {
 				'created_by'       => get_current_user_id(),
 				'created_at'       => current_time( 'mysql' ),
 				'prepared_at'      => current_time( 'mysql' ),
+				'prepared_by'      => get_current_user_id(),
 			);
 
 			$campaign_inserted = $wpdb->insert( $this->table_campaigns, $campaign_data );
@@ -393,7 +445,7 @@ class Olama_Messages_Campaign_Service {
 
 			// SMS metrics calculation
 			$sms_info = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body );
-			$requires_payment_link = ( strpos( $message_body, '{{PAYMENT_LINK}}' ) !== false ) ? 1 : 0;
+			$requires_payment_link = ( false !== strpos( $message_body, '{payment_link}' ) ) ? 1 : 0;
 
 			// Queue Item
 			$queue_data = array(
@@ -425,6 +477,13 @@ class Olama_Messages_Campaign_Service {
 		}
 	}
 
+	/**
+	 * Explicitly named safe direct-message preparation entry point.
+	 */
+	public function prepare_direct_message_campaign( $family_id, $recipient_role, $message_body, $study_year = '' ) {
+		return $this->create_direct_message_campaign( $family_id, $recipient_role, $message_body, $study_year );
+	}
+
 
 	// ─── Candidate Evaluation & Previews ─────────────────────────────────────
 
@@ -451,6 +510,7 @@ class Olama_Messages_Campaign_Service {
 				'study_year'              => '',
 				'target_type'             => 'collection',
 				'template_id'             => null,
+				'message_body_draft'      => null,
 				'template_body_snapshot'  => null,
 				'recipient_policy'        => 'father_first',
 				'min_balance'             => null,
@@ -470,20 +530,9 @@ class Olama_Messages_Campaign_Service {
 			$study_year = ! empty( $years ) ? $years[0] : '2025/2026';
 		}
 
-		// Determine the active template body.
-		$template_body = '';
-		if ( ! empty( $campaign['template_id'] ) ) {
-			$template = Olama_Messages_Plugin::instance()->templates()->get_template( $campaign['template_id'] );
-			if ( $template ) {
-				$template_body = $template['body'];
-			}
-		}
-		if ( empty( $template_body ) && ! empty( $campaign['template_body_snapshot'] ) ) {
-			$template_body = $campaign['template_body_snapshot'];
-		}
-		if ( empty( $template_body ) ) {
-			// Fallback.
-			$template_body = Olama_Messages_Plugin::instance()->renderer()->get_active_template( true );
+		$template_body = $this->get_effective_message_body( $campaign );
+		if ( '' === trim( $template_body ) ) {
+			throw new Exception( 'Add a message before previewing the audience.' );
 		}
 
 		// Extract filters (class_name, section_name, family_id, transport fields).
@@ -565,6 +614,9 @@ class Olama_Messages_Campaign_Service {
 		foreach ( $all_items as $item ) {
 			$family_id           = (int) $item['family_id'];
 			$oracle_family_id    = $item['oracle_family_id'] ?? (string) $family_id;
+			$core_family_uid     = (string) ( $item['core_family_uid'] ?? '' );
+			$core_source_hash    = (string) ( $item['core_source_hash'] ?? '' );
+			$core_last_synced_at = $item['core_last_synced_at'] ?? null;
 			$sponsor_name        = $item['sponsor_name'] ?? '';
 			$father_name         = $item['father_name'] ?? '';
 			$father_mobile       = $item['father_mobile'] ?? '';
@@ -648,32 +700,20 @@ class Olama_Messages_Campaign_Service {
 						);
 					}
 				}
-			} elseif ( $policy === 'both_parents' ) {
-				$has_father = ! empty( trim( (string) $father_mobile ) );
-				$has_mother = ! empty( trim( (string) $mother_mobile ) );
-
-				if ( ! $has_father && ! $has_mother ) {
-					$targets[] = array(
-						'type'  => 'father',
-						'name'  => $father_name ? $father_name : $sponsor_name,
-						'phone' => '',
-					);
-				} else {
-					if ( $has_father ) {
-						$targets[] = array(
-							'type'  => 'father',
-							'name'  => $father_name ? $father_name : $sponsor_name,
-							'phone' => $father_mobile,
-						);
-					}
-					if ( $has_mother ) {
-						$targets[] = array(
-							'type'  => 'mother',
-							'name'  => $mother_name ? $mother_name : $sponsor_name,
-							'phone' => $mother_mobile,
-						);
-					}
-				}
+			} elseif ( in_array( $policy, array( 'both', 'both_parents' ), true ) ) {
+				// Keep both requested parent slots in the evaluation. Empty
+				// numbers are visible as excluded targets and can never silently
+				// disappear from the campaign totals.
+				$targets[] = array(
+					'type'  => 'father',
+					'name'  => $father_name ? $father_name : $sponsor_name,
+					'phone' => $father_mobile,
+				);
+				$targets[] = array(
+					'type'  => 'mother',
+					'name'  => $mother_name ? $mother_name : $sponsor_name,
+					'phone' => $mother_mobile,
+				);
 			}
 
 			// Evaluate each target against financial rules and phone policy.
@@ -715,6 +755,8 @@ class Olama_Messages_Campaign_Service {
 							$excluded_reason = 'missing_phone';
 						} elseif ( $norm['reason'] === 'landline_rejected' ) {
 							$excluded_reason = 'landline_rejected';
+						} elseif ( $norm['reason'] === 'international_phone' ) {
+							$excluded_reason = 'international_phone';
 						} else {
 							$excluded_reason = 'invalid_phone';
 						}
@@ -738,24 +780,22 @@ class Olama_Messages_Campaign_Service {
 				$char_count           = 0;
 				$sms_parts            = 0;
 
-				if ( $included ) {
-					$bal_fmt = is_numeric( $balance ) ? number_format( $balance, 3 ) : 'غير متوفر';
-					$due_fmt = is_numeric( $monthly_due ) ? number_format( $monthly_due, 3 ) : 'غير متوفر';
+				$bal_fmt = is_numeric( $balance ) ? number_format( $balance, 3 ) : 'غير متوفر';
+				$due_fmt = is_numeric( $monthly_due ) ? number_format( $monthly_due, 3 ) : 'غير متوفر';
 
-					$vars = array(
-						'sponsor_name'       => $target['name'],
-						'family_id'          => $oracle_family_id,
-						'students'           => $students,
-						'balance'            => $bal_fmt,
-						'monthly_due'        => $due_fmt,
-						'monthly_due_source' => $monthly_due_source,
-					);
+				$vars = array(
+					'sponsor_name'       => $target['name'],
+					'family_id'          => $oracle_family_id,
+					'students'           => $students,
+					'balance'            => $bal_fmt,
+					'monthly_due'        => $due_fmt,
+					'monthly_due_source' => $monthly_due_source,
+				);
 
-					$message_body_preview = Olama_Messages_Plugin::instance()->renderer()->render_campaign_sms( $template_body, $vars );
-					$sms_info             = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body_preview );
-					$char_count           = $sms_info['char_count'];
-					$sms_parts            = $sms_info['sms_parts'];
-				}
+				$message_body_preview = Olama_Messages_Plugin::instance()->renderer()->render_campaign_sms( $template_body, $vars );
+				$sms_info             = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body_preview );
+				$char_count           = $sms_info['char_count'];
+				$sms_parts            = $sms_info['sms_parts'];
 
 				// Apply saved operator choices after normal eligibility/template evaluation.
 				$override_key = $oracle_family_id . ':' . $target['type'];
@@ -763,22 +803,23 @@ class Olama_Messages_Campaign_Service {
 				$override     = isset( $overrides[ $override_key ] ) && is_array( $overrides[ $override_key ] )
 					? $overrides[ $override_key ]
 					: array();
-				if ( $included && ! empty( $override['excluded'] ) ) {
-					$included        = false;
-					$excluded_reason = 'manually_excluded';
-					$message_body_preview = '';
-					$char_count = 0;
-					$sms_parts  = 0;
-				} elseif ( $included && isset( $override['message'] ) && trim( $override['message'] ) !== '' ) {
+				if ( $included && isset( $override['message'] ) && trim( $override['message'] ) !== '' ) {
 					$message_body_preview = $override['message'];
 					$sms_info             = Olama_Messages_Plugin::instance()->renderer()->sms_info( $message_body_preview );
 					$char_count           = $sms_info['char_count'];
 					$sms_parts            = $sms_info['sms_parts'];
 				}
+				if ( $included && ! empty( $override['excluded'] ) ) {
+					$included        = false;
+					$excluded_reason = 'manually_excluded';
+				}
 
 				$evaluated_targets[] = array(
 					'family_id'            => $family_id,
 					'oracle_family_id'     => $oracle_family_id,
+					'core_family_uid'      => $core_family_uid,
+					'core_source_hash'     => $core_source_hash,
+					'core_last_synced_at'  => $core_last_synced_at,
 					'recipient_type'       => $target['type'],
 					'recipient_name'       => $target['name'],
 					'phone_raw'            => $phone_raw,
@@ -806,12 +847,22 @@ class Olama_Messages_Campaign_Service {
 		$total_candidates = count( $evaluated_targets );
 		$total_included   = 0;
 		$total_excluded   = 0;
+		$total_sms_parts  = 0;
+		$reason_counts    = array();
+		$family_ids       = array();
+		$included_family_ids = array();
 
 		foreach ( $evaluated_targets as $t ) {
+			$family_key = (string) ( $t['oracle_family_id'] ?: $t['family_id'] );
+			$family_ids[ $family_key ] = true;
 			if ( $t['included'] ) {
 				$total_included++;
+				$total_sms_parts += absint( $t['sms_parts'] ?? 0 );
+				$included_family_ids[ $family_key ] = true;
 			} else {
 				$total_excluded++;
+				$reason = $t['excluded_reason'] ?: 'other';
+				$reason_counts[ $reason ] = ( $reason_counts[ $reason ] ?? 0 ) + 1;
 			}
 		}
 
@@ -855,9 +906,13 @@ class Olama_Messages_Campaign_Service {
 		return array(
 			'items'            => $paginated_targets,
 			'total_candidates' => $total_candidates,
+			'total_families'   => count( $family_ids ),
+			'included_families'=> count( $included_family_ids ),
 			'total_included'   => $total_included,
 			'total_excluded'   => $total_excluded,
+			'total_sms_parts'  => $total_sms_parts,
 			'total_displayed'  => count( $display_targets ),
+			'reason_counts'    => $reason_counts,
 		);
 	}
 
@@ -886,23 +941,38 @@ class Olama_Messages_Campaign_Service {
 			throw new Exception( 'Campaign is not in draft status. Prepared or cancelled campaigns cannot be prepared again.' );
 		}
 
-		// 2. Fetch template.
-		if ( empty( $campaign['template_id'] ) ) {
-			throw new Exception( 'No template selected for this campaign.' );
+		// 2. Resolve and validate the editable message. Preparation freezes it.
+		$template_body = $this->get_effective_message_body( $campaign );
+		if ( '' === trim( $template_body ) ) {
+			throw new Exception( 'Add a message before preparing this campaign.' );
+		}
+		$placeholder_check = Olama_Messages_Plugin::instance()->renderer()->validate_placeholders( $template_body );
+		if ( empty( $placeholder_check['valid'] ) ) {
+			throw new Exception( 'Unknown message fields: {' . implode( '}, {', $placeholder_check['unknown'] ) . '}' );
 		}
 
-		$template = Olama_Messages_Plugin::instance()->templates()->get_template( $campaign['template_id'] );
-		if ( ! $template ) {
-			throw new Exception( 'Selected template not found.' );
+		$template_name = 'Custom campaign message';
+		if ( ! empty( $campaign['template_id'] ) ) {
+			$template = Olama_Messages_Plugin::instance()->templates()->get_template( (int) $campaign['template_id'] );
+			if ( $template ) {
+				$template_name = $template['name'];
+			}
 		}
 
-		$template_name = $template['name'];
-		$template_body = $template['body'];
+		// 3. Verify target-specific Olama Core data before taking the immutable
+		// recipient and message snapshots.
+		$sync_health = Olama_Messages_Plugin::instance()->provider()->get_sync_health(
+			$campaign['target_type'] ?? 'collection',
+			$campaign['study_year'] ?? ''
+		);
+		if ( empty( $sync_health['ready'] ) ) {
+			throw new Exception( 'Olama Core data is not ready for this campaign and study year. Synchronize the required Core sources before preparing.' );
+		}
 
-		// 3. Evaluate all candidates in memory.
+		// 4. Evaluate all candidates in memory.
 		$results = $this->preview_candidates( $campaign );
 
-		// 4. Write to DB using transaction wrapper.
+		// 5. Write to DB using transaction wrapper.
 		$wpdb->query( 'START TRANSACTION' );
 
 		try {
@@ -921,11 +991,36 @@ class Olama_Messages_Campaign_Service {
 			foreach ( $all_targets as $t ) {
 				$total_candidates++;
 
+				// Final queue invariant: only a non-empty Jordanian mobile may
+				// ever become a prepared queue item, even if preview logic or a
+				// saved snapshot is changed in the future.
+				if ( ! empty( $t['included'] ) ) {
+					$queue_phone = Olama_Messages_Plugin::instance()->normalizer()->normalize_jordan_mobile( (string) ( $t['phone_e164'] ?? '' ) );
+					if ( empty( $queue_phone['valid'] ) ) {
+						$t['included'] = 0;
+						if ( 'empty_phone' === ( $queue_phone['reason'] ?? '' ) ) {
+							$t['excluded_reason'] = 'missing_phone';
+						} elseif ( 'international_phone' === ( $queue_phone['reason'] ?? '' ) ) {
+							$t['excluded_reason'] = 'international_phone';
+						} elseif ( 'landline_rejected' === ( $queue_phone['reason'] ?? '' ) ) {
+							$t['excluded_reason'] = 'landline_rejected';
+						} else {
+							$t['excluded_reason'] = 'invalid_phone';
+						}
+						$t['phone_e164'] = null;
+					} else {
+						$t['phone_e164'] = $queue_phone['e164'];
+					}
+				}
+
 				// Insert recipient snapshot.
 				$recipient_data = array(
 					'campaign_id'         => $campaign_id,
 					'family_id'           => $t['family_id'],
 					'oracle_family_id'    => $t['oracle_family_id'],
+					'core_family_uid'     => $t['core_family_uid'],
+					'core_source_hash'    => $t['core_source_hash'],
+					'core_last_synced_at' => $t['core_last_synced_at'],
 					'recipient_type'      => $t['recipient_type'],
 					'recipient_name'      => $t['recipient_name'],
 					'phone_raw'           => $t['phone_raw'],
@@ -968,7 +1063,7 @@ class Olama_Messages_Campaign_Service {
 						'message_body_hash'     => hash( 'sha256', $t['message_body_preview'] ),
 						'message_char_count'    => $t['char_count'],
 						'message_sms_parts'     => $t['sms_parts'],
-						'requires_payment_link' => 1,
+						'requires_payment_link' => false !== strpos( $template_body, '{payment_link}' ) ? 1 : 0,
 						'payment_token_id'      => null,
 						'status'                => 'prepared',
 						'created_at'            => current_time( 'mysql' ),
@@ -992,7 +1087,10 @@ class Olama_Messages_Campaign_Service {
 				'total_included'         => $total_included,
 				'total_excluded'         => $total_excluded,
 				'total_prepared'         => $total_included,
+				'core_snapshot_at'       => current_time( 'mysql' ),
+				'core_sync_health_json'  => wp_json_encode( $sync_health ),
 				'prepared_at'            => current_time( 'mysql' ),
+				'prepared_by'            => get_current_user_id(),
 				'updated_at'             => current_time( 'mysql' ),
 			);
 
@@ -1038,38 +1136,56 @@ class Olama_Messages_Campaign_Service {
 	 * @throws Exception        If campaign is not in 'prepared' status.
 	 */
 	public function start_campaign_sending( int $campaign_id ) {
+		throw new Exception( 'Direct campaign starts are disabled. Use authorize_campaign_sending() with typed confirmation.' );
+	}
+
+	/**
+	 * Authorize a prepared campaign after revalidating the immutable queue,
+	 * typed confirmation, and live dispatcher readiness.
+	 *
+	 * @param int    $campaign_id Campaign ID.
+	 * @param string $confirmation Typed "SEND {count}" phrase.
+	 * @return bool
+	 */
+	public function authorize_campaign_sending( int $campaign_id, $confirmation ) {
 		global $wpdb;
 
 		$campaign = $this->get_campaign( $campaign_id );
-		if ( ! $campaign ) {
-			return false;
+		if ( ! $campaign || 'prepared' !== $campaign['status'] ) {
+			throw new Exception( 'Only a prepared campaign can be authorized.' );
 		}
 
-		if ( $campaign['status'] !== 'prepared' ) {
-			throw new Exception( 'Only prepared campaigns can be started.' );
+		$prepared_count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$this->table_queue} WHERE campaign_id = %d AND status = 'prepared'",
+				$campaign_id
+			)
+		);
+		if ( $prepared_count < 1 || $prepared_count !== (int) $campaign['total_prepared'] ) {
+			throw new Exception( 'Prepared queue verification failed. Reset and prepare the campaign again.' );
 		}
 
-		// Count queue records for the campaign.
-		$queue_count = (int) $wpdb->get_var( $wpdb->prepare(
-			"SELECT COUNT(*) FROM {$this->table_queue} WHERE campaign_id = %d",
-			$campaign_id
-		) );
+		if ( 'SEND ' . $prepared_count !== trim( (string) $confirmation ) ) {
+			throw new Exception( sprintf( 'Type SEND %d exactly to authorize this campaign.', $prepared_count ) );
+		}
 
-		if ( $queue_count !== 1 ) {
-			throw new Exception( 'Run 4D safety mode allows only campaigns with exactly 1 prepared message to be sent.' );
+		$agent = Olama_Messages_Plugin::instance()->agents()->get_ready_dispatcher_agent();
+		if ( empty( $agent ) ) {
+			throw new Exception( 'No ready sending agent is online. Preparation is preserved; start after the agent is ready.' );
 		}
 
 		$result = $wpdb->update(
 			$this->table_campaigns,
 			array(
 				'status'     => 'sending',
+				'started_by' => get_current_user_id(),
+				'started_at' => current_time( 'mysql' ),
 				'updated_at' => current_time( 'mysql' ),
 			),
-			array( 'id' => $campaign_id )
+			array( 'id' => $campaign_id, 'status' => 'prepared' )
 		);
-
-		if ( false === $result ) {
-			throw new Exception( 'Failed to update campaign status to sending: ' . $wpdb->last_error );
+		if ( 1 !== $result ) {
+			throw new Exception( 'Campaign authorization failed because its state changed. Refresh and try again.' );
 		}
 
 		return true;
@@ -1216,7 +1332,13 @@ class Olama_Messages_Campaign_Service {
 				'total_included'         => 0,
 				'total_excluded'         => 0,
 				'total_prepared'         => 0,
+				'core_snapshot_at'       => null,
+				'core_sync_health_json'  => null,
 				'prepared_at'            => null,
+				'prepared_by'            => null,
+				'started_by'             => null,
+				'started_at'             => null,
+				'completed_at'           => null,
 				'cancelled_at'           => null,
 				'updated_at'             => current_time( 'mysql' ),
 			);

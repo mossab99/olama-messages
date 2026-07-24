@@ -43,7 +43,8 @@ class Olama_Messages_Dispatcher_Service {
 	public function reserve_batch( array $agent, int $max_jobs = 1 ) {
 		global $wpdb;
 
-		// Hard-limit to 1 while Run 4D safety mode is active.
+		// Deliberately reserve one SMS per poll. Campaigns may contain many
+		// messages, but pacing remains sequential for the connected device.
 		$limit = 1;
 
 		$wpdb->query( 'START TRANSACTION' );
@@ -407,8 +408,9 @@ class Olama_Messages_Dispatcher_Service {
 			$wpdb->update(
 				$this->table_campaigns,
 				array(
-					'status'     => $new_status,
-					'updated_at' => current_time( 'mysql' ),
+					'status'       => $new_status,
+					'completed_at' => current_time( 'mysql' ),
+					'updated_at'   => current_time( 'mysql' ),
 				),
 				array( 'id' => $campaign_id )
 			);

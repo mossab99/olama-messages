@@ -23,15 +23,18 @@ class Olama_Messages_Admin {
 
 	/** @var Olama_Messages_Plugin */
 	private $plugin;
+	private $modern;
 
 	public function __construct( Olama_Messages_Plugin $plugin ) {
 		$this->plugin = $plugin;
+		$this->modern = new Olama_Messages_Modern_Admin( $plugin );
 	}
 
 	// ─── Init ────────────────────────────────────────────────────────────────
 
 	public function init() {
 		add_action( 'admin_menu',            array( $this, 'register_menus' ) );
+		add_action( 'admin_menu',            array( $this, 'reorder_submenus' ), 99 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		// Token / settings actions (Phase 1 / 1.5)
@@ -42,6 +45,8 @@ class Olama_Messages_Admin {
 		add_action( 'admin_post_olama_msg_clear_all_tokens', array( $this, 'handle_clear_all_tokens' ) );
 		add_action( 'admin_post_olama_msg_delete_queue_item', array( $this, 'handle_delete_queue_item' ) );
 		add_action( 'admin_post_olama_msg_save_settings',   array( $this, 'handle_save_settings' ) );
+		add_action( 'admin_post_olama_msg_sync_phone_book', array( $this, 'handle_sync_phone_book' ) );
+		add_action( 'admin_post_olama_msg_export_phone_book', array( $this, 'handle_export_phone_book' ) );
 
 		// Template actions (Phase 2)
 		add_action( 'admin_post_olama_msg_save_template',   array( $this, 'handle_save_template' ) );
@@ -75,6 +80,9 @@ class Olama_Messages_Admin {
 		add_action( 'wp_ajax_olama_msg_preview_campaign_ajax',   array( $this, 'ajax_preview_campaign' ) );
 		add_action( 'wp_ajax_olama_msg_transport_route_options', array( $this, 'ajax_transport_route_options' ) );
 		add_action( 'wp_ajax_olama_msg_campaign_progress',       array( $this, 'ajax_campaign_progress' ) );
+		add_action( 'wp_ajax_olama_msg_save_campaign_draft',      array( $this, 'ajax_save_campaign_draft' ) );
+		add_action( 'wp_ajax_olama_msg_save_recipient_override',  array( $this, 'ajax_save_recipient_override' ) );
+		add_action( 'wp_ajax_olama_msg_prepare_campaign_ajax',     array( $this, 'ajax_prepare_campaign' ) );
 	}
 
 	// ─── Menus ───────────────────────────────────────────────────────────────
@@ -85,49 +93,53 @@ class Olama_Messages_Admin {
 			__( 'Olama Messages', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages',
-			array( $this, 'page_dashboard' ),
+			array( $this->modern, 'overview' ),
 			'dashicons-email-alt',
 			56
 		);
 
 		add_submenu_page(
 			'olama-messages',
-			__( 'Dashboard', 'olama-messages' ),
-			__( 'Dashboard', 'olama-messages' ),
+			__( 'Overview', 'olama-messages' ),
+			__( 'Overview', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages',
-			array( $this, 'page_dashboard' )
+			array( $this->modern, 'overview' ),
+			1
 		);
 
 		add_submenu_page(
 			'olama-messages',
-			__( 'Campaigns', 'olama-messages' ),
-			__( 'Campaigns', 'olama-messages' ),
+			__( 'Campaign Center', 'olama-messages' ),
+			__( 'Campaign Center', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-campaigns',
-			array( $this, 'page_campaigns' )
+			array( $this->modern, 'campaigns' ),
+			2
 		);
 
 		add_submenu_page(
 			'olama-messages',
-			__( 'Templates', 'olama-messages' ),
-			__( 'Templates', 'olama-messages' ),
+			__( 'Message Library', 'olama-messages' ),
+			__( 'Message Library', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-templates',
-			array( $this, 'page_templates' )
+			array( $this, 'page_templates' ),
+			4
 		);
 
 		add_submenu_page(
 			'olama-messages',
-			__( 'SMS Dispatch Queue', 'olama-messages' ),
-			__( 'SMS Dispatch Queue', 'olama-messages' ),
+			__( 'Delivery Operations', 'olama-messages' ),
+			__( 'Delivery Operations', 'olama-messages' ),
 			'olama_access_messages',
-			'olama-messages-queue',
-			array( $this, 'page_queue' )
+			'olama-messages-delivery',
+			array( $this->modern, 'delivery' ),
+			5
 		);
 
 		add_submenu_page(
-			'olama-messages',
+			null,
 			__( 'Recipients Preview', 'olama-messages' ),
 			__( 'Recipients Preview', 'olama-messages' ),
 			'olama_access_messages',
@@ -137,11 +149,12 @@ class Olama_Messages_Admin {
 
 		add_submenu_page(
 			'olama-messages',
-			__( 'Payment Report Links', 'olama-messages' ),
-			__( 'Report Links', 'olama-messages' ),
+			__( 'Parent Report Links', 'olama-messages' ),
+			__( 'Parent Report Links', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-tokens',
-			array( $this, 'page_tokens' )
+			array( $this, 'page_tokens' ),
+			6
 		);
 
 		add_submenu_page(
@@ -150,11 +163,12 @@ class Olama_Messages_Admin {
 			__( 'Settings', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-settings',
-			array( $this, 'page_settings' )
+			array( $this, 'page_settings' ),
+			7
 		);
 
 		add_submenu_page(
-			'olama-messages',
+			null,
 			__( 'Sending Agents', 'olama-messages' ),
 			__( 'Sending Agents', 'olama-messages' ),
 			'olama_access_messages',
@@ -162,13 +176,34 @@ class Olama_Messages_Admin {
 			array( $this, 'page_agents' )
 		);
 
+		// Legacy queue URL remains valid but delegates to Delivery Operations.
+		add_submenu_page(
+			null,
+			__( 'Delivery Operations', 'olama-messages' ),
+			__( 'Delivery Operations', 'olama-messages' ),
+			'olama_access_messages',
+			'olama-messages-queue',
+			array( $this->modern, 'delivery' )
+		);
+
 		add_submenu_page(
 			'olama-messages',
-			__( 'Direct Message', 'olama-messages' ),
-			__( 'Direct Message', 'olama-messages' ),
+			__( 'Quick Send', 'olama-messages' ),
+			__( 'Quick Send', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-direct',
-			array( $this, 'page_direct_message' )
+			array( $this, 'page_direct_message' ),
+			3
+		);
+
+		add_submenu_page(
+			'olama-messages',
+			__( 'Phone Book', 'olama-messages' ),
+			__( 'Phone Book', 'olama-messages' ),
+			'olama_access_messages',
+			'olama-messages-phone-book',
+			array( $this->modern, 'phone_book' ),
+			4
 		);
 
 		// Hidden page for Add/Edit Campaign
@@ -178,7 +213,7 @@ class Olama_Messages_Admin {
 			__( 'New Campaign', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-new-campaign',
-			array( $this, 'page_new_campaign' )
+			array( $this->modern, 'wizard' )
 		);
 
 		// Hidden page for Campaign Progress (Phase 4 Run 4B)
@@ -215,6 +250,195 @@ class Olama_Messages_Admin {
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'olama_msg_ajax' ),
 		) );
+
+		wp_enqueue_script(
+			'olama-messages-sms-segmentation',
+			OLAMA_MSG_URL . 'assets/sms-segmentation.js',
+			array(),
+			(string) filemtime( OLAMA_MSG_PATH . 'assets/sms-segmentation.js' ),
+			true
+		);
+		if ( false !== strpos( $hook, 'olama-messages-new-campaign' ) ) {
+			wp_enqueue_script(
+				'olama-messages-campaign-wizard',
+				OLAMA_MSG_URL . 'assets/admin-campaign-wizard.js',
+				array( 'jquery', 'olama-messages-sms-segmentation' ),
+				(string) filemtime( OLAMA_MSG_PATH . 'assets/admin-campaign-wizard.js' ),
+				true
+			);
+		}
+	}
+
+	/** Keep the operator workflow in a predictable intent-first order. */
+	public function reorder_submenus() {
+		global $submenu;
+		if ( empty( $submenu['olama-messages'] ) ) {
+			return;
+		}
+		$order = array(
+			'olama-messages'           => 1,
+			'olama-messages-campaigns' => 2,
+			'olama-messages-direct'    => 3,
+			'olama-messages-phone-book'=> 4,
+			'olama-messages-templates' => 5,
+			'olama-messages-delivery'  => 6,
+			'olama-messages-tokens'    => 7,
+			'olama-messages-settings'  => 8,
+		);
+		usort(
+			$submenu['olama-messages'],
+			static function ( $a, $b ) use ( $order ) {
+				return ( $order[ $a[2] ] ?? 99 ) <=> ( $order[ $b[2] ] ?? 99 );
+			}
+		);
+	}
+
+	/** Autosave the editable fields of a draft campaign. */
+	public function ajax_save_campaign_draft() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+
+		$id = absint( $_POST['campaign_id'] ?? 0 );
+		$existing = $id ? $this->plugin->campaigns()->get_campaign( $id ) : null;
+		$filters = is_array( $existing['filters'] ?? null ) ? $existing['filters'] : array();
+		$filters['ui_step'] = max( 1, min( 5, absint( $_POST['ui_step'] ?? 1 ) ) );
+		$data = array(
+			'title'              => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ),
+			'study_year'         => sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) ),
+			'target_type'        => sanitize_key( $_POST['target_type'] ?? 'collection' ),
+			'recipient_policy'   => sanitize_key( $_POST['recipient_policy'] ?? 'father_first' ),
+			'template_id'        => ! empty( $_POST['template_id'] ) ? absint( $_POST['template_id'] ) : null,
+			'message_body_draft' => sanitize_textarea_field( wp_unslash( $_POST['message_body_draft'] ?? '' ) ),
+			'filters_json'       => $filters,
+		);
+
+		try {
+			if ( $id ) {
+				$this->plugin->campaigns()->update_campaign( $id, $data );
+			} else {
+				if ( '' === $data['title'] ) {
+					$data['title'] = __( 'Untitled campaign', 'olama-messages' );
+				}
+				$id = $this->plugin->campaigns()->create_campaign( $data );
+			}
+			wp_send_json_success(
+				array(
+					'campaign_id' => $id,
+					'saved_at'    => current_time( 'H:i:s' ),
+					'url'         => admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $id ),
+				)
+			);
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ), 409 );
+		}
+	}
+
+	/** Prepare a wizard campaign and return the authorization-stage URL. */
+	public function ajax_prepare_campaign() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+
+		$id = absint( $_POST['campaign_id'] ?? 0 );
+		if ( ! $id ) {
+			wp_send_json_error( array( 'message' => __( 'Save the campaign before preparing it.', 'olama-messages' ) ), 400 );
+		}
+
+		try {
+			$result = $this->plugin->campaigns()->prepare_campaign( $id );
+			wp_send_json_success(
+				array(
+					'total_prepared' => absint( $result['total_prepared'] ?? 0 ),
+					'url'            => admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $id . '&step=5' ),
+				)
+			);
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ), 409 );
+		}
+	}
+
+	/** Persist one or a page-sized batch of preview overrides. */
+	public function ajax_save_recipient_override() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+		$id       = absint( $_POST['campaign_id'] ?? 0 );
+		$key      = sanitize_text_field( wp_unslash( $_POST['override_key'] ?? '' ) );
+		$scope    = sanitize_key( wp_unslash( $_POST['selection_scope'] ?? '' ) );
+		$changes  = array();
+		$raw_bulk = wp_unslash( $_POST['overrides'] ?? '' );
+		if ( '' !== $raw_bulk ) {
+			$decoded = json_decode( $raw_bulk, true );
+			if ( is_array( $decoded ) ) {
+				$changes = array_slice( $decoded, 0, 100, true );
+			}
+		} elseif ( '' !== $key ) {
+			$changes[ $key ] = array(
+				'excluded' => ! empty( $_POST['excluded'] ),
+				'message'  => wp_unslash( $_POST['message'] ?? '' ),
+			);
+		}
+		if ( ! $id || ( 'all' !== $scope && empty( $changes ) ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid recipient override.', 'olama-messages' ) ), 400 );
+		}
+		$campaign = $this->plugin->campaigns()->get_campaign( $id );
+		if ( ! $campaign || 'draft' !== $campaign['status'] ) {
+			wp_send_json_error( array( 'message' => __( 'Only draft campaigns can be changed.', 'olama-messages' ) ), 409 );
+		}
+		if ( 'all' === $scope ) {
+			$select_all = '1' === sanitize_text_field( wp_unslash( $_POST['selected'] ?? '0' ) );
+			try {
+				$all_targets = $this->plugin->campaigns()->preview_candidates(
+					$id,
+					array( 'show_excluded' => true )
+				);
+			} catch ( Exception $e ) {
+				wp_send_json_error( array( 'message' => $e->getMessage() ), 409 );
+			}
+			foreach ( $all_targets['items'] ?? array() as $target ) {
+				$is_selectable = ! empty( $target['included'] ) || 'manually_excluded' === ( $target['excluded_reason'] ?? '' );
+				if ( ! $is_selectable ) {
+					continue;
+				}
+				$target_key = (string) ( $target['oracle_family_id'] ?? '' ) . ':' . (string) ( $target['recipient_type'] ?? '' );
+				$changes[ $target_key ] = array( 'excluded' => ! $select_all );
+				if ( count( $changes ) > 5000 ) {
+					wp_send_json_error( array( 'message' => __( 'This campaign has too many recipient targets to update at once.', 'olama-messages' ) ), 409 );
+				}
+			}
+		}
+		$filters = $campaign['filters'];
+		$filters['recipient_overrides'] = is_array( $filters['recipient_overrides'] ?? null ) ? $filters['recipient_overrides'] : array();
+		foreach ( $changes as $change_key => $change ) {
+			$change_key = sanitize_text_field( (string) $change_key );
+			if ( ! preg_match( '/^[A-Za-z0-9_-]+:(father|mother|sponsor)$/', $change_key ) || ! is_array( $change ) ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid recipient override.', 'olama-messages' ) ), 400 );
+			}
+			$existing_override = is_array( $filters['recipient_overrides'][ $change_key ] ?? null )
+				? $filters['recipient_overrides'][ $change_key ]
+				: array();
+			$filters['recipient_overrides'][ $change_key ] = array(
+				'excluded' => ! empty( $change['excluded'] ),
+				'message'  => array_key_exists( 'message', $change )
+					? mb_substr( sanitize_textarea_field( $change['message'] ), 0, 1600 )
+					: (string) ( $existing_override['message'] ?? '' ),
+			);
+		}
+		try {
+			$this->plugin->campaigns()->update_campaign( $id, array( 'filters_json' => $filters ) );
+			wp_send_json_success(
+				array(
+					'saved_at'     => current_time( 'H:i:s' ),
+					'updated_count' => count( $changes ),
+				)
+			);
+		} catch ( Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ), 409 );
+		}
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
@@ -249,6 +473,126 @@ class Olama_Messages_Admin {
 		}
 	}
 
+	/**
+	 * Refresh family details through the authoritative Olama Bridge importer,
+	 * then continue reading the resulting Olama Core records.
+	 */
+	public function handle_sync_phone_book() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), '', array( 'response' => 405 ) );
+		}
+		if ( ! current_user_can( 'olama_access_messages' ) || ! current_user_can( 'olama_access_oracle_sync' ) ) {
+			wp_die( esc_html__( 'You are not allowed to synchronize family contacts.', 'olama-messages' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'olama_msg_sync_phone_book' );
+
+		$study_year = sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) );
+		$redirect = add_query_arg(
+			array(
+				'page'       => 'olama-messages-phone-book',
+				'study_year' => $study_year,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		if ( ! function_exists( 'olama_oracle_sync_refresh_family_contacts' ) ) {
+			$this->set_flash( __( 'Olama Bridge is unavailable. Activate or update Olama Oracle Sync before synchronizing family details.', 'olama-messages' ), 'error' );
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		try {
+			$result = olama_oracle_sync_refresh_family_contacts();
+			if ( ! is_array( $result ) || empty( $result['success'] ) ) {
+				$message = is_array( $result ) ? ( $result['message'] ?? '' ) : '';
+				$this->set_flash( sanitize_text_field( $message ?: __( 'Family contacts sync failed.', 'olama-messages' ) ), 'error' );
+			} else {
+				$audit = is_array( $result['audit'] ?? null ) ? $result['audit'] : array();
+				$this->set_flash(
+					sprintf(
+						/* translators: 1: records received, 2: created, 3: updated, 4: failed */
+						__( 'Latest family details synchronized from Olama Bridge to Olama Core. Received: %1$d; created: %2$d; updated: %3$d; failed: %4$d. Refresh draft campaign previews before preparing.', 'olama-messages' ),
+						absint( $audit['records_seen'] ?? 0 ),
+						absint( $audit['records_created'] ?? 0 ),
+						absint( $audit['records_updated'] ?? 0 ),
+						absint( $audit['records_failed'] ?? 0 )
+					),
+					empty( $audit['records_failed'] ) ? 'success' : 'warning'
+				);
+			}
+		} catch ( Throwable $e ) {
+			$this->set_flash( __( 'Family contacts sync failed: ', 'olama-messages' ) . sanitize_text_field( $e->getMessage() ), 'error' );
+		}
+
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * Download a Google Contacts CSV for one study year, optionally merged
+	 * with a second year without duplicate family rows.
+	 */
+	public function handle_export_phone_book() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), '', array( 'response' => 405 ) );
+		}
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_die( esc_html__( 'You are not allowed to export the phone book.', 'olama-messages' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'olama_msg_export_phone_book' );
+
+		$study_year = sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) );
+		$merge      = ! empty( $_POST['merge_years'] );
+		$merge_year = $merge ? sanitize_text_field( wp_unslash( $_POST['merge_year'] ?? '' ) ) : '';
+		$years      = array_map( 'strval', $this->plugin->provider()->get_available_study_years() );
+		$redirect   = add_query_arg(
+			array(
+				'page'       => 'olama-messages-phone-book',
+				'study_year' => $study_year,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		if ( ! in_array( $study_year, $years, true ) ) {
+			$this->set_flash( __( 'Choose a valid study year before exporting.', 'olama-messages' ), 'error' );
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+		if ( $merge && ( ! in_array( $merge_year, $years, true ) || $merge_year === $study_year ) ) {
+			$this->set_flash( __( 'Choose a different valid study year to merge.', 'olama-messages' ), 'error' );
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		try {
+			$contacts = $this->plugin->phone_book_exporter()->build_contacts( $study_year, $merge_year );
+			$csv      = $this->plugin->phone_book_exporter()->to_csv( $contacts );
+		} catch ( Throwable $e ) {
+			$this->set_flash(
+				__( 'Google Contacts export failed: ', 'olama-messages' ) . sanitize_text_field( $e->getMessage() ),
+				'error'
+			);
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+
+		$filename = 'olama-google-contacts-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year );
+		if ( $merge ) {
+			$filename .= '-merged-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $merge_year );
+		}
+		$filename .= '.csv';
+
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=UTF-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $csv ) );
+		echo $csv; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Deliberate CSV download.
+		exit;
+	}
+
 	/** Badge HTML. */
 	private function status_badge( $status ) {
 		$labels = array(
@@ -271,17 +615,6 @@ class Olama_Messages_Admin {
 		);
 		$item = $labels[ $status ] ?? array( esc_html( $status ), '' );
 		return '<span class="olama-msg-badge ' . esc_attr( $item[1] ) . '">' . esc_html( $item[0] ) . '</span>';
-	}
-
-	/** Mask a phone number for privacy, keeping prefix and last 3 digits. */
-	private function mask_phone( $phone ) {
-		$phone = (string) $phone;
-		if ( strlen( $phone ) < 7 ) {
-			return '***';
-		}
-		$prefix = substr( $phone, 0, strlen( $phone ) - 6 );
-		$suffix = substr( $phone, -3 );
-		return $prefix . '***' . $suffix;
 	}
 
 	/** Validate per-recipient draft exclusions and custom SMS text. */
@@ -531,7 +864,13 @@ class Olama_Messages_Admin {
 		) );
 
 		global $wpdb;
-		$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns" );
+		if ( 'completed' === $status_filter ) {
+			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status IN ('completed', 'completed_with_errors')" );
+		} elseif ( $status_filter ) {
+			$total_campaigns = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status = %s", $status_filter ) );
+		} else {
+			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns" );
+		}
 		$total_pages     = (int) ceil( $total_campaigns / $per_page );
 
 		$this->print_flash();
@@ -627,7 +966,19 @@ class Olama_Messages_Admin {
 									<span class="olama-msg-pill" style="background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;margin-left:8px;font-weight:600;font-size:10px;text-transform:uppercase;padding:2px 6px;border-radius:4px;vertical-align:middle;display:inline-block;line-height:1.2;">Direct</span>
 								<?php endif; ?>
 							</td>
-							<td><code><?php echo esc_html( $c['study_year'] ); ?></code></td>
+							<td>
+								<code><?php echo esc_html( $c['study_year'] ); ?></code>
+								<?php if ( ! empty( $c['core_snapshot_at'] ) ) : ?>
+									<small class="olama-msg-muted" style="display:block;margin-top:4px;">
+										<?php
+										printf(
+											esc_html__( 'Core snapshot: %s', 'olama-messages' ),
+											esc_html( $c['core_snapshot_at'] )
+										);
+										?>
+									</small>
+								<?php endif; ?>
+							</td>
 							<td>
 								<?php
 								$policies = array(
@@ -667,7 +1018,7 @@ class Olama_Messages_Admin {
 										<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
 									</a>
 								<?php elseif ( $c['status'] === 'prepared' ) : ?>
-									<?php if ( intval( $c['total_included'] ) === 1 ) : ?>
+									<?php if ( intval( $c['total_included'] ) > 0 ) : ?>
 										<button type="button" class="button button-small button-primary olama-msg-start-btn"
 											data-campaign-id="<?php echo esc_attr( $c['id'] ); ?>"
 											data-title="<?php echo esc_attr( $c['title'] ); ?>"
@@ -677,7 +1028,7 @@ class Olama_Messages_Admin {
 										</button>
 									<?php else : ?>
 										<span class="olama-msg-safety-warning" style="color: #d63638; font-weight: bold; display: inline-block; padding: 4px 8px; background: #fcf1f1; border: 1px solid #f8cbcb; border-radius: 4px; margin-bottom: 5px;">
-											<?php esc_html_e( 'Run 4D safety mode allows only one prepared message.', 'olama-messages' ); ?>
+											<?php esc_html_e( 'No eligible messages are available to send.', 'olama-messages' ); ?>
 										</span>
 									<?php endif; ?>
 									<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-queue&campaign_id=' . $c['id'] ) ); ?>" class="button button-small">
@@ -868,20 +1219,6 @@ class Olama_Messages_Admin {
 
 		$total_pages = (int) ceil( $total_queue / $per_page );
 
-		// Action URLs.
-		$pause_url  = wp_nonce_url(
-			admin_url( 'admin-post.php?action=olama_msg_pause_campaign&campaign_id=' . $campaign_id ),
-			'olama_msg_pause_' . $campaign_id
-		);
-		$resume_url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=olama_msg_resume_campaign&campaign_id=' . $campaign_id ),
-			'olama_msg_resume_' . $campaign_id
-		);
-		$cancel_url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=olama_msg_cancel_campaign&campaign_id=' . $campaign_id ),
-			'olama_msg_cancel_' . $campaign_id
-		);
-
 		$this->print_flash();
 		?>
 		<div class="wrap olama-msg-wrap" id="olama-msg-campaign-progress"
@@ -907,19 +1244,10 @@ class Olama_Messages_Admin {
 			<!-- Controls -->
 			<div class="olama-msg-progress-controls" id="olama-msg-progress-controls">
 				<?php if ( $campaign['status'] === 'sending' ) : ?>
-					<a href="<?php echo esc_url( $pause_url ); ?>" class="button button-secondary olama-msg-btn-pause"
-						onclick="return confirm('<?php esc_attr_e( 'Pause sending? The agent will stop picking up new jobs.', 'olama-messages' ); ?>');">
-						⏸ <?php esc_html_e( 'Pause Sending', 'olama-messages' ); ?>
-					</a>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_pause_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $campaign_id ); ?>"><?php wp_nonce_field( 'olama_msg_pause_' . $campaign_id ); ?><button class="button button-secondary">⏸ <?php esc_html_e( 'Pause Sending', 'olama-messages' ); ?></button></form>
 				<?php elseif ( $campaign['status'] === 'paused' ) : ?>
-					<a href="<?php echo esc_url( $resume_url ); ?>" class="button button-primary"
-						onclick="return confirm('<?php esc_attr_e( 'Resume sending this campaign?', 'olama-messages' ); ?>');">
-						▶ <?php esc_html_e( 'Resume Sending', 'olama-messages' ); ?>
-					</a>
-					<a href="<?php echo esc_url( $cancel_url ); ?>" class="button button-link-delete"
-						onclick="return confirm('<?php esc_attr_e( 'Cancel campaign permanently? All pending records will be marked cancelled.', 'olama-messages' ); ?>');">
-						<?php esc_html_e( 'Cancel Campaign', 'olama-messages' ); ?>
-					</a>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_resume_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $campaign_id ); ?>"><?php wp_nonce_field( 'olama_msg_resume_' . $campaign_id ); ?><button class="button button-primary">▶ <?php esc_html_e( 'Resume Sending', 'olama-messages' ); ?></button></form>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_cancel_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $campaign_id ); ?>"><?php wp_nonce_field( 'olama_msg_cancel_' . $campaign_id ); ?><button class="button button-link-delete"><?php esc_html_e( 'Cancel Campaign', 'olama-messages' ); ?></button></form>
 				<?php endif; ?>
 			</div>
 
@@ -1001,17 +1329,11 @@ class Olama_Messages_Admin {
 					</thead>
 					<tbody>
 						<?php if ( $queue_rows ) : ?>
-							<?php foreach ( $queue_rows as $row ) :
-								$masked_phone = $this->mask_phone( $row['phone_e164'] );
-							?>
+							<?php foreach ( $queue_rows as $row ) : ?>
 							<tr data-queue-id="<?php echo esc_attr( $row['id'] ); ?>">
 								<td><?php echo esc_html( $row['id'] ); ?></td>
 								<td><?php echo esc_html( $row['recipient_name'] ?: '—' ); ?></td>
-								<td>
-									<code title="<?php echo esc_attr( $row['phone_e164'] ); ?>">
-										<?php echo esc_html( $masked_phone ); ?>
-									</code>
-								</td>
+								<td dir="ltr"><code><?php echo esc_html( $row['phone_e164'] ); ?></code></td>
 								<td data-queue-field="status"><?php echo $this->status_badge( $row['status'] ); ?></td>
 								<td data-queue-field="attempts"><?php echo esc_html( $row['attempt_count'] ); ?></td>
 								<td data-queue-field="last_error">
@@ -1076,6 +1398,8 @@ class Olama_Messages_Admin {
 		$study_years = $provider->get_available_study_years();
 		$templates   = $this->plugin->templates()->list_templates( array( 'is_active' => 1 ) );
 		$selected_study_year = $campaign['study_year'] ?? ( $study_years[0] ?? '' );
+		$selected_target_type = $campaign['target_type'] ?? 'collection';
+		$sync_health = $provider->get_sync_health( $selected_target_type, $selected_study_year );
 		$class_names   = $provider->get_available_class_names( $selected_study_year );
 		$section_names = $provider->get_available_section_names( $selected_study_year );
 		$route_options = $this->plugin->transportation()->get_route_options( $selected_study_year );
@@ -1125,6 +1449,18 @@ class Olama_Messages_Admin {
 													<strong><?php esc_html_e( 'Collection:', 'olama-messages' ); ?></strong> <?php esc_html_e( 'shows balance filters only.', 'olama-messages' ); ?>
 													<strong style="margin-left:12px;"><?php esc_html_e( 'General:', 'olama-messages' ); ?></strong> <?php esc_html_e( 'shows grade/class and section filters.', 'olama-messages' ); ?>
 													<strong style="margin-left:12px;"><?php esc_html_e( 'Transportation:', 'olama-messages' ); ?></strong> <?php esc_html_e( 'shows bus and round filters.', 'olama-messages' ); ?>
+												</p>
+											</div>
+											<div id="olama-campaign-core-health" class="notice <?php echo ! empty( $sync_health['ready'] ) ? 'notice-success' : 'notice-error'; ?> inline" style="margin:0 0 1rem;">
+												<p>
+													<strong><?php esc_html_e( 'Olama Core data:', 'olama-messages' ); ?></strong>
+													<span data-core-health-message>
+														<?php
+														echo ! empty( $sync_health['ready'] )
+															? esc_html( sprintf( __( 'Ready. Oldest required source sync: %s', 'olama-messages' ), $sync_health['last_synced_at'] ?: __( 'timestamp unavailable', 'olama-messages' ) ) )
+															: esc_html__( 'Not ready for this campaign type and study year.', 'olama-messages' );
+														?>
+													</span>
 												</p>
 											</div>
 											<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="olama-campaign-form">
@@ -1322,8 +1658,13 @@ class Olama_Messages_Admin {
 										'study_year_default'=> $selected_study_year,
 									) ); ?></script>
 
-									<div style="margin-top:1.5rem;border-top:1px solid #eee;padding-top:1.25rem;">
-										<?php submit_button( $is_edit ? __( 'Update Campaign Draft', 'olama-messages' ) : __( 'Save Campaign Draft', 'olama-messages' ), 'primary', 'submit', false ); ?>
+									<div style="margin-top:1.5rem;border-top:1px solid #eee;padding-top:1.25rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+										<button type="submit" class="button" name="campaign_action" value="save">
+											<?php echo $is_edit ? esc_html__( 'Update Draft', 'olama-messages' ) : esc_html__( 'Save Draft', 'olama-messages' ); ?>
+										</button>
+										<button type="submit" class="button button-primary" name="campaign_action" value="prepare">
+											<?php esc_html_e( 'Save & Review Queue', 'olama-messages' ); ?>
+										</button>
 										<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-campaigns' ) ); ?>" class="button" style="margin-left:0.5rem;">
 											<?php esc_html_e( 'Cancel', 'olama-messages' ); ?>
 										</a>
@@ -1653,6 +1994,13 @@ class Olama_Messages_Admin {
 		);
 
 		$total_pages = (int) ceil( $total / $per_page );
+		$selected_campaign = $f_campaign_id ? $this->plugin->campaigns()->get_campaign( $f_campaign_id ) : null;
+		$selected_start_url = ( $selected_campaign && 'prepared' === $selected_campaign['status'] )
+			? wp_nonce_url(
+				admin_url( 'admin-post.php?action=olama_msg_start_campaign&campaign_id=' . $f_campaign_id ),
+				'olama_msg_start_' . $f_campaign_id
+			)
+			: '';
 
 		$this->print_flash();
 		?>
@@ -1660,11 +2008,16 @@ class Olama_Messages_Admin {
 			<h1 class="olama-msg-page-title">
 				<span class="dashicons dashicons-list-view"></span>
 				<?php esc_html_e( 'SMS Dispatch Queue', 'olama-messages' ); ?>
+				<?php if ( $selected_start_url ) : ?>
+					<a href="<?php echo esc_url( $selected_start_url ); ?>" class="page-title-action" onclick="return confirm('<?php esc_attr_e( 'Start paced sending for all prepared messages in this campaign?', 'olama-messages' ); ?>');">
+						▶ <?php esc_html_e( 'Start Sending', 'olama-messages' ); ?>
+					</a>
+				<?php endif; ?>
 			</h1>
 
 			<div class="notice notice-info inline">
 				<p>
-					<?php esc_html_e( 'Messages are sent only when a campaign is started and an authenticated Windows agent dispatcher is enabled. Safety mode currently keeps sending to one prepared message at a time so the first message can be verified before the queue continues.', 'olama-messages' ); ?>
+					<?php esc_html_e( 'Messages are sent only after a campaign is started and an authenticated Windows agent is online. The dispatcher processes the campaign sequentially, one SMS per reservation, with retry and pause controls.', 'olama-messages' ); ?>
 				</p>
 			</div>
 
@@ -2440,6 +2793,9 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign save/update. */
 	public function handle_save_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
@@ -2448,6 +2804,10 @@ class Olama_Messages_Admin {
 
 		$campaign_svc = $this->plugin->campaigns();
 		$campaign_id  = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
+		$campaign_action = sanitize_key( wp_unslash( $_POST['campaign_action'] ?? 'save' ) );
+		if ( ! in_array( $campaign_action, array( 'save', 'prepare' ), true ) ) {
+			$campaign_action = 'save';
+		}
 
 		$data = array(
 			'title'                   => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ),
@@ -2472,20 +2832,38 @@ class Olama_Messages_Admin {
 		);
 
 		try {
+			$saved_campaign_id = $campaign_id;
 			if ( $campaign_id > 0 ) {
 				$ok = $campaign_svc->update_campaign( $campaign_id, $data );
 				if ( $ok ) {
 					$this->set_flash( __( 'Campaign draft updated successfully.', 'olama-messages' ), 'success' );
 				} else {
+					$saved_campaign_id = 0;
 					$this->set_flash( __( 'Failed to update campaign draft.', 'olama-messages' ), 'error' );
 				}
 			} else {
 				$new_id = $campaign_svc->create_campaign( $data );
 				if ( $new_id ) {
+					$saved_campaign_id = $new_id;
 					$this->set_flash( __( 'Campaign draft created successfully.', 'olama-messages' ), 'success' );
 				} else {
 					$this->set_flash( __( 'Failed to create campaign draft.', 'olama-messages' ), 'error' );
 				}
+			}
+
+			if ( $saved_campaign_id && 'prepare' === $campaign_action ) {
+				$prepared = $campaign_svc->prepare_campaign( $saved_campaign_id );
+				$this->set_flash(
+					sprintf(
+						__( 'Campaign prepared: %1$d messages ready; %2$d recipients excluded.', 'olama-messages' ),
+						$prepared['total_prepared'],
+						$prepared['total_excluded']
+					),
+					'success'
+				);
+
+				wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $saved_campaign_id . '&step=5' ) );
+				exit;
 			}
 		} catch ( Exception $e ) {
 			$this->set_flash( $e->getMessage(), 'error' );
@@ -2497,11 +2875,14 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign deletion. */
 	public function handle_delete_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2525,11 +2906,14 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign preparation. */
 	public function handle_prepare_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2552,17 +2936,20 @@ class Olama_Messages_Admin {
 			$this->set_flash( $e->getMessage(), 'error' );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaigns' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $campaign_id . '&step=5' ) );
 		exit;
 	}
 
 	/** Handle campaign reset to draft. */
 	public function handle_reset_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2580,17 +2967,24 @@ class Olama_Messages_Admin {
 			$this->set_flash( $e->getMessage(), 'error' );
 		}
 
-		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaigns' ) );
+		$redirect_step = absint( $_POST['redirect_step'] ?? 0 );
+		$redirect_url  = 4 === $redirect_step
+			? admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $campaign_id . '&step=4' )
+			: admin_url( 'admin.php?page=olama-messages-campaigns' );
+		wp_safe_redirect( $redirect_url );
 		exit;
 	}
 
 	/** Handle campaign cancellation. */
 	public function handle_cancel_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2616,11 +3010,14 @@ class Olama_Messages_Admin {
 
 	/** Handle Start Campaign POST. */
 	public function handle_start_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2628,7 +3025,8 @@ class Olama_Messages_Admin {
 		check_admin_referer( 'olama_msg_start_' . $campaign_id );
 
 		try {
-			$this->plugin->campaigns()->start_campaign_sending( $campaign_id );
+			$confirmation = sanitize_text_field( wp_unslash( $_POST['confirmation'] ?? '' ) );
+			$this->plugin->campaigns()->authorize_campaign_sending( $campaign_id, $confirmation );
 			$this->set_flash( __( 'Campaign started. The sending agent will begin dispatching SMS messages shortly.', 'olama-messages' ), 'success' );
 		} catch ( Exception $e ) {
 			$this->set_flash( $e->getMessage(), 'error' );
@@ -2640,11 +3038,14 @@ class Olama_Messages_Admin {
 
 	/** Handle Pause Campaign POST. */
 	public function handle_pause_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -2664,11 +3065,14 @@ class Olama_Messages_Admin {
 
 	/** Handle Resume Campaign POST. */
 	public function handle_resume_campaign() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
+		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_GET['campaign_id'] ) ? absint( $_GET['campaign_id'] ) : 0;
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}
@@ -3005,7 +3409,8 @@ class Olama_Messages_Admin {
 			$page     = max( 1, absint( $_POST['preview_page'] ?? 1 ) );
 			$requested_per_page = absint( $_POST['preview_per_page'] ?? 25 );
 			$per_page = in_array( $requested_per_page, array( 10, 25, 50, 100 ), true ) ? $requested_per_page : 25;
-			$preview = $this->plugin->campaigns()->preview_candidates( $data, array(
+			$preview_source = ! empty( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : $data;
+			$preview = $this->plugin->campaigns()->preview_candidates( $preview_source, array(
 				'limit'          => $per_page,
 				'offset'         => ( $page - 1 ) * $per_page,
 				'show_excluded'  => isset( $_POST['show_excluded'] ) && '1' === sanitize_text_field( wp_unslash( $_POST['show_excluded'] ) ),
@@ -3015,6 +3420,23 @@ class Olama_Messages_Admin {
 			$preview['page']        = $page;
 			$preview['per_page']    = $per_page;
 			$preview['total_pages'] = max( 1, (int) ceil( $preview['total_displayed'] / $per_page ) );
+			$preview['sync_health'] = $this->plugin->provider()->get_sync_health(
+				$data['target_type'],
+				$data['study_year']
+			);
+			if ( ! empty( $_POST['campaign_id'] ) ) {
+				$preview_campaign = $this->plugin->campaigns()->get_campaign( absint( $_POST['campaign_id'] ) );
+				$preview['campaign'] = array(
+					'study_year'       => $preview_campaign['study_year'] ?? '',
+					'target_type'      => $preview_campaign['target_type'] ?? '',
+					'recipient_policy' => $preview_campaign['recipient_policy'] ?? '',
+				);
+				$preview['sync_health'] = $this->plugin->provider()->get_sync_health(
+					$preview['campaign']['target_type'],
+					$preview['campaign']['study_year']
+				);
+			}
+			$preview['data_source'] = 'olama_core';
 
 			wp_send_json_success( $preview );
 		} catch ( Exception $e ) {
@@ -3633,7 +4055,7 @@ class Olama_Messages_Admin {
 
 			<!-- Page Description -->
 			<p class="description" style="margin-bottom: 20px;">
-				<?php esc_html_e( 'Send exactly one SMS safely to a specific family. Real payment report tokens are generated only at send time by the active Windows agent.', 'olama-messages' ); ?>
+				<?php esc_html_e( 'Prepare exactly one SMS for a specific family. Nothing is sent until you review and authorize the prepared message.', 'olama-messages' ); ?>
 			</p>
 
 			<!-- Agent Status Banner -->
@@ -3668,7 +4090,7 @@ class Olama_Messages_Admin {
 			<?php endif; ?>
 
 			<!-- Main Layout Container -->
-			<?php if ( $dispatcher_ready_agent ) : ?>
+			<?php if ( true ) : ?>
 			<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; align-items: start;">
 				
 				<!-- Left Column: Search Family -->
@@ -3790,40 +4212,22 @@ class Olama_Messages_Admin {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		global $wpdb;
-
-		// 1. Verify an online, dispatcher-ready agent is connected (not revoked, seen in the last 5 minutes).
-		$dispatcher_ready_agent = $this->plugin->agents()->get_ready_dispatcher_agent();
-
-		if ( ! $dispatcher_ready_agent ) {
-			$this->set_flash( __( 'No online dispatcher-ready SMS agent is currently active. The agent must be online, KDE-ready, and have its dispatcher enabled.', 'olama-messages' ), 'error' );
-			wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-direct' ) );
-			exit;
-		}
-
-		// 2. Extract parameters
+		// Preparation is deliberately independent of agent readiness.
 		$family_id      = isset( $_POST['family_id'] ) ? absint( $_POST['family_id'] ) : 0;
 		$recipient_role = sanitize_text_field( $_POST['recipient_role'] ?? '' );
 		$message_body   = sanitize_textarea_field( $_POST['message_body'] ?? '' );
 		$study_year     = sanitize_text_field( $_POST['study_year'] ?? '' );
 
 		try {
-			$campaign_id = $this->plugin->campaigns()->create_direct_message_campaign(
+			$campaign_id = $this->plugin->campaigns()->prepare_direct_message_campaign(
 				$family_id,
 				$recipient_role,
 				$message_body,
 				$study_year
 			);
 
-			$is_dispatcher_enabled = ! empty( $dispatcher_ready_agent['heartbeat']['dispatcher_enabled'] );
-			if ( $is_dispatcher_enabled ) {
-				$msg = __( 'Direct SMS queued successfully. The active Windows agent will dispatch it immediately.', 'olama-messages' );
-			} else {
-				$msg = __( 'Direct SMS queued successfully. It will be sent when the Windows agent dispatcher reserves the job.', 'olama-messages' );
-			}
-
-			$this->set_flash( $msg, 'success' );
-			wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaign-progress&campaign_id=' . $campaign_id ) );
+			$this->set_flash( __( 'Direct SMS prepared. Review the locked message and authorize it when the sending agent is ready.', 'olama-messages' ), 'success' );
+			wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $campaign_id . '&step=5' ) );
 			exit;
 		} catch ( Exception $e ) {
 			$this->set_flash( __( 'Failed to queue direct SMS: ', 'olama-messages' ) . $e->getMessage(), 'error' );

@@ -3,7 +3,7 @@
  * SMS / message template renderer.
  *
  * Renders Arabic message templates with variable substitution and
- * calculates Unicode SMS parts (70 chars/part for Arabic).
+ * validates placeholders and calculates GSM-7 or Unicode SMS parts.
  *
  * @package Olama_Messages
  */
@@ -14,11 +14,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Olama_Messages_Template_Renderer {
 
-	/** Characters per SMS part for Arabic/Unicode (UCS-2 encoding). */
-	const UNICODE_CHARS_PER_PART = 70;
-
-	/** Characters per single-part SMS when content fits in one message. */
 	const UNICODE_SINGLE_PART = 70;
+	const UNICODE_MULTIPART_PART = 67;
+	const GSM7_SINGLE_PART = 160;
+	const GSM7_MULTIPART_PART = 153;
+
+	/** GSM 03.38 default and extension tables. */
+	const GSM7_BASIC = "@£\$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1BÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+	const GSM7_EXTENSION = "^{}\\[~]|€";
+
+	/** Supported operator-facing placeholders. */
+	const SUPPORTED_PLACEHOLDERS = 'sponsor_name,family_id,students,balance,monthly_due,monthly_due_source,payment_link,study_year,school_name,contact_phone';
 
 	/** Default Arabic payment-reminder template (used when financial data IS available). */
 	const DEFAULT_TEMPLATE = "ولي الأمر المحترم،\nنذكركم بوجود رصيد مستحق بقيمة {balance} د.أ.\nيمكنكم مراجعة تفاصيل المطالبة من الرابط التالي:\n{payment_link}\nأكاديمية علماء المستقبل";
@@ -105,6 +111,29 @@ class Olama_Messages_Template_Renderer {
 			|| strpos( $template, '{monthly_due}' ) !== false;
 	}
 
+	/**
+	 * Return unsupported placeholders found in a message body.
+	 */
+	public function unknown_placeholders( $template ) {
+		preg_match_all( '/\{([a-zA-Z0-9_]+)\}/', (string) $template, $matches );
+		$supported = explode( ',', self::SUPPORTED_PLACEHOLDERS );
+		$unknown = array();
+		foreach ( array_unique( $matches[1] ?? array() ) as $placeholder ) {
+			if ( ! in_array( $placeholder, $supported, true ) ) {
+				$unknown[] = $placeholder;
+			}
+		}
+		return $unknown;
+	}
+
+	public function validate_placeholders( $template ) {
+		$unknown = $this->unknown_placeholders( $template );
+		return array(
+			'valid'   => empty( $unknown ),
+			'unknown' => $unknown,
+		);
+	}
+
 
 	/**
 	 * Count the number of Unicode SMS parts for a given text.
@@ -115,11 +144,8 @@ class Olama_Messages_Template_Renderer {
 	 * @return int
 	 */
 	public function count_sms_parts( $text ) {
-		$length = mb_strlen( $text, 'UTF-8' );
-		if ( $length === 0 ) {
-			return 0;
-		}
-		return (int) ceil( $length / self::UNICODE_CHARS_PER_PART );
+		$info = $this->sms_info( $text );
+		return $info['sms_parts'];
 	}
 
 	/**
@@ -130,10 +156,36 @@ class Olama_Messages_Template_Renderer {
 	 */
 	public function sms_info( $text ) {
 		$char_count = (int) mb_strlen( $text, 'UTF-8' );
+		$encoding = 'gsm7';
+		$encoded_units = 0;
+
+		foreach ( preg_split( '//u', (string) $text, -1, PREG_SPLIT_NO_EMPTY ) as $character ) {
+			if ( false !== mb_strpos( self::GSM7_BASIC, $character, 0, 'UTF-8' ) ) {
+				$encoded_units++;
+			} elseif ( false !== mb_strpos( self::GSM7_EXTENSION, $character, 0, 'UTF-8' ) ) {
+				$encoded_units += 2;
+			} else {
+				$encoding = 'unicode';
+				$encoded_units = $char_count;
+				break;
+			}
+		}
+
+		$single_limit = 'gsm7' === $encoding ? self::GSM7_SINGLE_PART : self::UNICODE_SINGLE_PART;
+		$multipart_limit = 'gsm7' === $encoding ? self::GSM7_MULTIPART_PART : self::UNICODE_MULTIPART_PART;
+		$sms_parts = 0;
+		if ( $encoded_units > 0 ) {
+			$sms_parts = $encoded_units <= $single_limit ? 1 : (int) ceil( $encoded_units / $multipart_limit );
+		}
+
 		return array(
-			'char_count'     => $char_count,
-			'sms_parts'      => $this->count_sms_parts( $text ),
-			'chars_per_part' => self::UNICODE_CHARS_PER_PART,
+			'encoding'          => $encoding,
+			'char_count'        => $char_count,
+			'encoded_units'     => $encoded_units,
+			'sms_parts'         => $sms_parts,
+			'single_part_limit' => $single_limit,
+			'multipart_limit'   => $multipart_limit,
+			'chars_per_part'    => $encoded_units <= $single_limit ? $single_limit : $multipart_limit,
 		);
 	}
 
