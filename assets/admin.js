@@ -691,7 +691,7 @@
     // A. Search Families
     function performFamilySearch() {
         var query = $('#olama-msg-direct-search-input').val().trim();
-        var studyYear = $('#olama-msg-direct-study-year-val').val() || '2026-2027';
+        var studyYear = $('#olama-msg-direct-study-year-val').val() || '';
         var $resultsBox = $('#olama-msg-direct-search-results');
         var $placeholder = $('#olama-msg-direct-search-placeholder');
         var $btn = $('#olama-msg-direct-search-btn');
@@ -841,7 +841,7 @@
     // C. Template Selection Change
     $('#olama-msg-direct-template-select').on('change', function () {
         var templateId = $(this).val();
-        var studyYear = $('#olama-msg-direct-study-year-val').val() || '2026-2027';
+        var studyYear = $('#olama-msg-direct-study-year-val').val() || '';
         var $textarea = $('#olama-msg-direct-body-textarea');
 
         if (!selectedFamilyData || !templateId) {

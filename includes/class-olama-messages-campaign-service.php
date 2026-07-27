@@ -321,8 +321,7 @@ class Olama_Messages_Campaign_Service {
 		}
 
 		if ( ! $study_year ) {
-			$years       = Olama_Messages_Plugin::instance()->provider()->get_available_study_years();
-			$study_year = ! empty( $years ) ? $years[0] : '2026-2027';
+			$study_year = Olama_Messages_Plugin::instance()->provider()->get_current_study_year();
 		}
 
 		// 2. Fetch family recipient details using Core Provider
@@ -526,8 +525,7 @@ class Olama_Messages_Campaign_Service {
 		$study_year = $campaign['study_year'];
 		$target_type = $campaign['target_type'] ?? 'collection';
 		if ( empty( $study_year ) ) {
-			$years      = Olama_Messages_Plugin::instance()->provider()->get_available_study_years();
-			$study_year = ! empty( $years ) ? $years[0] : '2025/2026';
+			$study_year = Olama_Messages_Plugin::instance()->provider()->get_current_study_year();
 		}
 
 		$template_body = $this->get_effective_message_body( $campaign );

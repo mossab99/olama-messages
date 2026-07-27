@@ -2676,15 +2676,15 @@ class Olama_Messages_Admin {
 						</tr>
 						<tr>
 							<th scope="row">
-								<label for="olama_msg_default_study_year"><?php esc_html_e( 'Default Study Year', 'olama-messages' ); ?></label>
+								<label for="olama_msg_default_study_year"><?php esc_html_e( 'Active Study Year (Olama Core)', 'olama-messages' ); ?></label>
 							</th>
 							<td>
 								<?php
 								$years = $this->plugin->provider()->get_available_study_years();
-								$saved = get_option( 'olama_msg_default_study_year', '' );
+								$saved = $this->plugin->provider()->get_current_study_year();
 								?>
 								<?php if ( $years ) : ?>
-									<select id="olama_msg_default_study_year" name="olama_msg_default_study_year">
+									<select id="olama_msg_default_study_year" disabled>
 										<option value=""><?php esc_html_e( '— None —', 'olama-messages' ); ?></option>
 										<?php foreach ( $years as $yr ) : ?>
 											<option value="<?php echo esc_attr( $yr ); ?>" <?php selected( $saved, $yr ); ?>>
@@ -2693,7 +2693,7 @@ class Olama_Messages_Admin {
 										<?php endforeach; ?>
 									</select>
 								<?php else : ?>
-									<input type="text" id="olama_msg_default_study_year" name="olama_msg_default_study_year"
+									<input type="text" id="olama_msg_default_study_year" disabled readonly
 										value="<?php echo esc_attr( $saved ); ?>"
 										class="regular-text"
 										placeholder="<?php esc_attr_e( 'e.g. 2025/2026', 'olama-messages' ); ?>">
@@ -3280,7 +3280,6 @@ class Olama_Messages_Admin {
 			'olama_msg_contact_phone'        => 'sanitize_text_field',
 			'olama_msg_payment_instructions' => 'sanitize_textarea_field',
 			'olama_msg_token_expiry_days'    => 'absint',
-			'olama_msg_default_study_year'   => 'sanitize_text_field',
 		);
 
 		foreach ( $fields as $key => $sanitizer ) {
@@ -4044,7 +4043,7 @@ class Olama_Messages_Admin {
 
 		$templates   = $this->plugin->templates()->list_templates( array( 'is_active' => 1 ) );
 		$years       = $this->plugin->provider()->get_available_study_years();
-		$active_year = ! empty( $years ) ? $years[0] : '2026-2027';
+		$active_year = $this->plugin->provider()->get_current_study_year();
 
 		?>
 		<div class="wrap olama-msg-wrap">

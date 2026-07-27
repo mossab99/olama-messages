@@ -26,7 +26,22 @@ class Olama_Messages_Core_Provider {
 	}
 
 	public function get_available_study_years() {
-		return $this->is_core_available() ? olama_core()->audiences()->get_study_years() : array();
+		$years = $this->is_core_available() ? olama_core()->audiences()->get_study_years() : array();
+		$current = $this->get_current_study_year();
+		$years = array_values( array_filter( array_map( 'strval', (array) $years ) ) );
+		if ( '' !== $current ) {
+			$years = array_values( array_diff( $years, array( $current ) ) );
+			array_unshift( $years, $current );
+		}
+		return $years;
+	}
+
+	public function get_current_study_year() {
+		if ( ! function_exists( 'olama_core' ) || ! method_exists( olama_core(), 'academic_context' ) ) {
+			return '';
+		}
+		$year = olama_core()->academic_context()->current_year();
+		return $year ? (string) ( ! empty( $year->code ) ? $year->code : $year->year_name ) : '';
 	}
 
 	public function get_available_class_names( $study_year = '' ) {
@@ -138,8 +153,7 @@ class Olama_Messages_Core_Provider {
 
 		$family_id = sanitize_text_field( (string) $family_id );
 		if ( $study_year === '' ) {
-			$years = $this->get_available_study_years();
-			$study_year = $years ? (string) $years[0] : '';
+			$study_year = $this->get_current_study_year();
 		}
 
 		$report = olama_core()->financial()->get_payment_report( $family_id, $study_year );
