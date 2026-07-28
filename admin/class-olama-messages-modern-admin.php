@@ -193,7 +193,7 @@ class Olama_Messages_Modern_Admin {
 		$summary = is_array( $result['summary'] ?? null ) ? $result['summary'] : array();
 		$last_synced_at = sanitize_text_field( (string) ( $summary['last_synced_at'] ?? '' ) );
 		$can_sync = current_user_can( 'olama_access_messages' ) && current_user_can( 'olama_access_oracle_sync' );
-		$bridge_available = function_exists( 'olama_oracle_sync_refresh_family_contacts' );
+		$bridge_available = function_exists( 'olama_core' ) && method_exists( olama_core(), 'sync' ) && olama_core()->sync()->available( 'family_contacts' );
 		$action = '';
 		if ( $can_sync ) {
 			$action  = '<form class="omsg-inline-form omsg-phonebook-sync" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';

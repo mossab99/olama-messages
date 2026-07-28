@@ -495,16 +495,16 @@ class Olama_Messages_Admin {
 			admin_url( 'admin.php' )
 		);
 
-		if ( ! function_exists( 'olama_oracle_sync_refresh_family_contacts' ) ) {
+		if ( ! function_exists( 'olama_core' ) || ! method_exists( olama_core(), 'sync' ) || ! olama_core()->sync()->available( 'family_contacts' ) ) {
 			$this->set_flash( __( 'Olama Bridge is unavailable. Activate or update Olama Oracle Sync before synchronizing family details.', 'olama-messages' ), 'error' );
 			wp_safe_redirect( $redirect );
 			exit;
 		}
 
 		try {
-			$result = olama_oracle_sync_refresh_family_contacts();
-			if ( ! is_array( $result ) || empty( $result['success'] ) ) {
-				$message = is_array( $result ) ? ( $result['message'] ?? '' ) : '';
+			$result = olama_core()->sync()->family_contacts();
+			if ( is_wp_error( $result ) || ! is_array( $result ) || empty( $result['success'] ) ) {
+				$message = is_wp_error( $result ) ? $result->get_error_message() : ( is_array( $result ) ? ( $result['message'] ?? '' ) : '' );
 				$this->set_flash( sanitize_text_field( $message ?: __( 'Family contacts sync failed.', 'olama-messages' ) ), 'error' );
 			} else {
 				$audit = is_array( $result['audit'] ?? null ) ? $result['audit'] : array();
