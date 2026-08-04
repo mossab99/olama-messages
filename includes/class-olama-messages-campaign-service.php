@@ -536,74 +536,90 @@ class Olama_Messages_Campaign_Service {
 		// Extract filters (class_name, section_name, family_id, transport fields).
 		$filters = isset( $campaign['filters'] ) && is_array( $campaign['filters'] ) ? $campaign['filters'] : array();
 
-		// Fetch candidates in chunks.
-		$all_items  = array();
-		$chunk_size = 200;
-		$offset     = 0;
-		$provider   = Olama_Messages_Plugin::instance()->provider();
-		$page_signatures = array();
-		$page_count      = 0;
+		// ─── Route new classified audience types ─────────────────────────────────
+		// New types return a flat array of family items directly. Existing legacy
+		// types (collection, general, transportation) use the Core provider loop.
+		$new_audience_types = array(
+			'finance_outstanding',
+			'transport_no_gps',
+			'transport_registered',
+			'store_missing',
+			'academic',
+		);
 
-		while ( $page_count < 100 ) {
-			$page_count++;
-			$query_filters = array(
-				'study_year'            => $study_year,
-				'target_type'           => $target_type,
-				'limit'                 => $chunk_size,
-				'offset'                => $offset,
-			);
+		$all_items = array();
 
-			if ( ! empty( $filters['family_id'] ) ) {
-				$query_filters['family_id'] = $filters['family_id'];
-			}
-			if ( ! empty( $filters['class_name'] ) && 'transportation' !== $target_type ) {
-				$query_filters['class_name'] = $filters['class_name'];
-			}
-			if ( ! empty( $filters['section_name'] ) && 'transportation' !== $target_type ) {
-				$query_filters['section_name'] = $filters['section_name'];
-			}
-			if ( ! empty( $filters['class_id'] ) ) {
-				$query_filters['class_id'] = $filters['class_id'];
-			}
-			if ( ! empty( $filters['section_id'] ) ) {
-				$query_filters['section_id'] = $filters['section_id'];
-			}
-			if ( ! empty( $filters['class_name'] ) && 'general' === $target_type ) {
-				$query_filters['class_name'] = $filters['class_name'];
-			}
-			if ( ! empty( $filters['section_name'] ) && 'general' === $target_type ) {
-				$query_filters['section_name'] = $filters['section_name'];
-			}
-			if ( ! empty( $filters['bus_name'] ) && 'transportation' === $target_type ) {
-				$query_filters['bus_name'] = $filters['bus_name'];
-			}
-			if ( ! empty( $filters['round_name'] ) && 'transportation' === $target_type ) {
-				$query_filters['round_name'] = $filters['round_name'];
-			}
-			if ( ! empty( $filters['departure_bus'] ) && 'transportation' === $target_type ) {
-				$query_filters['departure_bus'] = $filters['departure_bus'];
-			}
-			if ( ! empty( $filters['arrival_bus'] ) && 'transportation' === $target_type ) {
-				$query_filters['arrival_bus'] = $filters['arrival_bus'];
-			}
+		if ( in_array( $target_type, $new_audience_types, true ) ) {
+			$all_items = $this->fetch_classified_audience( $target_type, $study_year, $filters );
+		} else {
+			// Legacy: fetch from Olama Core in chunks.
+			$chunk_size = 200;
+			$offset     = 0;
+			$provider   = Olama_Messages_Plugin::instance()->provider();
+			$page_signatures = array();
+			$page_count      = 0;
 
-			$res = $provider->get_recipients_preview( $query_filters );
-			if ( empty( $res['items'] ) ) {
-				break;
-			}
-			$signature = md5( wp_json_encode( array_map( static function ( $row ) {
-				return $row['oracle_family_id'] ?? $row['family_id'] ?? null;
-			}, $res['items'] ) ) );
-			if ( isset( $page_signatures[ $signature ] ) ) {
-				break;
-			}
-			$page_signatures[ $signature ] = true;
+			while ( $page_count < 100 ) {
+				$page_count++;
+				$query_filters = array(
+					'study_year'  => $study_year,
+					'target_type' => $target_type,
+					'limit'       => $chunk_size,
+					'offset'      => $offset,
+				);
 
-			$all_items = array_merge( $all_items, $res['items'] );
+				if ( ! empty( $filters['family_id'] ) ) {
+					$query_filters['family_id'] = $filters['family_id'];
+				}
+				if ( ! empty( $filters['class_name'] ) && 'transportation' !== $target_type ) {
+					$query_filters['class_name'] = $filters['class_name'];
+				}
+				if ( ! empty( $filters['section_name'] ) && 'transportation' !== $target_type ) {
+					$query_filters['section_name'] = $filters['section_name'];
+				}
+				if ( ! empty( $filters['class_id'] ) ) {
+					$query_filters['class_id'] = $filters['class_id'];
+				}
+				if ( ! empty( $filters['section_id'] ) ) {
+					$query_filters['section_id'] = $filters['section_id'];
+				}
+				if ( ! empty( $filters['class_name'] ) && 'general' === $target_type ) {
+					$query_filters['class_name'] = $filters['class_name'];
+				}
+				if ( ! empty( $filters['section_name'] ) && 'general' === $target_type ) {
+					$query_filters['section_name'] = $filters['section_name'];
+				}
+				if ( ! empty( $filters['bus_name'] ) && 'transportation' === $target_type ) {
+					$query_filters['bus_name'] = $filters['bus_name'];
+				}
+				if ( ! empty( $filters['round_name'] ) && 'transportation' === $target_type ) {
+					$query_filters['round_name'] = $filters['round_name'];
+				}
+				if ( ! empty( $filters['departure_bus'] ) && 'transportation' === $target_type ) {
+					$query_filters['departure_bus'] = $filters['departure_bus'];
+				}
+				if ( ! empty( $filters['arrival_bus'] ) && 'transportation' === $target_type ) {
+					$query_filters['arrival_bus'] = $filters['arrival_bus'];
+				}
 
-			// Some providers enforce a smaller page size than requested. Advance by
-			// the rows actually received so no families are skipped.
-			$offset += count( $res['items'] );
+				$res = $provider->get_recipients_preview( $query_filters );
+				if ( empty( $res['items'] ) ) {
+					break;
+				}
+				$signature = md5( wp_json_encode( array_map( static function ( $row ) {
+					return $row['oracle_family_id'] ?? $row['family_id'] ?? null;
+				}, $res['items'] ) ) );
+				if ( isset( $page_signatures[ $signature ] ) ) {
+					break;
+				}
+				$page_signatures[ $signature ] = true;
+
+				$all_items = array_merge( $all_items, $res['items'] );
+
+				// Some providers enforce a smaller page size than requested. Advance by
+				// the rows actually received so no families are skipped.
+				$offset += count( $res['items'] );
+			}
 		}
 
 		$evaluated_targets = array();
@@ -1438,4 +1454,159 @@ class Olama_Messages_Campaign_Service {
 		}
 		return false !== $wpdb->delete( $this->table_queue, array( 'id' => $queue_id ), array( '%d' ) );
 	}
+
+	// ─── Classified Audience Router ───────────────────────────────────────────
+
+	/**
+	 * Dispatch to the correct data source for the new classified audience types.
+	 *
+	 * @param  string $target_type  One of: finance_outstanding, academic, transport_no_gps,
+	 *                              transport_registered, store_missing.
+	 * @param  string $study_year
+	 * @param  array  $filters      Campaign filters array.
+	 * @return array  Flat array of recipient items compatible with the existing
+	 *                preview_candidates() evaluation loop.
+	 */
+	private function fetch_classified_audience( $target_type, $study_year, array $filters ) {
+		$plugin = Olama_Messages_Plugin::instance();
+
+		switch ( $target_type ) {
+
+			// ── Finance: Outstanding balances ─────────────────────────────────
+			case 'finance_outstanding':
+				// Reuse the existing financial / collection flow via the Core provider.
+				$provider      = $plugin->provider();
+				$all_items     = array();
+				$chunk_size    = 200;
+				$offset        = 0;
+				$page_sigs     = array();
+				$page_count    = 0;
+				while ( $page_count < 100 ) {
+					$page_count++;
+					$q = array(
+						'study_year'  => $study_year,
+						'target_type' => 'collection', // maps to financial
+						'limit'       => $chunk_size,
+						'offset'      => $offset,
+					);
+					if ( ! empty( $filters['family_id'] ) ) {
+						$q['family_id'] = $filters['family_id'];
+					}
+					if ( isset( $filters['min_balance'] ) ) {
+						$q['min_balance'] = $filters['min_balance'];
+					}
+					if ( isset( $filters['exclude_credit_balances'] ) ) {
+						$q['exclude_credit_balances'] = $filters['exclude_credit_balances'];
+					}
+					if ( isset( $filters['exclude_zero_balances'] ) ) {
+						$q['exclude_zero_balances'] = $filters['exclude_zero_balances'];
+					}
+					$res = $provider->get_recipients_preview( $q );
+					if ( empty( $res['items'] ) ) {
+						break;
+					}
+					$sig = md5( wp_json_encode( wp_list_pluck( $res['items'], 'oracle_family_id' ) ) );
+					if ( isset( $page_sigs[ $sig ] ) ) {
+						break;
+					}
+					$page_sigs[ $sig ] = true;
+					$all_items         = array_merge( $all_items, $res['items'] );
+					$offset           += count( $res['items'] );
+				}
+				return $all_items;
+
+			// ── Academic: filtered by school / grade / section ────────────────
+			case 'academic':
+				$provider   = $plugin->provider();
+				$all_items  = array();
+				$chunk_size = 200;
+				$offset     = 0;
+				$page_sigs  = array();
+				$page_count = 0;
+				while ( $page_count < 100 ) {
+					$page_count++;
+					$q = array(
+						'study_year'  => $study_year,
+						'target_type' => 'general',
+						'limit'       => $chunk_size,
+						'offset'      => $offset,
+					);
+					// Academic filters.
+					foreach ( array( 'family_id', 'class_id', 'class_name', 'section_id', 'section_name', 'school_id', 'school_name' ) as $fk ) {
+						if ( ! empty( $filters[ $fk ] ) ) {
+							$q[ $fk ] = $filters[ $fk ];
+						}
+					}
+					$res = $provider->get_recipients_preview( $q );
+					if ( empty( $res['items'] ) ) {
+						break;
+					}
+					$sig = md5( wp_json_encode( wp_list_pluck( $res['items'], 'oracle_family_id' ) ) );
+					if ( isset( $page_sigs[ $sig ] ) ) {
+						break;
+					}
+					$page_sigs[ $sig ] = true;
+					$all_items         = array_merge( $all_items, $res['items'] );
+					$offset           += count( $res['items'] );
+				}
+				return $all_items;
+
+			// ── Transportation: families without GPS ──────────────────────────
+			case 'transport_no_gps':
+				if ( ! method_exists( $plugin, 'transportation' ) ) {
+					return array();
+				}
+				return $plugin->transportation()->get_families_without_gps( $study_year );
+
+			// ── Transportation: registered families with bus / area filters ───
+			case 'transport_registered':
+				$provider   = $plugin->provider();
+				$all_items  = array();
+				$chunk_size = 200;
+				$offset     = 0;
+				$page_sigs  = array();
+				$page_count = 0;
+				while ( $page_count < 100 ) {
+					$page_count++;
+					$q = array(
+						'study_year'  => $study_year,
+						'target_type' => 'transportation',
+						'limit'       => $chunk_size,
+						'offset'      => $offset,
+					);
+					foreach ( array( 'family_id', 'departure_bus', 'arrival_bus', 'bus_name', 'round_name', 'trans_route' ) as $fk ) {
+						if ( ! empty( $filters[ $fk ] ) ) {
+							$q[ $fk ] = $filters[ $fk ];
+						}
+					}
+					// Area filter — pass as trans_region_name or major_area_id.
+					if ( ! empty( $filters['major_area_id'] ) ) {
+						$q['major_area_id'] = $filters['major_area_id'];
+					}
+					$res = $provider->get_recipients_preview( $q );
+					if ( empty( $res['items'] ) ) {
+						break;
+					}
+					$sig = md5( wp_json_encode( wp_list_pluck( $res['items'], 'oracle_family_id' ) ) );
+					if ( isset( $page_sigs[ $sig ] ) ) {
+						break;
+					}
+					$page_sigs[ $sig ] = true;
+					$all_items         = array_merge( $all_items, $res['items'] );
+					$offset           += count( $res['items'] );
+				}
+				return $all_items;
+
+			// ── Store: families missing books or customs ──────────────────────
+			case 'store_missing':
+				if ( ! method_exists( $plugin, 'store_provider' ) ) {
+					return array();
+				}
+				return $plugin->store_provider()->get_families_missing_items( $study_year, $filters );
+
+			default:
+				return array();
+		}
+	}
 }
+

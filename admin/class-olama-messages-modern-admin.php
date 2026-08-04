@@ -121,7 +121,183 @@ class Olama_Messages_Modern_Admin {
 			<form id="omsg-campaign-wizard-form">
 				<input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><input type="hidden" name="ui_step" value="<?php echo absint( $step ); ?>">
 				<section class="omsg-step-panel" data-step="1"><h2>What is this campaign for?</h2><label>Campaign title<input type="text" required name="title" value="<?php echo esc_attr( $campaign['title'] ?? '' ); ?>" placeholder="Example: July payment reminder"></label><label>Study year<select name="study_year"><?php foreach ( $years as $year ) : ?><option <?php selected( $campaign['study_year'] ?? '', $year ); ?>><?php echo esc_html( $year ); ?></option><?php endforeach; ?></select></label></section>
-				<section class="omsg-step-panel" data-step="2"><h2>Choose the audience</h2><div class="omsg-choice-grid"><?php foreach ( array( 'collection'=>'Outstanding balances','general'=>'All active families','transportation'=>'Transportation families' ) as $value=>$label ) : ?><label class="omsg-choice"><input type="radio" name="target_type" value="<?php echo esc_attr( $value ); ?>" <?php checked( $campaign['target_type'] ?? 'collection', $value ); ?>><strong><?php echo esc_html( $label ); ?></strong></label><?php endforeach; ?></div><label>Recipient policy<select name="recipient_policy"><option value="father_first">Father first, mother fallback</option><option value="mother_first" <?php selected( $campaign['recipient_policy'] ?? '', 'mother_first' ); ?>>Mother first, father fallback</option><option value="both_parents" <?php echo in_array( $campaign['recipient_policy'] ?? '', array( 'both', 'both_parents' ), true ) ? 'selected' : ''; ?>>Both parents (separate SMS)</option></select></label></section>
+				<section class="omsg-step-panel" data-step="2">
+					<h2>Choose the audience category</h2>
+					<p class="description">Select an audience category and configure specific filters for targeted messaging.</p>
+
+					<?php
+					$curr_target = $campaign['target_type'] ?? 'finance_outstanding';
+					// Map legacy target_types to new category tabs
+					if ( 'collection' === $curr_target ) { $curr_target = 'finance_outstanding'; }
+					if ( 'general' === $curr_target ) { $curr_target = 'academic'; }
+					if ( 'transportation' === $curr_target ) { $curr_target = 'transport_registered'; }
+
+					$active_cat = 'finance';
+					if ( in_array( $curr_target, array( 'academic' ), true ) ) {
+						$active_cat = 'academic';
+					} elseif ( in_array( $curr_target, array( 'transport_no_gps', 'transport_registered' ), true ) ) {
+						$active_cat = 'transportation';
+					} elseif ( in_array( $curr_target, array( 'store_missing' ), true ) ) {
+						$active_cat = 'store';
+					}
+
+					$saved_filters = is_array( $campaign['filters'] ?? null ) ? $campaign['filters'] : array();
+					?>
+
+					<div class="omsg-audience-cats" role="tablist">
+						<button type="button" class="omsg-cat-tab <?php echo 'finance' === $active_cat ? 'is-active' : ''; ?>" data-cat="finance">
+							<span class="dashicons dashicons-money-alt"></span>
+							<strong>Finance</strong>
+							<small>Outstanding balances</small>
+						</button>
+						<button type="button" class="omsg-cat-tab <?php echo 'academic' === $active_cat ? 'is-active' : ''; ?>" data-cat="academic">
+							<span class="dashicons dashicons-welcome-learn-more"></span>
+							<strong>Academic</strong>
+							<small>School / Grade / Section</small>
+						</button>
+						<button type="button" class="omsg-cat-tab <?php echo 'transportation' === $active_cat ? 'is-active' : ''; ?>" data-cat="transportation">
+							<span class="dashicons dashicons-bus"></span>
+							<strong>Transportation</strong>
+							<small>GPS status &amp; bus routes</small>
+						</button>
+						<button type="button" class="omsg-cat-tab <?php echo 'store' === $active_cat ? 'is-active' : ''; ?>" data-cat="store">
+							<span class="dashicons dashicons-store"></span>
+							<strong>Store</strong>
+							<small>Pending books &amp; uniforms</small>
+						</button>
+					</div>
+
+					<!-- Category Panel: Finance -->
+					<div class="omsg-cat-panel <?php echo 'finance' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="finance">
+						<input type="radio" name="target_type" value="finance_outstanding" class="omsg-target-radio" <?php checked( $curr_target, 'finance_outstanding' ); ?>>
+						<div class="omsg-filter-box">
+							<h3>Finance Audience Filters</h3>
+							<p class="description">Target families with unpaid balances or specific financial statuses.</p>
+							<div class="omsg-filter-row">
+								<label>Minimum Outstanding Balance (JOD)
+									<input type="number" step="0.001" name="filter_min_balance" value="<?php echo esc_attr( $saved_filters['min_balance'] ?? '' ); ?>" placeholder="0.000">
+								</label>
+								<label class="omsg-checkbox-label">
+									<input type="checkbox" name="filter_exclude_credit" value="1" <?php checked( ! empty( $saved_filters['exclude_credit_balances'] ?? 1 ) ); ?>>
+									Exclude families with credit balances
+								</label>
+								<label class="omsg-checkbox-label">
+									<input type="checkbox" name="filter_exclude_zero" value="1" <?php checked( ! empty( $saved_filters['exclude_zero_balances'] ?? 1 ) ); ?>>
+									Exclude families with zero balance
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<!-- Category Panel: Academic -->
+					<div class="omsg-cat-panel <?php echo 'academic' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="academic">
+						<input type="radio" name="target_type" value="academic" class="omsg-target-radio" <?php checked( $curr_target, 'academic' ); ?>>
+						<div class="omsg-filter-box">
+							<h3>Academic Filtering (School / Grade / Section)</h3>
+							<p class="description">Select a school, grade, or section to filter student families.</p>
+							<div class="omsg-filter-row">
+								<label>School (مدرسة / روضة)
+									<select name="filter_school_id" id="omsg-filter-school">
+										<option value="">All Schools / Kindergarten</option>
+										<?php if ( ! empty( $saved_filters['school_id'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['school_id'] ); ?>" selected><?php echo esc_html( $saved_filters['school_name'] ?? $saved_filters['school_id'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+								<label>Grade (الصف)
+									<select name="filter_class_id" id="omsg-filter-grade">
+										<option value="">All Grades</option>
+										<?php if ( ! empty( $saved_filters['class_id'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['class_id'] ); ?>" selected><?php echo esc_html( $saved_filters['class_name'] ?? $saved_filters['class_id'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+								<label>Section (الشعبة)
+									<select name="filter_section_id" id="omsg-filter-section">
+										<option value="">All Sections</option>
+										<?php if ( ! empty( $saved_filters['section_id'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['section_id'] ); ?>" selected><?php echo esc_html( $saved_filters['section_name'] ?? $saved_filters['section_id'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<!-- Category Panel: Transportation -->
+					<div class="omsg-cat-panel <?php echo 'transportation' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="transportation">
+						<div class="omsg-subtarget-options">
+							<label class="omsg-choice">
+								<input type="radio" name="target_type" value="transport_no_gps" <?php checked( $curr_target, 'transport_no_gps' ); ?>>
+								<div>
+									<strong>Families without GPS locations</strong>
+									<small>Target registered bus families who have not set coordinates in the transportation map.</small>
+								</div>
+							</label>
+							<label class="omsg-choice">
+								<input type="radio" name="target_type" value="transport_registered" <?php checked( $curr_target, 'transport_registered' ); ?>>
+								<div>
+									<strong>Registered transportation families</strong>
+									<small>Filter bus subscribers by geographic area, bus number, or trip direction.</small>
+								</div>
+							</label>
+						</div>
+
+						<div class="omsg-filter-box omsg-transport-filters <?php echo 'transport_registered' === $curr_target ? '' : 'is-hidden'; ?>">
+							<h3>Transportation Filters</h3>
+							<div class="omsg-filter-row">
+								<label>Major Area (المنطقة)
+									<select name="filter_major_area_id" id="omsg-filter-area">
+										<option value="">All Areas</option>
+										<?php if ( ! empty( $saved_filters['major_area_id'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['major_area_id'] ); ?>" selected><?php echo esc_html( $saved_filters['major_area_name'] ?? $saved_filters['major_area_id'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+								<label>Departure Bus (حافلة الصباح / الذهاب)
+									<select name="filter_departure_bus" id="omsg-filter-dep-bus">
+										<option value="">All Departure Buses</option>
+										<?php if ( ! empty( $saved_filters['departure_bus'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['departure_bus'] ); ?>" selected><?php echo esc_html( $saved_filters['departure_bus'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+								<label>Arrival Bus (حافلة المساء / العودة)
+									<select name="filter_arrival_bus" id="omsg-filter-arr-bus">
+										<option value="">All Arrival Buses</option>
+										<?php if ( ! empty( $saved_filters['arrival_bus'] ) ) : ?>
+											<option value="<?php echo esc_attr( $saved_filters['arrival_bus'] ); ?>" selected><?php echo esc_html( $saved_filters['arrival_bus'] ); ?></option>
+										<?php endif; ?>
+									</select>
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<!-- Category Panel: Store -->
+					<div class="omsg-cat-panel <?php echo 'store' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="store">
+						<input type="radio" name="target_type" value="store_missing" class="omsg-target-radio" <?php checked( $curr_target, 'store_missing' ); ?>>
+						<div class="omsg-filter-box">
+							<h3>Store &amp; Warehouse Audience</h3>
+							<p class="description">Target families who have NOT yet received their allocated textbooks or school uniform/custom packages for this academic year.</p>
+							<div class="omsg-info-banner">
+								<span class="dashicons dashicons-info"></span>
+								<span>Automatically identifies students missing assigned items from the Olama Stores inventory module.</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Common Setting: Recipient Policy -->
+					<div class="omsg-policy-box">
+						<label><strong>Recipient Policy</strong>
+							<select name="recipient_policy">
+								<option value="father_first">Father first, mother fallback</option>
+								<option value="mother_first" <?php selected( $campaign['recipient_policy'] ?? '', 'mother_first' ); ?>>Mother first, father fallback</option>
+								<option value="both_parents" <?php echo in_array( $campaign['recipient_policy'] ?? '', array( 'both', 'both_parents' ), true ) ? 'selected' : ''; ?>>Both parents (separate SMS)</option>
+							</select>
+						</label>
+					</div>
+				</section>
 				<section class="omsg-step-panel" data-step="3"><h2>Write the message</h2><label>Start from a message library item<select name="template_id"><option value="">Custom message</option><?php foreach ( $templates as $template ) : ?><option value="<?php echo absint( $template['id'] ); ?>" data-body="<?php echo esc_attr( $template['body'] ); ?>" <?php selected( $campaign['template_id'] ?? 0, $template['id'] ); ?>><?php echo esc_html( $template['name'] ); ?></option><?php endforeach; ?></select></label><label>Message<textarea required name="message_body_draft" rows="9"><?php echo esc_textarea( $body ); ?></textarea></label><div class="omsg-message-meter"><strong data-sms-parts>0 SMS parts</strong><span data-sms-detail>0 characters</span></div><p class="description">Available fields: {sponsor_name}, {family_id}, {students}, {balance}, {monthly_due}, {payment_link}, {study_year}, {school_name}</p></section>
 				<section class="omsg-step-panel" data-step="4"><h2>Review and prepare</h2><div class="omsg-review-summary"><p>Preparation freezes the audience and rendered messages. It does not send anything.</p><button type="button" class="button" data-preview-campaign>Refresh audience preview</button><div data-preview-result aria-live="polite"></div></div></section>
 				<section class="omsg-step-panel" data-step="5"><h2>Authorize sending</h2>

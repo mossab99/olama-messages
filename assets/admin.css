@@ -1142,3 +1142,47 @@
 	.omsg-preview-selection,.omsg-preview-pagination { display:flex; flex-direction:column; align-items:stretch; }
 	.omsg-preview-pagination > label { justify-self:auto; }
 }
+
+/* ── Classified Audience Stage Redesign ─────────────────────────────────── */
+.omsg-audience-cats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0; }
+.omsg-cat-tab { display:flex; flex-direction:column; align-items:center; text-align:center; padding:16px 12px; border:2px solid #e7e9ee; border-radius:10px; background:#fff; cursor:pointer; transition:all .2s ease; }
+.omsg-cat-tab:hover { border-color:#2271b1; background:#f0f6fc; }
+.omsg-cat-tab.is-active { border-color:#2271b1; background:#f0f6fc; box-shadow:0 0 0 1px #2271b1; }
+.omsg-cat-tab .dashicons { font-size:24px; width:24px; height:24px; color:#2271b1; margin-bottom:6px; }
+.omsg-cat-tab strong { font-size:14px; color:#1d2327; margin-bottom:2px; }
+.omsg-cat-tab small { font-size:11px; color:#646970; }
+
+.omsg-cat-panel { display:none; margin-top:16px; }
+.omsg-cat-panel.is-active { display:block; }
+.omsg-cat-panel .omsg-target-radio { display:none; }
+
+.omsg-filter-box { background:#f8f9fa; border:1px solid #c3c4c7; border-radius:8px; padding:16px 20px; margin-bottom:20px; }
+.omsg-filter-box.is-hidden { display:none; }
+.omsg-filter-box h3 { margin:0 0 6px 0; font-size:15px; color:#1d2327; }
+.omsg-filter-box .description { margin-bottom:14px; }
+.omsg-filter-row { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; }
+.omsg-filter-row label { display:flex; flex-direction:column; font-weight:600; font-size:13px; color:#2c3338; }
+.omsg-filter-row select, .omsg-filter-row input[type="number"], .omsg-filter-row input[type="text"] { min-width:200px; padding:6px 10px; border-radius:6px; border:1px solid #8c8f94; }
+.omsg-filter-row .omsg-checkbox-label { flex-direction:row; align-items:center; gap:8px; font-weight:normal; cursor:pointer; }
+
+.omsg-subtarget-options { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:16px; }
+.omsg-subtarget-options .omsg-choice { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; border:1px solid #c3c4c7; border-radius:8px; background:#fff; cursor:pointer; }
+.omsg-subtarget-options .omsg-choice:hover { border-color:#2271b1; }
+.omsg-subtarget-options .omsg-choice input[type="radio"] { margin-top:3px; }
+.omsg-subtarget-options .omsg-choice div { display:flex; flex-direction:column; }
+.omsg-subtarget-options .omsg-choice strong { color:#1d2327; font-size:13px; }
+.omsg-subtarget-options .omsg-choice small { color:#646970; font-size:11px; margin-top:2px; }
+
+.omsg-info-banner { display:flex; align-items:center; gap:8px; padding:10px 14px; background:#f0f6fc; border-left:4px solid #2271b1; border-radius:4px; margin-top:10px; color:#1d2327; font-size:13px; }
+.omsg-info-banner .dashicons { color:#2271b1; }
+
+.omsg-policy-box { margin-top:24px; padding-top:16px; border-top:1px solid #dcdcde; }
+.omsg-policy-box label { display:flex; flex-direction:column; gap:6px; font-size:14px; }
+.omsg-policy-box select { width:300px; max-width:100%; padding:6px 10px; border-radius:6px; }
+
+@media (max-width:782px) {
+	.omsg-audience-cats { grid-template-columns:repeat(2,1fr); }
+	.omsg-subtarget-options { grid-template-columns:1fr; }
+	.omsg-filter-row select, .omsg-filter-row input { min-width:100%; }
+}
+

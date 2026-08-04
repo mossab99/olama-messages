@@ -66,9 +66,14 @@
 		var campaign = data.campaign || {};
 		var editable = campaignStatus === 'draft';
 		var audienceLabels = {
-			collection: 'Outstanding balances',
-			general: 'Active families',
-			transportation: 'Active transportation families'
+			collection: 'Outstanding balances (Legacy)',
+			general: 'Active families (Legacy)',
+			transportation: 'Active transportation families (Legacy)',
+			finance_outstanding: 'Finance — Outstanding Balances',
+			academic: 'Academic — School / Grade / Section',
+			transport_no_gps: 'Transportation — Families without GPS',
+			transport_registered: 'Transportation — Registered Transport Families',
+			store_missing: 'Store — Families Pending Books / Uniforms'
 		};
 		var policyLabels = {
 			father_first: 'Father first, mother fallback',
@@ -202,6 +207,160 @@
 		});
 	}
 
+	// ─── Audience Category Tabs & Dynamic Filters ──────────────────────────────
+	$(document).on('click', '.omsg-cat-tab', function () {
+		var cat = $(this).data('cat');
+		$('.omsg-cat-tab').removeClass('is-active').filter('[data-cat="' + cat + '"]').addClass('is-active');
+		$('.omsg-cat-panel').removeClass('is-active').filter('[data-cat-panel="' + cat + '"]').addClass('is-active');
+
+		// Select default target_type for this category if current input radio is not checked
+		var $panel = $('.omsg-cat-panel[data-cat-panel="' + cat + '"]');
+		var $radios = $panel.find('input[name="target_type"]');
+		if ($radios.length && !$radios.filter(':checked').length) {
+			$radios.first().prop('checked', true).trigger('change');
+		} else if ($radios.filter(':checked').length) {
+			$radios.filter(':checked').trigger('change');
+		}
+
+		// Trigger lazy option loading for the category
+		if (cat === 'academic') {
+			loadAcademicSchools();
+		} else if (cat === 'transportation') {
+			loadTransportOptions();
+		}
+	});
+
+	// Transportation subtarget radio handler
+	$form.on('change', 'input[name="target_type"]', function () {
+		var val = $(this).val();
+		if (val === 'transport_registered') {
+			$('.omsg-transport-filters').removeClass('is-hidden');
+			loadTransportOptions();
+		} else if (val === 'transport_no_gps') {
+			$('.omsg-transport-filters').addClass('is-hidden');
+		}
+	});
+
+	function getStudyYear() {
+		return $('[name="study_year"]').val() || '';
+	}
+
+	function loadAcademicSchools() {
+		var $school = $('#omsg-filter-school');
+		if (!$school.length || $school.data('loaded')) return;
+		$.get(olamaMsgAdmin.ajaxUrl, {
+			action: 'olama_msg_audience_school_options',
+			security: olamaMsgAdmin.nonce,
+			study_year: getStudyYear()
+		}).done(function (r) {
+			if (r.success && r.data.schools) {
+				var current = $school.val();
+				var html = '<option value="">All Schools / Kindergarten</option>';
+				r.data.schools.forEach(function (s) {
+					html += '<option value="' + escapeHtml(s.id) + '"' + (String(s.id) === String(current) ? ' selected' : '') + '>' + escapeHtml(s.name) + '</option>';
+				});
+				$school.html(html).data('loaded', true);
+				loadAcademicGrades();
+			}
+		});
+	}
+
+	function loadAcademicGrades() {
+		var $grade = $('#omsg-filter-grade');
+		var $section = $('#omsg-filter-section');
+		if (!$grade.length) return;
+		$.get(olamaMsgAdmin.ajaxUrl, {
+			action: 'olama_msg_audience_section_options',
+			security: olamaMsgAdmin.nonce,
+			study_year: getStudyYear(),
+			school_id: $('#omsg-filter-school').val() || ''
+		}).done(function (r) {
+			if (r.success) {
+				var curGrade = $grade.val();
+				var gradeHtml = '<option value="">All Grades</option>';
+				(r.data.grades || []).forEach(function (g) {
+					gradeHtml += '<option value="' + escapeHtml(g.id) + '"' + (String(g.id) === String(curGrade) ? ' selected' : '') + '>' + escapeHtml(g.name) + '</option>';
+				});
+				$grade.html(gradeHtml);
+
+				var curSec = $section.val();
+				var secHtml = '<option value="">All Sections</option>';
+				(r.data.sections || []).forEach(function (sec) {
+					secHtml += '<option value="' + escapeHtml(sec.id) + '"' + (String(sec.id) === String(curSec) ? ' selected' : '') + '>' + escapeHtml(sec.name) + '</option>';
+				});
+				$section.html(secHtml);
+			}
+		});
+	}
+
+	$form.on('change', '#omsg-filter-school', function () {
+		loadAcademicGrades();
+	});
+
+	$form.on('change', '#omsg-filter-grade', function () {
+		var $section = $('#omsg-filter-section');
+		$.get(olamaMsgAdmin.ajaxUrl, {
+			action: 'olama_msg_audience_section_options',
+			security: olamaMsgAdmin.nonce,
+			study_year: getStudyYear(),
+			school_id: $('#omsg-filter-school').val() || '',
+			class_id: $(this).val() || ''
+		}).done(function (r) {
+			if (r.success) {
+				var curSec = $section.val();
+				var secHtml = '<option value="">All Sections</option>';
+				(r.data.sections || []).forEach(function (sec) {
+					secHtml += '<option value="' + escapeHtml(sec.id) + '"' + (String(sec.id) === String(curSec) ? ' selected' : '') + '>' + escapeHtml(sec.name) + '</option>';
+				});
+				$section.html(secHtml);
+			}
+		});
+	} );
+
+	function loadTransportOptions() {
+		var $area = $('#omsg-filter-area');
+		var $dep = $('#omsg-filter-dep-bus');
+		var $arr = $('#omsg-filter-arr-bus');
+		if (!$area.length || $area.data('loaded')) return;
+		$.get(olamaMsgAdmin.ajaxUrl, {
+			action: 'olama_audience_transport_options' in olamaMsgAdmin ? olamaMsgAdmin.action : 'olama_msg_audience_transport_options',
+			security: olamaMsgAdmin.nonce,
+			study_year: getStudyYear()
+		}).done(function (r) {
+			if (r.success) {
+				var curArea = $area.val();
+				var areaHtml = '<option value="">All Areas</option>';
+				(r.data.areas || []).forEach(function (a) {
+					areaHtml += '<option value="' + escapeHtml(a.id) + '"' + (String(a.id) === String(curArea) ? ' selected' : '') + '>' + escapeHtml(a.name) + '</option>';
+				});
+				$area.html(areaHtml).data('loaded', true);
+
+				var curDep = $dep.val();
+				var depHtml = '<option value="">All Departure Buses</option>';
+				(r.data.departure_buses || []).forEach(function (b) {
+					var bval = b.bus_name || b.bus_id;
+					depHtml += '<option value="' + escapeHtml(bval) + '"' + (String(bval) === String(curDep) ? ' selected' : '') + '>' + escapeHtml(b.bus_name || b.bus_id) + '</option>';
+				});
+				$dep.html(depHtml);
+
+				var curArr = $arr.val();
+				var arrHtml = '<option value="">All Arrival Buses</option>';
+				(r.data.arrival_buses || []).forEach(function (b) {
+					var bval = b.bus_name || b.bus_id;
+					arrHtml += '<option value="' + escapeHtml(bval) + '"' + (String(bval) === String(curArr) ? ' selected' : '') + '>' + escapeHtml(b.bus_name || b.bus_id) + '</option>';
+				});
+				$arr.html(arrHtml);
+			}
+		});
+	}
+
+	// Auto-load options if starting on step 2
+	if (step === 2) {
+		var currentActiveCat = $('.omsg-cat-tab.is-active').data('cat');
+		if (currentActiveCat === 'academic') loadAcademicSchools();
+		if (currentActiveCat === 'transportation') loadTransportOptions();
+	}
+
 	$form.on('input change', 'input,select,textarea', function () {
 		if ($(this).is('.omsg-recipient-select,[data-preview-per-page]') || campaignStatus !== 'draft') {
 			return;
@@ -211,6 +370,7 @@
 		$('[data-preview-result]').html('<p class="omsg-preview-stale">Campaign settings changed. The audience preview will be recalculated in step 4.</p>');
 		meter();
 	});
+
 	$('[name="template_id"]').on('change', function () {
 		var body = $(this).find(':selected').data('body');
 		if (body) $('[name="message_body_draft"]').val(body).trigger('input');

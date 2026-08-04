@@ -30,6 +30,9 @@ class Olama_Messages_Plugin {
 	/** @var Olama_Messages_Transportation_Service */
 	private $transportation;
 
+	/** @var Olama_Messages_Store_Provider */
+	private $store_provider;
+
 	/** @var Olama_Messages_Phone_Book_Exporter */
 	private $phone_book_exporter;
 
@@ -184,6 +187,16 @@ class Olama_Messages_Plugin {
 			$this->transportation = new Olama_Messages_Transportation_Service();
 		}
 		return $this->transportation;
+	}
+
+	/**
+	 * @return Olama_Messages_Store_Provider
+	 */
+	public function store_provider() {
+		if ( ! $this->store_provider ) {
+			$this->store_provider = new Olama_Messages_Store_Provider();
+		}
+		return $this->store_provider;
 	}
 
 	/**

@@ -83,7 +83,13 @@ class Olama_Messages_Admin {
 		add_action( 'wp_ajax_olama_msg_save_campaign_draft',      array( $this, 'ajax_save_campaign_draft' ) );
 		add_action( 'wp_ajax_olama_msg_save_recipient_override',  array( $this, 'ajax_save_recipient_override' ) );
 		add_action( 'wp_ajax_olama_msg_prepare_campaign_ajax',     array( $this, 'ajax_prepare_campaign' ) );
+
+		// ── New: audience filter option providers ──────────────────────────────
+		add_action( 'wp_ajax_olama_msg_audience_school_options',   array( $this, 'ajax_audience_school_options' ) );
+		add_action( 'wp_ajax_olama_msg_audience_section_options',  array( $this, 'ajax_audience_section_options' ) );
+		add_action( 'wp_ajax_olama_msg_audience_transport_options', array( $this, 'ajax_audience_transport_options' ) );
 	}
+
 
 	// ─── Menus ───────────────────────────────────────────────────────────────
 
@@ -304,10 +310,31 @@ class Olama_Messages_Admin {
 		$existing = $id ? $this->plugin->campaigns()->get_campaign( $id ) : null;
 		$filters = is_array( $existing['filters'] ?? null ) ? $existing['filters'] : array();
 		$filters['ui_step'] = max( 1, min( 5, absint( $_POST['ui_step'] ?? 1 ) ) );
+
+		// Capture academic filters
+		if ( isset( $_POST['filter_school_id'] ) ) { $filters['school_id'] = sanitize_text_field( wp_unslash( $_POST['filter_school_id'] ) ); }
+		if ( isset( $_POST['filter_class_id'] ) ) { $filters['class_id'] = sanitize_text_field( wp_unslash( $_POST['filter_class_id'] ) ); }
+		if ( isset( $_POST['filter_section_id'] ) ) { $filters['section_id'] = sanitize_text_field( wp_unslash( $_POST['filter_section_id'] ) ); }
+
+		// Capture transportation filters
+		if ( isset( $_POST['filter_major_area_id'] ) ) { $filters['major_area_id'] = sanitize_text_field( wp_unslash( $_POST['filter_major_area_id'] ) ); }
+		if ( isset( $_POST['filter_departure_bus'] ) ) { $filters['departure_bus'] = sanitize_text_field( wp_unslash( $_POST['filter_departure_bus'] ) ); }
+		if ( isset( $_POST['filter_arrival_bus'] ) ) { $filters['arrival_bus'] = sanitize_text_field( wp_unslash( $_POST['filter_arrival_bus'] ) ); }
+
+		// Capture finance filters
+		if ( isset( $_POST['filter_min_balance'] ) ) {
+			$raw_min = sanitize_text_field( wp_unslash( $_POST['filter_min_balance'] ) );
+			$filters['min_balance'] = '' !== $raw_min ? (float) $raw_min : null;
+		}
+		if ( isset( $_POST['ui_step'] ) && (int) $_POST['ui_step'] === 2 ) {
+			$filters['exclude_credit_balances'] = ! empty( $_POST['filter_exclude_credit'] ) ? 1 : 0;
+			$filters['exclude_zero_balances']   = ! empty( $_POST['filter_exclude_zero'] ) ? 1 : 0;
+		}
+
 		$data = array(
 			'title'              => sanitize_text_field( wp_unslash( $_POST['title'] ?? '' ) ),
 			'study_year'         => sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) ),
-			'target_type'        => sanitize_key( $_POST['target_type'] ?? 'collection' ),
+			'target_type'        => sanitize_key( $_POST['target_type'] ?? 'finance_outstanding' ),
 			'recipient_policy'   => sanitize_key( $_POST['recipient_policy'] ?? 'father_first' ),
 			'template_id'        => ! empty( $_POST['template_id'] ) ? absint( $_POST['template_id'] ) : null,
 			'message_body_draft' => sanitize_textarea_field( wp_unslash( $_POST['message_body_draft'] ?? '' ) ),
@@ -432,13 +459,135 @@ class Olama_Messages_Admin {
 			$this->plugin->campaigns()->update_campaign( $id, array( 'filters_json' => $filters ) );
 			wp_send_json_success(
 				array(
-					'saved_at'     => current_time( 'H:i:s' ),
+					'saved_at'      => current_time( 'H:i:s' ),
 					'updated_count' => count( $changes ),
 				)
 			);
 		} catch ( Exception $e ) {
 			wp_send_json_error( array( 'message' => $e->getMessage() ), 409 );
 		}
+	}
+
+	// ─── Classified Audience AJAX Handlers ───────────────────────────────────
+
+	/**
+	 * Return list of unique school names for the Academic audience filter.
+	 * GET params: study_year (optional)
+	 */
+	public function ajax_audience_school_options() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+		$study_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? '' ) );
+		if ( ! function_exists( 'olama_core' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Core plugin unavailable.', 'olama-messages' ) ), 503 );
+		}
+		global $wpdb;
+		$sy_table = olama_core()->read_models()->table( 'student_years' );
+		$where    = array( "school_name IS NOT NULL", "school_name <> ''" );
+		$values   = array();
+		if ( $study_year !== '' ) {
+			$alt      = strpos( $study_year, '/' ) !== false ? str_replace( '/', '-', $study_year ) : str_replace( '-', '/', $study_year );
+			$where[]  = 'study_year IN (%s, %s)';
+			array_push( $values, $study_year, $alt );
+		}
+		$where_sql = 'WHERE ' . implode( ' AND ', $where );
+		$sql       = "SELECT DISTINCT school_id, school_name FROM `{$sy_table}` {$where_sql} ORDER BY school_name ASC";
+		$rows      = $values ? $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A ) : $wpdb->get_results( $sql, ARRAY_A );
+		$schools   = array_values( array_map( static function ( $r ) {
+			return array( 'id' => (string) $r['school_id'], 'name' => (string) $r['school_name'] );
+		}, (array) $rows ) );
+		wp_send_json_success( array( 'schools' => $schools ) );
+	}
+
+	/**
+	 * Return grades and sections for the Academic audience filter.
+	 * GET params: study_year, school_id (optional), class_id (optional)
+	 */
+	public function ajax_audience_section_options() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+		$study_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? '' ) );
+		$school_id  = sanitize_text_field( wp_unslash( $_GET['school_id'] ?? '' ) );
+		$class_id   = sanitize_text_field( wp_unslash( $_GET['class_id'] ?? '' ) );
+		if ( ! function_exists( 'olama_core' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Core plugin unavailable.', 'olama-messages' ) ), 503 );
+		}
+		global $wpdb;
+		$sy_table   = olama_core()->read_models()->table( 'student_years' );
+		$where      = array( "class_name IS NOT NULL", "class_name <> ''" );
+		$values     = array();
+		if ( $study_year !== '' ) {
+			$alt      = strpos( $study_year, '/' ) !== false ? str_replace( '/', '-', $study_year ) : str_replace( '-', '/', $study_year );
+			$where[]  = 'study_year IN (%s, %s)';
+			array_push( $values, $study_year, $alt );
+		}
+		if ( $school_id !== '' ) {
+			$where[]  = 'school_id = %s';
+			$values[] = $school_id;
+		}
+		$where_sql  = 'WHERE ' . implode( ' AND ', $where );
+		$grades     = $values
+			? $wpdb->get_results( $wpdb->prepare( "SELECT DISTINCT class_id, class_name FROM `{$sy_table}` {$where_sql} ORDER BY class_name ASC", $values ), ARRAY_A )
+			: $wpdb->get_results( "SELECT DISTINCT class_id, class_name FROM `{$sy_table}` {$where_sql} ORDER BY class_name ASC", ARRAY_A );
+		$sec_where  = $where;
+		$sec_values = $values;
+		if ( $class_id !== '' ) {
+			$sec_where[]  = 'class_id = %s';
+			$sec_values[] = $class_id;
+		}
+		$sec_where[] = "section_name IS NOT NULL";
+		$sec_where[] = "section_name <> ''";
+		$sec_sql     = "SELECT DISTINCT section_id, section_name, class_id FROM `{$sy_table}` WHERE " . implode( ' AND ', $sec_where ) . ' ORDER BY section_name ASC';
+		$sections    = $sec_values
+			? $wpdb->get_results( $wpdb->prepare( $sec_sql, $sec_values ), ARRAY_A )
+			: $wpdb->get_results( $sec_sql, ARRAY_A );
+		wp_send_json_success( array(
+			'grades'   => array_values( array_map( static function ( $r ) {
+				return array( 'id' => (string) $r['class_id'], 'name' => (string) $r['class_name'] );
+			}, (array) $grades ) ),
+			'sections' => array_values( array_map( static function ( $r ) {
+				return array( 'id' => (string) $r['section_id'], 'name' => (string) $r['section_name'], 'class_id' => (string) $r['class_id'] );
+			}, (array) $sections ) ),
+		) );
+	}
+
+	/**
+	 * Return available transportation filter options (buses + areas + routes).
+	 * GET params: study_year
+	 */
+	public function ajax_audience_transport_options() {
+		check_ajax_referer( 'olama_msg_ajax', 'security' );
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'olama-messages' ) ), 403 );
+		}
+		$study_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? '' ) );
+		if ( ! function_exists( 'olama_core' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Core plugin unavailable.', 'olama-messages' ) ), 503 );
+		}
+		$core_options = array(
+			'departure_buses' => array(),
+			'arrival_buses'   => array(),
+			'routes'          => array(),
+		);
+		try {
+			$core_options = olama_core()->transportation()->get_options( $study_year );
+		} catch ( Exception $e ) {
+			// Non-fatal.
+		}
+		$areas = array();
+		if ( method_exists( $this->plugin, 'transportation' ) ) {
+			$areas = $this->plugin->transportation()->get_transport_area_options();
+		}
+		wp_send_json_success( array(
+			'departure_buses' => $core_options['departure_buses'] ?? array(),
+			'arrival_buses'   => $core_options['arrival_buses'] ?? array(),
+			'routes'          => $core_options['routes'] ?? array(),
+			'areas'           => $areas,
+		) );
 	}
 
 	// ─── Helpers ─────────────────────────────────────────────────────────────
