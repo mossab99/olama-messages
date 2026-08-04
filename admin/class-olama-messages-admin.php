@@ -321,6 +321,9 @@ class Olama_Messages_Admin {
 		if ( isset( $_POST['filter_departure_bus'] ) ) { $filters['departure_bus'] = sanitize_text_field( wp_unslash( $_POST['filter_departure_bus'] ) ); }
 		if ( isset( $_POST['filter_arrival_bus'] ) ) { $filters['arrival_bus'] = sanitize_text_field( wp_unslash( $_POST['filter_arrival_bus'] ) ); }
 
+		// Capture store filters
+		if ( isset( $_POST['filter_store_item_type'] ) ) { $filters['store_item_type'] = sanitize_text_field( wp_unslash( $_POST['filter_store_item_type'] ) ); }
+
 		// Capture finance filters
 		if ( isset( $_POST['filter_min_balance'] ) ) {
 			$raw_min = sanitize_text_field( wp_unslash( $_POST['filter_min_balance'] ) );

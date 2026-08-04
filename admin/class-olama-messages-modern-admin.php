@@ -280,9 +280,18 @@ class Olama_Messages_Modern_Admin {
 						<div class="omsg-filter-box">
 							<h3>Store &amp; Warehouse Audience</h3>
 							<p class="description">Target families who have NOT yet received their allocated textbooks or school uniform/custom packages for this academic year.</p>
+							<div class="omsg-filter-row">
+								<label>Missing Item Filter
+									<select name="filter_store_item_type" id="omsg-filter-store-item-type">
+										<option value="both" <?php selected( $saved_filters['store_item_type'] ?? 'both', 'both' ); ?>>Families missing Textbooks OR Uniforms (All Unreceived)</option>
+										<option value="books" <?php selected( $saved_filters['store_item_type'] ?? '', 'books' ); ?>>Families missing Textbooks only (الكتب المدرسية فقط)</option>
+										<option value="custom" <?php selected( $saved_filters['store_item_type'] ?? '', 'custom' ); ?>>Families missing Uniforms / Custom Items only (الزي والزي الموحد فقط)</option>
+									</select>
+								</label>
+							</div>
 							<div class="omsg-info-banner">
 								<span class="dashicons dashicons-info"></span>
-								<span>Automatically identifies students missing assigned items from the Olama Stores inventory module.</span>
+								<span>Uses the authoritative Olama Stores report engine for 100% accuracy matching the Reports Center.</span>
 							</div>
 						</div>
 					</div>

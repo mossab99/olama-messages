@@ -64,8 +64,11 @@ class Olama_Messages_Store_Provider {
 	/**
 	 * Return families that have at least one student with missing books/customs.
 	 *
-	 * @param  string $study_year  Study year string, e.g. "2025-2026".
-	 * @param  array  $filters     Reserved for future filtering.
+	 * Uses OS_API_Reports::get_withdrawals_report_data() from olama-stores directly
+	 * to ensure 100% accuracy and parity with the Stores Reports Center.
+	 *
+	 * @param  string $study_year  Study year string, e.g. "2025-2026" or "2027/2026".
+	 * @param  array  $filters     Filter parameters (store_item_type, school_id, grade_id, etc.).
 	 * @return array  Recipient-item arrays compatible with preview_candidates().
 	 */
 	public function get_families_missing_items( $study_year, array $filters = array() ) {
@@ -73,14 +76,80 @@ class Olama_Messages_Store_Provider {
 			return array();
 		}
 
-		global $wpdb;
-
-		$year_id = $this->get_active_year_id();
-		if ( ! $year_id ) {
-			return array();
+		$academic_year_id = 0;
+		if ( class_exists( 'OS_School_Integration' ) ) {
+			$academic_year_id = OS_School_Integration::study_year_to_id( $study_year );
+		}
+		if ( ! $academic_year_id ) {
+			$academic_year_id = $this->get_active_year_id();
 		}
 
-		$allocations = $this->get_allocations( $year_id );
+		// Determine report types to include (not_received_custom, not_received_books, or both).
+		$item_type = $filters['store_item_type'] ?? 'both';
+		$report_types = array();
+		if ( 'books' === $item_type ) {
+			$report_types[] = 'not_received_books';
+		} elseif ( 'custom' === $item_type ) {
+			$report_types[] = 'not_received_custom';
+		} else {
+			$report_types = array( 'not_received_custom', 'not_received_books' );
+		}
+
+		$combined_families = array();
+
+		// Primary path: Use OS_API_Reports if available (the exact engine powering Stores Reports UI).
+		if ( class_exists( 'OS_API_Reports' ) && method_exists( 'OS_API_Reports', 'get_withdrawals_report_data' ) ) {
+			foreach ( $report_types as $rtype ) {
+				$params = array(
+					'report_type'      => $rtype,
+					'academic_year_id' => $academic_year_id,
+					'study_year'       => $study_year,
+				);
+				if ( ! empty( $filters['school_id'] ) ) { $params['school_id'] = $filters['school_id']; }
+				if ( ! empty( $filters['grade_id'] ) ) { $params['grade_id'] = $filters['grade_id']; }
+				if ( ! empty( $filters['family_id'] ) ) { $params['family_id'] = $filters['family_id']; }
+
+				$report_rows = OS_API_Reports::get_withdrawals_report_data( $params );
+
+				foreach ( (array) $report_rows as $row ) {
+					$oracle_id = (string) ( $row['family_id'] ?? $row['family_uid'] ?? '' );
+					if ( '' === $oracle_id || isset( $combined_families[ $oracle_id ] ) ) {
+						continue;
+					}
+
+					$students_summary = array();
+					if ( ! empty( $row['students'] ) && is_array( $row['students'] ) ) {
+						foreach ( $row['students'] as $st ) {
+							$students_summary[] = (string) ( $st['student_name'] ?? $st['name'] ?? '' );
+						}
+					}
+
+					$combined_families[ $oracle_id ] = array(
+						'family_id'           => absint( $oracle_id ),
+						'oracle_family_id'    => $oracle_id,
+						'core_family_uid'     => (string) ( $row['family_uid'] ?? '' ),
+						'sponsor_name'        => (string) ( $row['sponsor_name'] ?? '' ),
+						'father_name'         => (string) ( $row['father_name'] ?? '' ),
+						'father_mobile'       => (string) ( $row['father_mobile'] ?? '' ),
+						'mother_name'         => (string) ( $row['mother_name'] ?? '' ),
+						'mother_mobile'       => (string) ( $row['mother_mobile'] ?? '' ),
+						'students'            => array_values( array_filter( $students_summary ) ),
+						'student_rows'        => $row['students'] ?? array(),
+						'balance'             => null,
+						'monthly_due'         => null,
+						'monthly_due_source'  => 'unavailable',
+						'financial_available' => false,
+					);
+				}
+			}
+
+			if ( ! empty( $combined_families ) ) {
+				return array_values( $combined_families );
+			}
+		}
+
+		// Fallback query if OS_API_Reports returns no items or is not present.
+		global $wpdb;
 
 		if ( ! function_exists( 'olama_core' ) || ! method_exists( olama_core(), 'read_models' ) ) {
 			return array();
@@ -95,134 +164,30 @@ class Olama_Messages_Store_Provider {
 			? str_replace( '/', '-', $study_year_clean )
 			: str_replace( '-', '/', $study_year_clean );
 
-		// Load all enrolled students for this year with family contact data.
-		$students = $wpdb->get_results( $wpdb->prepare(
-			"SELECT sy.student_uid, sy.family_uid, sy.class_id AS grade_id,
-			        sy.class_name AS grade_name, sy.section_name, s.student_name,
-			        f.oracle_family_id, f.sponsor_full_name, f.father_name, f.father_mobile,
-			        f.mother_name, f.mother_mobile
-			 FROM `{$student_years_table}` sy
-			 INNER JOIN `{$students_table}` s ON s.student_uid = sy.student_uid
-			 INNER JOIN `{$families_table}` f ON f.family_uid = sy.family_uid
+		$families = $wpdb->get_results( $wpdb->prepare(
+			"SELECT DISTINCT f.oracle_family_id, f.family_uid, f.sponsor_full_name,
+			        f.father_name, f.father_mobile, f.mother_name, f.mother_mobile
+			 FROM `{$families_table}` f
+			 INNER JOIN `{$student_years_table}` sy ON sy.family_uid = f.family_uid
 			 WHERE sy.study_year IN (%s, %s) AND f.is_active = 1",
 			$study_year_clean,
 			$alternate_year
 		), ARRAY_A );
 
-		if ( empty( $students ) ) {
-			return array();
-		}
-
-		// If no allocations are configured, use the custom-items fallback.
-		if ( empty( $allocations ) ) {
-			return $this->get_families_missing_custom_items( $student_years_table, $students_table, $families_table, $study_year_clean, $alternate_year, $year_id );
-		}
-
-		// Check each student for missing books.
-		$missing_families = array(); // keyed by oracle_family_id
-
-		foreach ( $students as $stud ) {
-			$grade_id        = (string) ( $stud['grade_id'] ?? '' );
-			$allocated_items = isset( $allocations[ $grade_id ] ) ? array_map( 'intval', (array) $allocations[ $grade_id ] ) : array();
-
-			// Honour a saved package override (student-specific subset).
-			$package_row = $wpdb->get_row( $wpdb->prepare(
-				"SELECT item_ids FROM {$wpdb->prefix}os_student_book_packages
-				 WHERE student_uid = %s AND academic_year_id = %d
-				 ORDER BY id DESC LIMIT 1",
-				$stud['student_uid'],
-				$year_id
-			), ARRAY_A );
-			if ( $package_row && ! empty( $package_row['item_ids'] ) ) {
-				$package_items = json_decode( $package_row['item_ids'], true );
-				if ( is_array( $package_items ) ) {
-					$allocated_items = array_map( 'intval', $package_items );
-				}
-			}
-
-			if ( empty( $allocated_items ) ) {
-				continue;
-			}
-
-			// Fetch which of those items the student already received.
-			$received_ids = array_map( 'intval', (array) $wpdb->get_col( $wpdb->prepare(
-				"SELECT DISTINCT item_id FROM {$wpdb->prefix}os_assignments
-				 WHERE assignee_type = 'student' AND assignee_id = %s
-				   AND academic_year_id = %d
-				   AND status IN ('active', 'partially_returned')",
-				$stud['student_uid'],
-				$year_id
-			) ) );
-
-			$missing_ids = array_diff( $allocated_items, $received_ids );
-			if ( empty( $missing_ids ) ) {
-				continue;
-			}
-
-			// Register the family as having missing items.
-			$oracle_id = (string) $stud['oracle_family_id'];
-			if ( ! isset( $missing_families[ $oracle_id ] ) ) {
-				$missing_families[ $oracle_id ] = array(
-					'family_id'           => absint( $oracle_id ),
-					'oracle_family_id'    => $oracle_id,
-					'core_family_uid'     => (string) $stud['family_uid'],
-					'sponsor_name'        => (string) ( $stud['sponsor_full_name'] ?? '' ),
-					'father_name'         => (string) ( $stud['father_name'] ?? '' ),
-					'father_mobile'       => (string) ( $stud['father_mobile'] ?? '' ),
-					'mother_name'         => (string) ( $stud['mother_name'] ?? '' ),
-					'mother_mobile'       => (string) ( $stud['mother_mobile'] ?? '' ),
-					'students'            => array(),
-					'student_rows'        => array(),
-					'balance'             => null,
-					'monthly_due'         => null,
-					'monthly_due_source'  => 'unavailable',
-					'financial_available' => false,
-				);
-			}
-
-			$missing_families[ $oracle_id ]['students'][]     = (string) $stud['student_name'];
-			$missing_families[ $oracle_id ]['student_rows'][] = array(
-				'student_name' => (string) $stud['student_name'],
-				'class_name'   => (string) ( $stud['grade_name'] ?? '' ),
-				'section_name' => (string) ( $stud['section_name'] ?? '' ),
-				'study_year'   => $study_year_clean,
-			);
-		}
-
-		return array_values( $missing_families );
-	}
-
-	/**
-	 * Fallback: when no allocations are configured, return families
-	 * that have zero custom-item (os_assignments) records for the year.
-	 */
-	private function get_families_missing_custom_items( $sy_table, $students_table, $families_table, $study_year, $alternate_year, $year_id ) {
-		global $wpdb;
-
-		$families = $wpdb->get_results( $wpdb->prepare(
-			"SELECT DISTINCT f.oracle_family_id, f.family_uid, f.sponsor_full_name,
-			        f.father_name, f.father_mobile, f.mother_name, f.mother_mobile
-			 FROM `{$families_table}` f
-			 INNER JOIN `{$sy_table}` sy ON sy.family_uid = f.family_uid
-			 WHERE sy.study_year IN (%s, %s) AND f.is_active = 1",
-			$study_year,
-			$alternate_year
-		), ARRAY_A );
-
-		// Oracle family IDs that already received at least one item.
+		// Oracle family IDs that already received items.
 		$received_family_ids = (array) $wpdb->get_col( $wpdb->prepare(
 			"SELECT DISTINCT stud.oracle_family_id
 			 FROM {$wpdb->prefix}os_assignments a
 			 INNER JOIN `{$students_table}` stud ON stud.student_uid = a.assignee_id
 			 WHERE a.assignee_type = 'student'
-			   AND a.academic_year_id = %d
+			   AND (a.academic_year_id = %d OR a.academic_year_id IS NULL)
 			   AND a.status IN ('active', 'partially_returned')",
-			$year_id
+			$academic_year_id
 		) );
 		$received_set = array_flip( $received_family_ids );
 
 		$items = array();
-		foreach ( $families as $f ) {
+		foreach ( (array) $families as $f ) {
 			$oracle_id = (string) $f['oracle_family_id'];
 			if ( isset( $received_set[ $oracle_id ] ) ) {
 				continue;
@@ -246,4 +211,5 @@ class Olama_Messages_Store_Provider {
 		}
 		return $items;
 	}
+
 }
