@@ -866,21 +866,32 @@ class Olama_Messages_Campaign_Service {
 		$total_sms_parts  = 0;
 		$reason_counts    = array();
 		$family_ids       = array();
-		$included_family_ids = array();
+		$included_family_ids      = array();
+		$included_family_students = array();
 
 		foreach ( $evaluated_targets as $t ) {
 			$family_key = (string) ( $t['oracle_family_id'] ?: $t['family_id'] );
 			$family_ids[ $family_key ] = true;
+			$student_rows = json_decode( $t['student_rows_json'] ?? '[]', true );
+			if ( ! is_array( $student_rows ) ) {
+				$student_rows = array();
+			}
+
 			if ( $t['included'] ) {
 				$total_included++;
 				$total_sms_parts += absint( $t['sms_parts'] ?? 0 );
 				$included_family_ids[ $family_key ] = true;
+				if ( ! isset( $included_family_students[ $family_key ] ) ) {
+					$included_family_students[ $family_key ] = count( $student_rows );
+				}
 			} else {
 				$total_excluded++;
 				$reason = $t['excluded_reason'] ?: 'other';
 				$reason_counts[ $reason ] = ( $reason_counts[ $reason ] ?? 0 ) + 1;
 			}
 		}
+
+		$total_students = array_sum( $included_family_students );
 
 		// Preview-only display controls are applied before pagination. Campaign
 		// preparation omits these args and always receives the complete list.
@@ -924,6 +935,7 @@ class Olama_Messages_Campaign_Service {
 			'total_candidates' => $total_candidates,
 			'total_families'   => count( $family_ids ),
 			'included_families'=> count( $included_family_ids ),
+			'total_students'   => $total_students,
 			'total_included'   => $total_included,
 			'total_excluded'   => $total_excluded,
 			'total_sms_parts'  => $total_sms_parts,
