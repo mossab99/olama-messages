@@ -542,6 +542,7 @@ class Olama_Messages_Campaign_Service {
 		$new_audience_types = array(
 			'finance_outstanding',
 			'finance_renewal_reminder',
+			'renewal_reminder',
 			'transport_no_gps',
 			'transport_registered',
 			'store_missing',
@@ -1518,6 +1519,7 @@ class Olama_Messages_Campaign_Service {
 
 			// ── Finance: Renewal reminder ─────────────────────────────────────
 			case 'finance_renewal_reminder':
+			case 'renewal_reminder':
 				$provider      = $plugin->provider();
 				$all_items     = array();
 				$chunk_size    = 200;

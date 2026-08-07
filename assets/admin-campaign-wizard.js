@@ -71,6 +71,7 @@
 			transportation: 'Active transportation families (Legacy)',
 			finance_outstanding: 'Finance — Outstanding Balances',
 			finance_renewal_reminder: 'Finance — Renewal Reminder',
+			renewal_reminder: 'Finance — Renewal Reminder',
 			academic: 'Academic — School / Grade / Section',
 			transport_no_gps: 'Transportation — Families without GPS',
 			transport_registered: 'Transportation — Registered Transport Families',
@@ -217,7 +218,11 @@
 		// Select default target_type for this category if current input radio is not checked
 		var $panel = $('.omsg-cat-panel[data-cat-panel="' + cat + '"]');
 		var $radios = $panel.find('input[name="target_type"]');
-		if ($radios.length && !$radios.filter(':checked').length) {
+		var savedTarget = $panel.data('selected-target');
+
+		if (savedTarget && $radios.filter('[value="' + savedTarget + '"]').length) {
+			$radios.filter('[value="' + savedTarget + '"]').prop('checked', true).trigger('change');
+		} else if ($radios.length && !$radios.filter(':checked').length) {
 			$radios.first().prop('checked', true).trigger('change');
 		} else if ($radios.filter(':checked').length) {
 			$radios.filter(':checked').trigger('change');
@@ -234,6 +239,7 @@
 	// Finance and Transportation subtarget radio handler
 	$form.on('change', 'input[name="target_type"]', function () {
 		var val = $(this).val();
+		$(this).closest('.omsg-cat-panel').data('selected-target', val);
 		if (val === 'transport_registered') {
 			$('.omsg-transport-filters').removeClass('is-hidden');
 			loadTransportOptions();
@@ -241,7 +247,7 @@
 			$('.omsg-transport-filters').addClass('is-hidden');
 		} else if (val === 'finance_outstanding') {
 			$('.omsg-finance-outstanding-filters').removeClass('is-hidden');
-		} else if (val === 'finance_renewal_reminder') {
+		} else if (val === 'finance_renewal_reminder' || val === 'renewal_reminder') {
 			$('.omsg-finance-outstanding-filters').addClass('is-hidden');
 		}
 	});

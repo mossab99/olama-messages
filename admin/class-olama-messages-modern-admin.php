@@ -129,6 +129,7 @@ class Olama_Messages_Modern_Admin {
 					$curr_target = $campaign['target_type'] ?? 'finance_outstanding';
 					// Map legacy target_types to new category tabs
 					if ( 'collection' === $curr_target ) { $curr_target = 'finance_outstanding'; }
+					if ( 'renewal_reminder' === $curr_target ) { $curr_target = 'finance_renewal_reminder'; }
 					if ( 'general' === $curr_target ) { $curr_target = 'academic'; }
 					if ( 'transportation' === $curr_target ) { $curr_target = 'transport_registered'; }
 
