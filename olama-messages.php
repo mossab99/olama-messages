@@ -39,6 +39,7 @@ require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-template-renderer.p
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-rest-controller.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-dispatcher-service.php';
+require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-renewal-diagnostics-command.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-plugin.php';
 require_once OLAMA_MSG_PATH . 'admin/class-olama-messages-admin.php';
 require_once OLAMA_MSG_PATH . 'admin/class-olama-messages-modern-admin.php';
@@ -50,3 +51,7 @@ register_deactivation_hook( __FILE__, array( 'Olama_Messages_Activator', 'deacti
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 add_action( 'plugins_loaded', array( Olama_Messages_Plugin::instance(), 'init' ) );
+
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	WP_CLI::add_command( 'olama-messages renewal-diagnostics', array( 'Olama_Messages_Renewal_Diagnostics_Command', 'run' ) );
+}

@@ -1192,12 +1192,18 @@ class Olama_Messages_Admin {
 									<a href="<?php echo esc_url( $cancel_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Cancel this prepared campaign? This is audit-permanent.', 'olama-messages' ); ?>');">
 										<?php esc_html_e( 'Cancel', 'olama-messages' ); ?>
 									</a>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this campaign permanently?', 'olama-messages' ); ?>');">
+										<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
+									</a>
 								<?php elseif ( $c['status'] === 'sending' ) : ?>
 									<a href="<?php echo esc_url( $progress_url ); ?>" class="button button-small button-primary">
 										<?php esc_html_e( 'View Progress', 'olama-messages' ); ?>
 									</a>
 									<a href="<?php echo esc_url( $pause_url ); ?>" class="button button-small" onclick="return confirm('<?php esc_attr_e( 'Pause sending? The agent will stop picking up new jobs.', 'olama-messages' ); ?>');">
 										⏸ <?php esc_html_e( 'Pause', 'olama-messages' ); ?>
+									</a>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this campaign permanently?', 'olama-messages' ); ?>');">
+										<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
 									</a>
 								<?php elseif ( $c['status'] === 'paused' ) : ?>
 									<a href="<?php echo esc_url( $progress_url ); ?>" class="button button-small button-primary">
@@ -1208,6 +1214,9 @@ class Olama_Messages_Admin {
 									</a>
 									<a href="<?php echo esc_url( $cancel_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Cancel this paused campaign? All pending queue records will be cancelled.', 'olama-messages' ); ?>');">
 										<?php esc_html_e( 'Cancel Campaign', 'olama-messages' ); ?>
+									</a>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this campaign permanently?', 'olama-messages' ); ?>');">
+										<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
 									</a>
 								<?php elseif ( in_array( $c['status'], array( 'completed', 'completed_with_errors' ), true ) ) : ?>
 									<a href="<?php echo esc_url( $progress_url ); ?>" class="button button-small button-primary">
@@ -1220,6 +1229,15 @@ class Olama_Messages_Admin {
 									<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-queue&campaign_id=' . $c['id'] ) ); ?>" class="button button-small">
 										<?php esc_html_e( 'View Queue', 'olama-messages' ); ?>
 									</a>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this campaign permanently?', 'olama-messages' ); ?>');">
+										<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
+									</a>
+								<?php else : ?>
+									<?php if ( ! in_array( $c['status'], array( 'completed', 'completed_with_errors' ), true ) ) : ?>
+										<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this campaign permanently?', 'olama-messages' ); ?>');">
+											<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
+										</a>
+									<?php endif; ?>
 								<?php endif; ?>
 							</td>
 						</tr>
@@ -3027,14 +3045,11 @@ class Olama_Messages_Admin {
 
 	/** Handle campaign deletion. */
 	public function handle_delete_campaign() {
-		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
-			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
-		}
 		if ( ! current_user_can( 'olama_access_messages' ) ) {
 			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
 		}
 
-		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
+		$campaign_id = isset( $_REQUEST['campaign_id'] ) ? absint( $_REQUEST['campaign_id'] ) : 0;
 		if ( ! $campaign_id ) {
 			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
 		}

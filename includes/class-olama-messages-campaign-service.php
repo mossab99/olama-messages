@@ -284,8 +284,8 @@ class Olama_Messages_Campaign_Service {
 			return false;
 		}
 
-		if ( $campaign['status'] !== 'draft' ) {
-			throw new Exception( 'Only draft campaigns can be deleted.' );
+		if ( in_array( $campaign['status'], array( 'completed', 'completed_with_errors' ), true ) ) {
+			throw new Exception( __( 'Completed campaigns cannot be deleted.', 'olama-messages' ) );
 		}
 
 		$wpdb->query( 'START TRANSACTION' );
@@ -541,6 +541,7 @@ class Olama_Messages_Campaign_Service {
 		// types (collection, general, transportation) use the Core provider loop.
 		$new_audience_types = array(
 			'finance_outstanding',
+			'finance_renewal_reminder',
 			'transport_no_gps',
 			'transport_registered',
 			'store_missing',
@@ -1515,6 +1516,40 @@ class Olama_Messages_Campaign_Service {
 				}
 				return $all_items;
 
+			// ── Finance: Renewal reminder ─────────────────────────────────────
+			case 'finance_renewal_reminder':
+				$provider      = $plugin->provider();
+				$all_items     = array();
+				$chunk_size    = 200;
+				$offset        = 0;
+				$page_sigs     = array();
+				$page_count    = 0;
+				while ( $page_count < 100 ) {
+					$page_count++;
+					$q = array(
+						'limit'  => $chunk_size,
+						'offset' => $offset,
+					);
+					if ( ! empty( $filters['family_id'] ) ) {
+						$q['family_id'] = $filters['family_id'];
+					}
+					if ( ! empty( $filters['search'] ) ) {
+						$q['search'] = $filters['search'];
+					}
+					$res = $provider->get_renewal_candidates( $study_year, $q );
+					if ( empty( $res['items'] ) ) {
+						break;
+					}
+					$sig = md5( wp_json_encode( wp_list_pluck( $res['items'], 'oracle_family_id' ) ) );
+					if ( isset( $page_sigs[ $sig ] ) ) {
+						break;
+					}
+					$page_sigs[ $sig ] = true;
+					$all_items         = array_merge( $all_items, $res['items'] );
+					$offset           += count( $res['items'] );
+				}
+				return $all_items;
+
 			// ── Academic: filtered by school / grade / section ────────────────
 			case 'academic':
 				$provider   = $plugin->provider();
@@ -1604,9 +1639,9 @@ class Olama_Messages_Campaign_Service {
 				}
 				return $plugin->store_provider()->get_families_missing_items( $study_year, $filters );
 
-			default:
-				return array();
+		default:
+			return array();
 		}
 	}
-}
 
+}

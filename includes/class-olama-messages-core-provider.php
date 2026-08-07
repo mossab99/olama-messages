@@ -74,6 +74,17 @@ class Olama_Messages_Core_Provider {
 	 */
 	public function get_sync_health( $target_type = 'general', $study_year = '' ) {
 		if ( ! $this->is_core_available() ) {
+			if ( in_array( sanitize_key( (string) $target_type ), array( 'finance_renewal_reminder', 'renewal_reminder' ), true ) ) {
+				return array(
+					'ready'          => false,
+					'target_type'    => sanitize_key( (string) $target_type ),
+					'study_year'     => sanitize_text_field( (string) $study_year ),
+					'last_synced_at' => null,
+					'checked_at'     => current_time( 'mysql' ),
+					'sources'        => array(),
+					'message'        => 'Olama Core is inactive or its audience tables are unavailable.',
+				);
+			}
 			return array(
 				'ready'          => false,
 				'target_type'    => sanitize_key( (string) $target_type ),
@@ -86,6 +97,21 @@ class Olama_Messages_Core_Provider {
 		}
 
 		$audiences = olama_core()->audiences();
+		if ( in_array( sanitize_key( (string) $target_type ), array( 'finance_renewal_reminder', 'renewal_reminder' ), true ) ) {
+			if ( ! method_exists( $audiences, 'query_renewal_candidates' ) ) {
+				return array(
+					'ready'          => false,
+					'target_type'    => 'renewal_reminder',
+					'study_year'     => sanitize_text_field( (string) $study_year ),
+					'last_synced_at' => null,
+					'checked_at'     => current_time( 'mysql' ),
+					'sources'        => array(),
+					'message'        => 'Olama Core does not expose the Renewal Reminder audience contract. Update Olama Core before using this audience.',
+				);
+			}
+			return $audiences->get_sync_health( 'renewal_reminder', $study_year );
+		}
+
 		if ( method_exists( $audiences, 'get_sync_health' ) ) {
 			return $audiences->get_sync_health( $target_type, $study_year );
 		}
@@ -111,6 +137,14 @@ class Olama_Messages_Core_Provider {
 				'financial_available' => false,
 				'financial_warning' => 'Olama Core is not active or its required data tables are unavailable.',
 				'data_source' => 'unavailable',
+			);
+		}
+
+		$target_type = sanitize_key( (string) ( $filters['target_type'] ?? 'general' ) );
+		if ( in_array( $target_type, array( 'finance_renewal_reminder', 'renewal_reminder' ), true ) ) {
+			return $this->get_renewal_candidates(
+				(string) ( $filters['study_year'] ?? $this->get_current_study_year() ),
+				$filters
 			);
 		}
 
@@ -144,6 +178,24 @@ class Olama_Messages_Core_Provider {
 			'financial_warning' => $warning,
 			'data_source' => 'olama_core',
 		);
+	}
+
+	public function get_renewal_candidates( $current_study_year, array $args = array() ) {
+		if ( ! $this->is_core_available() ) {
+			throw new RuntimeException( 'Olama Core is inactive or its audience tables are unavailable.' );
+		}
+
+		$audiences = olama_core()->audiences();
+		if ( ! method_exists( $audiences, 'query_renewal_candidates' ) ) {
+			throw new RuntimeException( 'Olama Core does not expose the Renewal Reminder audience contract. Update Olama Core before using this audience.' );
+		}
+
+		$result = $audiences->query_renewal_candidates( $current_study_year, $args );
+		if ( ! is_array( $result ) ) {
+			throw new RuntimeException( 'Olama Core returned an invalid Renewal Reminder audience response.' );
+		}
+
+		return $result;
 	}
 
 	public function get_family_payment_report( $family_id, $study_year = '' ) {

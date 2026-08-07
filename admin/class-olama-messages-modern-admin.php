@@ -169,8 +169,24 @@ class Olama_Messages_Modern_Admin {
 
 					<!-- Category Panel: Finance -->
 					<div class="omsg-cat-panel <?php echo 'finance' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="finance">
-						<input type="radio" name="target_type" value="finance_outstanding" class="omsg-target-radio" <?php checked( $curr_target, 'finance_outstanding' ); ?>>
-						<div class="omsg-filter-box">
+						<div class="omsg-subtarget-options">
+							<label class="omsg-choice">
+								<input type="radio" name="target_type" value="finance_outstanding" <?php checked( $curr_target, 'finance_outstanding' ); ?>>
+								<div>
+									<strong>Outstanding Balances</strong>
+									<small>Target families with unpaid balances or specific financial statuses.</small>
+								</div>
+							</label>
+							<label class="omsg-choice">
+								<input type="radio" name="target_type" value="finance_renewal_reminder" <?php checked( $curr_target, 'finance_renewal_reminder' ); ?>>
+								<div>
+									<strong>Renewal Reminder</strong>
+									<small>Target families enrolled in the previous academic year who have not registered for the current academic year and were not transferred.</small>
+								</div>
+							</label>
+						</div>
+
+						<div class="omsg-filter-box omsg-finance-outstanding-filters <?php echo 'finance_renewal_reminder' === $curr_target ? 'is-hidden' : ''; ?>">
 							<h3>Finance Audience Filters</h3>
 							<p class="description">Target families with unpaid balances or specific financial statuses.</p>
 							<div class="omsg-filter-row">

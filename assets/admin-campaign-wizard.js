@@ -70,6 +70,7 @@
 			general: 'Active families (Legacy)',
 			transportation: 'Active transportation families (Legacy)',
 			finance_outstanding: 'Finance — Outstanding Balances',
+			finance_renewal_reminder: 'Finance — Renewal Reminder',
 			academic: 'Academic — School / Grade / Section',
 			transport_no_gps: 'Transportation — Families without GPS',
 			transport_registered: 'Transportation — Registered Transport Families',
@@ -230,7 +231,7 @@
 		}
 	});
 
-	// Transportation subtarget radio handler
+	// Finance and Transportation subtarget radio handler
 	$form.on('change', 'input[name="target_type"]', function () {
 		var val = $(this).val();
 		if (val === 'transport_registered') {
@@ -238,6 +239,10 @@
 			loadTransportOptions();
 		} else if (val === 'transport_no_gps') {
 			$('.omsg-transport-filters').addClass('is-hidden');
+		} else if (val === 'finance_outstanding') {
+			$('.omsg-finance-outstanding-filters').removeClass('is-hidden');
+		} else if (val === 'finance_renewal_reminder') {
+			$('.omsg-finance-outstanding-filters').addClass('is-hidden');
 		}
 	});
 
@@ -483,8 +488,11 @@
 	$('[data-wizard-back]').on('click', function () {
 		step = Math.max(1, step - 1);
 		if (campaignStatus === 'draft') {
+			// draw() FIRST so the target step panel is visible when save() serializes the form.
+			// Without this, navigating back from step 4 would serialize with step 3's textarea
+			// hidden (jQuery .hide()), causing message_body_draft to save as empty string.
+			draw();
 			save(function () {
-				draw();
 				if (step === 4) loadPreview();
 			});
 		} else {

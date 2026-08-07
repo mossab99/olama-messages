@@ -148,7 +148,7 @@ class Olama_Messages_Activator {
 			channel VARCHAR(30) NOT NULL DEFAULT 'sms',
 			status VARCHAR(30) NOT NULL DEFAULT 'draft',
 			study_year VARCHAR(20) NULL,
-			target_type VARCHAR(20) NOT NULL DEFAULT 'collection',
+			target_type VARCHAR(50) NOT NULL DEFAULT 'collection',
 			template_id BIGINT UNSIGNED NULL,
 			message_body_draft LONGTEXT NULL,
 			template_name_snapshot VARCHAR(190) NULL,
