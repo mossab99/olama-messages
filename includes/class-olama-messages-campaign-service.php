@@ -223,6 +223,22 @@ class Olama_Messages_Campaign_Service {
 			$values[] = sanitize_text_field( $args['study_year'] );
 		}
 
+		if ( ! empty( $args['target_type'] ) ) {
+			$where[]  = 'target_type = %s';
+			$values[] = sanitize_key( $args['target_type'] );
+		}
+
+		if ( ! empty( $args['search'] ) ) {
+			$where[]  = 'title LIKE %s';
+			$values[] = '%' . $wpdb->esc_like( sanitize_text_field( $args['search'] ) ) . '%';
+		}
+
+		// Archived campaigns remain available through their explicit status filter,
+		// but do not crowd the day-to-day Campaign Center listing.
+		if ( empty( $args['status'] ) ) {
+			$where[] = "status <> 'archived'";
+		}
+
 		$where_sql = $where ? 'WHERE ' . implode( ' AND ', $where ) : '';
 
 		$allowed_cols = array( 'id', 'title', 'status', 'study_year', 'created_at', 'prepared_at' );
@@ -253,16 +269,6 @@ class Olama_Messages_Campaign_Service {
 			$row['total_prepared']          = (int) $row['total_prepared'];
 			$row['filters']                 = $row['filters_json'] ? json_decode( $row['filters_json'], true ) : array();
 			$row['core_sync_health']        = ! empty( $row['core_sync_health_json'] ) ? json_decode( $row['core_sync_health_json'], true ) : array();
-		}
-
-		if ( ! empty( $args['target_type'] ) ) {
-			$where[]  = 'target_type = %s';
-			$values[] = sanitize_key( $args['target_type'] );
-		}
-
-		if ( ! empty( $args['search'] ) ) {
-			$where[]  = 'title LIKE %s';
-			$values[] = '%' . $wpdb->esc_like( sanitize_text_field( $args['search'] ) ) . '%';
 		}
 
 		return $rows;
@@ -300,6 +306,31 @@ class Olama_Messages_Campaign_Service {
 			$wpdb->query( 'ROLLBACK' );
 			return false;
 		}
+	}
+
+	/** Archive a completed campaign while retaining its delivery audit trail. */
+	public function archive_campaign( int $campaign_id ) {
+		global $wpdb;
+
+		$campaign = $this->get_campaign( $campaign_id );
+		if ( ! $campaign ) {
+			return false;
+		}
+		if ( ! in_array( $campaign['status'], array( 'completed', 'completed_with_errors' ), true ) ) {
+			throw new Exception( __( 'Only finished campaigns can be archived.', 'olama-messages' ) );
+		}
+
+		$result = $wpdb->update(
+			$this->table_campaigns,
+			array( 'status' => 'archived', 'updated_at' => current_time( 'mysql' ) ),
+			array( 'id' => $campaign_id ),
+			array( '%s', '%s' ),
+			array( '%d' )
+		);
+		if ( false === $result ) {
+			throw new Exception( __( 'Failed to archive campaign.', 'olama-messages' ) );
+		}
+		return true;
 	}
 
 	/**
@@ -738,22 +769,35 @@ class Olama_Messages_Campaign_Service {
 				$excluded_reason = null;
 
 				// 1. Check financial rules (Rule 7: financial reminders require financial data).
-				$req_finance = 'collection' === $target_type
-					&& ( ( isset( $campaign['min_balance'] ) && $campaign['min_balance'] !== '' )
-					|| ! empty( $campaign['exclude_credit_balances'] )
-					|| ! empty( $campaign['exclude_zero_balances'] ) );
+				// The redesigned Finance audience stores its controls in filters_json,
+				// whereas legacy Collection campaigns use the dedicated DB columns.
+				// Apply the same safeguards here as a second line of defence after
+				// the Core query, so an outstanding-balance campaign can never turn
+				// into a renewal/general audience if Core returns a broad result.
+				$is_finance_audience = in_array( $target_type, array( 'collection', 'finance_outstanding' ), true );
+				$min_balance = array_key_exists( 'min_balance', $filters )
+					? $filters['min_balance']
+					: ( $campaign['min_balance'] ?? null );
+				$exclude_credit = array_key_exists( 'exclude_credit_balances', $filters )
+					? ! empty( $filters['exclude_credit_balances'] )
+					: ! empty( $campaign['exclude_credit_balances'] );
+				$exclude_zero = array_key_exists( 'exclude_zero_balances', $filters )
+					? ! empty( $filters['exclude_zero_balances'] )
+					: ! empty( $campaign['exclude_zero_balances'] );
+				$req_finance = $is_finance_audience
+					&& ( ( null !== $min_balance && '' !== $min_balance ) || $exclude_credit || $exclude_zero );
 
 				if ( $req_finance && ! $financial_available ) {
 					$included        = false;
 					$excluded_reason = 'financial_unavailable';
 				} elseif ( $financial_available ) {
-					if ( ! empty( $campaign['exclude_credit_balances'] ) && $balance < 0 ) {
+					if ( $is_finance_audience && $exclude_credit && $balance < 0 ) {
 						$included        = false;
 						$excluded_reason = 'credit_balance';
-					} elseif ( ! empty( $campaign['exclude_zero_balances'] ) && $balance == 0 ) {
+					} elseif ( $is_finance_audience && $exclude_zero && $balance == 0 ) {
 						$included        = false;
 						$excluded_reason = 'zero_balance';
-					} elseif ( isset( $campaign['min_balance'] ) && $campaign['min_balance'] !== '' && $balance < (float) $campaign['min_balance'] ) {
+					} elseif ( $is_finance_audience && null !== $min_balance && '' !== $min_balance && $balance < (float) $min_balance ) {
 						$included        = false;
 						$excluded_reason = 'below_min_balance';
 					}

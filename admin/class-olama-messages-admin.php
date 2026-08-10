@@ -55,6 +55,7 @@ class Olama_Messages_Admin {
 		// Campaign actions (Phase 2)
 		add_action( 'admin_post_olama_msg_save_campaign',     array( $this, 'handle_save_campaign' ) );
 		add_action( 'admin_post_olama_msg_delete_campaign',   array( $this, 'handle_delete_campaign' ) );
+		add_action( 'admin_post_olama_msg_archive_campaign',  array( $this, 'handle_archive_campaign' ) );
 		add_action( 'admin_post_olama_msg_prepare_campaign',  array( $this, 'handle_prepare_campaign' ) );
 		add_action( 'admin_post_olama_msg_reset_campaign',    array( $this, 'handle_reset_campaign' ) );
 		add_action( 'admin_post_olama_msg_cancel_campaign',   array( $this, 'handle_cancel_campaign' ) );
@@ -3067,6 +3068,26 @@ class Olama_Messages_Admin {
 			$this->set_flash( $e->getMessage(), 'error' );
 		}
 
+		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaigns' ) );
+		exit;
+	}
+
+	/** Archive a completed campaign without deleting its delivery records. */
+	public function handle_archive_campaign() {
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) );
+		}
+		$campaign_id = isset( $_POST['campaign_id'] ) ? absint( $_POST['campaign_id'] ) : 0;
+		if ( ! $campaign_id ) {
+			wp_die( esc_html__( 'Missing campaign ID.', 'olama-messages' ) );
+		}
+		check_admin_referer( 'olama_msg_archive_' . $campaign_id );
+		try {
+			$this->plugin->campaigns()->archive_campaign( $campaign_id );
+			$this->set_flash( __( 'Campaign archived. Its delivery history has been retained.', 'olama-messages' ), 'success' );
+		} catch ( Exception $e ) {
+			$this->set_flash( $e->getMessage(), 'error' );
+		}
 		wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaigns' ) );
 		exit;
 	}

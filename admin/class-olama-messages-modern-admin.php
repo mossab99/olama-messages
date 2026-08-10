@@ -38,10 +38,18 @@ class Olama_Messages_Modern_Admin {
 		echo '<div class="notice notice-' . esc_attr( $type ) . ' is-dismissible"><p>' . esc_html( $flash['message'] ) . '</p></div>';
 	}
 
-	private function post_button( $action, $campaign_id, $label, $class = 'button' ) {
+	private function post_button( $action, $campaign_id, $label, $class = 'button', $confirmation = '' ) {
 		$url = admin_url( 'admin-post.php' );
-		$nonce_action = str_replace( 'olama_msg_', 'olama_msg_', $action ) . '_' . $campaign_id;
-		return '<form class="omsg-inline-form" method="post" action="' . esc_url( $url ) . '"><input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="campaign_id" value="' . absint( $campaign_id ) . '">' . wp_nonce_field( $nonce_action, '_wpnonce', true, false ) . '<button class="' . esc_attr( $class ) . '">' . esc_html( $label ) . '</button></form>';
+		$nonce_actions = array(
+			'olama_msg_delete_campaign'  => 'olama_msg_delete_',
+			'olama_msg_archive_campaign' => 'olama_msg_archive_',
+		);
+		if ( ! isset( $nonce_actions[ $action ] ) ) {
+			return '';
+		}
+		$nonce_action = $nonce_actions[ $action ] . $campaign_id;
+		$confirm_attr = '' !== $confirmation ? ' onsubmit="return window.confirm(\'' . esc_js( $confirmation ) . '\');"' : '';
+		return '<form class="omsg-inline-form" method="post" action="' . esc_url( $url ) . '"' . $confirm_attr . '><input type="hidden" name="action" value="' . esc_attr( $action ) . '"><input type="hidden" name="campaign_id" value="' . absint( $campaign_id ) . '">' . wp_nonce_field( $nonce_action, '_wpnonce', true, false ) . '<button class="' . esc_attr( $class ) . '">' . esc_html( $label ) . '</button></form>';
 	}
 
 	public function overview() {
@@ -77,10 +85,11 @@ class Olama_Messages_Modern_Admin {
 		$rows = $this->plugin->campaigns()->list_campaigns( array( 'status' => $status, 'search' => $search, 'limit' => 100 ) );
 		$action = '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=olama-messages-new-campaign' ) ) . '">Create campaign</a>';
 		$this->header( 'Campaign Center', 'Find drafts, prepared campaigns, and delivery history.', $action );
+		$this->print_flash();
 		?>
 		<form class="omsg-filterbar" method="get"><input type="hidden" name="page" value="olama-messages-campaigns">
 			<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search campaign title">
-			<select name="status"><option value="">All statuses</option><?php foreach ( array( 'draft','prepared','sending','paused','completed','cancelled' ) as $item ) : ?><option value="<?php echo esc_attr( $item ); ?>" <?php selected( $status, $item ); ?>><?php echo esc_html( ucwords( $item ) ); ?></option><?php endforeach; ?></select>
+			<select name="status"><option value="">Active &amp; recent</option><?php foreach ( array( 'draft','prepared','sending','paused','completed','cancelled','archived' ) as $item ) : ?><option value="<?php echo esc_attr( $item ); ?>" <?php selected( $status, $item ); ?>><?php echo esc_html( ucwords( str_replace( '_', ' ', $item ) ) ); ?></option><?php endforeach; ?></select>
 			<button class="button">Filter</button>
 		</form>
 		<section class="omsg-panel"><?php $this->campaign_table( $rows, true ); ?></section></div>
@@ -98,9 +107,11 @@ class Olama_Messages_Modern_Admin {
 			<td><?php echo absint( $row['total_included'] ); ?> included<br><small><?php echo absint( $row['total_excluded'] ); ?> excluded</small></td>
 			<td><?php echo esc_html( $row['created_at'] ); ?></td>
 			<?php if ( $actions ) : ?><td class="omsg-actions">
-				<?php if ( 'draft' === $row['status'] ) : ?><a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $row['id'] ) ); ?>">Continue</a><?php endif; ?>
+				<?php if ( 'draft' === $row['status'] ) : ?><a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $row['id'] ) ); ?>">Continue</a><?php echo $this->post_button( 'olama_msg_delete_campaign', $row['id'], 'Delete', 'button button-link-delete', 'Permanently delete this unfinished campaign and its queued messages?' ); ?><?php endif; ?>
+				<?php if ( in_array( $row['status'], array( 'prepared', 'sending', 'paused', 'cancelled' ), true ) ) : ?><?php echo $this->post_button( 'olama_msg_delete_campaign', $row['id'], 'Delete', 'button button-link-delete', 'Permanently delete this unfinished campaign and its queued messages?' ); ?><?php endif; ?>
 				<?php if ( 'prepared' === $row['status'] ) : ?><a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-new-campaign&campaign_id=' . $row['id'] . '&step=5' ) ); ?>">Authorize</a><?php endif; ?>
 				<?php if ( in_array( $row['status'], array( 'sending','paused','completed','completed_with_errors' ), true ) ) : ?><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-campaign-progress&campaign_id=' . $row['id'] ) ); ?>">View delivery</a><?php endif; ?>
+				<?php if ( in_array( $row['status'], array( 'completed', 'completed_with_errors' ), true ) ) : ?><?php echo $this->post_button( 'olama_msg_archive_campaign', $row['id'], 'Archive', 'button', 'Archive this finished campaign? Its delivery history will be retained.' ); ?><?php endif; ?>
 			</td><?php endif; ?></tr>
 		<?php endforeach; ?></tbody></table></div>
 		<?php
@@ -157,7 +168,7 @@ class Olama_Messages_Modern_Admin {
 							<small>School / Grade / Section</small>
 						</button>
 						<button type="button" class="omsg-cat-tab <?php echo 'transportation' === $active_cat ? 'is-active' : ''; ?>" data-cat="transportation">
-							<span class="dashicons dashicons-bus"></span>
+							<span class="dashicons dashicons-car"></span>
 							<strong>Transportation</strong>
 							<small>GPS status &amp; bus routes</small>
 						</button>

@@ -1048,6 +1048,7 @@
 .omsg-status--sending { color:#7a4600; background:#fff3d7; }
 .omsg-status--paused { color:#6840a5; background:#f1eafe; }
 .omsg-status--completed { color:#087443; background:#dcf7e9; }
+.omsg-status--archived { color:#526071; background:#eef1f4; }
 .omsg-status--failed,.omsg-status--completed_with_errors { color:#b42318; background:#fee4e2; }
 .omsg-actions,.omsg-inline-form { display:flex; gap:7px; align-items:center; }
 .omsg-filterbar { display:flex; gap:10px; padding:14px; background:#fff; border:1px solid #dfe3eb; border-radius:8px; }
@@ -1185,4 +1186,3 @@
 	.omsg-subtarget-options { grid-template-columns:1fr; }
 	.omsg-filter-row select, .omsg-filter-row input { min-width:100%; }
 }
-

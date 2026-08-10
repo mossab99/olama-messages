@@ -334,7 +334,7 @@
 		var $arr = $('#omsg-filter-arr-bus');
 		if (!$area.length || $area.data('loaded')) return;
 		$.get(olamaMsgAdmin.ajaxUrl, {
-			action: 'olama_audience_transport_options' in olamaMsgAdmin ? olamaMsgAdmin.action : 'olama_msg_audience_transport_options',
+			action: 'olama_msg_audience_transport_options',
 			security: olamaMsgAdmin.nonce,
 			study_year: getStudyYear()
 		}).done(function (r) {
@@ -400,8 +400,11 @@
 			}
 		});
 		if (!valid) return;
-		step = Math.min(5, step + 1);
+		var nextStep = Math.min(5, step + 1);
+		// Keep the current step until the autosave succeeds. Otherwise a transient
+		// save error leaves the UI on one panel but advances the internal step.
 		save(function () {
+			step = nextStep;
 			draw();
 			if (step === 4) {
 				$('[data-preview-campaign]').trigger('click');
