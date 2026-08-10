@@ -81,7 +81,7 @@ class Olama_Messages_Phone_Book_Exporter {
 			throw new InvalidArgumentException( 'A primary study year is required.' );
 		}
 
-		$contacts = $this->contacts_for_year( $primary_year );
+		$contacts = $this->contacts_for_year( $primary_year, "\u{062C}\u{062F}\u{064A}\u{062F}" );
 		$by_id    = array();
 
 		foreach ( $contacts as $contact ) {
@@ -89,14 +89,14 @@ class Olama_Messages_Phone_Book_Exporter {
 		}
 
 		if ( '' !== $merge_year && $merge_year !== $primary_year ) {
-			foreach ( $this->contacts_for_year( $merge_year ) as $older_contact ) {
+			foreach ( $this->contacts_for_year( $merge_year, "\u{0642}\u{062F}\u{064A}\u{0645}" ) as $older_contact ) {
 				$family_id = $older_contact['family_id'];
 				if ( ! isset( $by_id[ $family_id ] ) ) {
 					$by_id[ $family_id ] = $older_contact;
 					continue;
 				}
 
-				// Preserve the current-year name and students, but recover a
+				// Preserve the current-year name, but recover a
 				// missing parent phone from the previous year's family record.
 				foreach ( array( 'mother_mobile', 'father_mobile' ) as $field ) {
 					if ( '' === $by_id[ $family_id ][ $field ] && '' !== $older_contact[ $field ] ) {
@@ -148,9 +148,8 @@ class Olama_Messages_Phone_Book_Exporter {
 		return $csv;
 	}
 
-	private function contacts_for_year( $study_year ) {
+	private function contacts_for_year( $study_year, $year_label ) {
 		$families       = $this->families_for_year( $study_year );
-		$transportation = $this->transportation_for_year( $study_year );
 		$contacts       = array();
 
 		foreach ( $families as $family ) {
@@ -184,7 +183,7 @@ class Olama_Messages_Phone_Book_Exporter {
 
 			$contacts[] = array(
 				'family_id'     => $family_id,
-				'name'          => implode( ' ', $parts ),
+				'name'          => implode( ' ', array_filter( array( $year_label, "\u{0639}\u{0627}\u{0626}\u{0644}\u{0629}", $family_id, $sponsor ) ) ),
 				'mother_mobile' => $this->phone( $family['mother_mobile'] ?? '' ),
 				'father_mobile' => $this->phone( $family['father_mobile'] ?? '' ),
 				'study_year'    => $study_year,

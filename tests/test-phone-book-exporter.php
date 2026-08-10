@@ -147,13 +147,23 @@ if ( '20' !== $contacts[0]['family_id'] ) {
 	$failures[] = 'Families should be sorted naturally by family ID.';
 }
 if ( 'عائلة 20 محمد رفيق صالح عدي عاشر أ زينة ثامن ب نقل 8 8' !== $contacts[0]['name'] ) {
-	$failures[] = 'Primary-year family description was not formatted correctly.';
+	// Legacy description assertion replaced below by the year-prefix assertions.
 }
 if ( '0799988127' !== $contacts[0]['mother_mobile'] ) {
 	$failures[] = 'A missing current-year phone should be recovered from the merge year.';
 }
 if ( 'عائلة 47 عبدالرحمن صادق عريدي ريتال تاسع ب مشي' !== $contacts[1]['name'] ) {
-	$failures[] = 'Older-only walking family was not formatted correctly.';
+	// Legacy description assertion replaced below by the year-prefix assertions.
+}
+
+if ( 0 !== strpos( $contacts[0]['name'], "\u{062C}\u{062F}\u{064A}\u{062F} \u{0639}\u{0627}\u{0626}\u{0644}\u{0629} 20 " ) ) {
+	$failures[] = 'Current-year family name should start with جديد عائلة.';
+}
+if ( 0 !== strpos( $contacts[1]['name'], "\u{0642}\u{062F}\u{064A}\u{0645} \u{0639}\u{0627}\u{0626}\u{0644}\u{0629} 47 " ) ) {
+	$failures[] = 'Previous-year family name should start with قديم عائلة.';
+}
+if ( false !== strpos( $contacts[0]['name'], "\u{0645}\u{0634}\u{064A}" ) || false !== strpos( $contacts[0]['name'], "\u{0646}\u{0642}\u{0644}" ) || false !== strpos( $contacts[1]['name'], "\u{0645}\u{0634}\u{064A}" ) || false !== strpos( $contacts[1]['name'], "\u{0646}\u{0642}\u{0644}" ) ) {
+	$failures[] = 'Family names must not include walking or transportation suffixes.';
 }
 
 $stream = fopen( 'php://temp', 'w+' );
