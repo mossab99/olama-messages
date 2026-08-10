@@ -21,8 +21,10 @@
 		$('[name="ui_step"]').val(step);
 		$('[data-wizard-back]').prop('disabled', step === 1);
 		$('[data-wizard-next]')
-			.toggle(step <= 4 && campaignStatus === 'draft')
-			.text(step === 4 ? 'Prepare & continue' : 'Save & continue');
+			.toggle(step <= 4 && (campaignStatus === 'draft' || campaignStatus === 'prepared'))
+			.text(campaignStatus === 'prepared'
+				? (step === 4 ? 'Continue to authorize' : 'Continue')
+				: (step === 4 ? 'Prepare & continue' : 'Save & continue'));
 	}
 
 	function meter() {
@@ -387,7 +389,7 @@
 		if (body) $('[name="message_body_draft"]').val(body).trigger('input');
 	});
 	$('[data-wizard-next]').on('click', function () {
-		if (step === 4) {
+		if (step === 4 && campaignStatus === 'draft') {
 			prepareCampaign();
 			return;
 		}
@@ -406,6 +408,7 @@
 		save(function () {
 			step = nextStep;
 			draw();
+			updateStepUrl();
 			if (step === 4) {
 				$('[data-preview-campaign]').trigger('click');
 			}
