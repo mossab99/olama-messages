@@ -36,6 +36,17 @@ class Olama_Messages_Core_Provider {
 		return $years;
 	}
 
+	/**
+	 * Return Phone Book years from the synchronized Oracle records only.
+	 */
+	public function get_phone_book_study_years() {
+		if ( ! $this->is_core_available() || ! method_exists( olama_core()->audiences(), 'get_phone_book_study_years' ) ) {
+			return array();
+		}
+
+		return array_values( array_map( 'strval', (array) olama_core()->audiences()->get_phone_book_study_years() ) );
+	}
+
 	public function get_current_study_year() {
 		if ( ! function_exists( 'olama_core' ) || ! method_exists( olama_core(), 'academic_context' ) ) {
 			return '';

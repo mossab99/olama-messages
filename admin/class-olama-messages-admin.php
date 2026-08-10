@@ -697,7 +697,7 @@ class Olama_Messages_Admin {
 		$study_year = sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) );
 		$merge      = ! empty( $_POST['merge_years'] );
 		$merge_year = $merge ? sanitize_text_field( wp_unslash( $_POST['merge_year'] ?? '' ) ) : '';
-		$years      = array_map( 'strval', $this->plugin->provider()->get_available_study_years() );
+		$years      = array_map( 'strval', $this->plugin->provider()->get_phone_book_study_years() );
 		$redirect   = add_query_arg(
 			array(
 				'page'       => 'olama-messages-phone-book',

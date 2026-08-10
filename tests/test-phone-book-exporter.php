@@ -9,8 +9,8 @@ class Olama_Messages_Test_Phone_Book_Provider {
 		$this->years = $years;
 	}
 
-	public function get_recipients_preview( array $args ) {
-		$items  = $this->years[ $args['study_year'] ] ?? array();
+	public function get_phone_book( $study_year, array $args ) {
+		$items  = $this->years[ $study_year ] ?? array();
 		$offset = (int) $args['offset'];
 		$limit  = (int) $args['limit'];
 
@@ -19,6 +19,10 @@ class Olama_Messages_Test_Phone_Book_Provider {
 			'items'       => array_slice( $items, $offset, $limit ),
 			'total'       => count( $items ),
 		);
+	}
+
+	public function get_recipients_preview( array $args ) {
+		throw new RuntimeException( 'Phone Book exports must use the dedicated Core phone-book query.' );
 	}
 }
 

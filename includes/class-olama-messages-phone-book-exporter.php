@@ -200,12 +200,11 @@ class Olama_Messages_Phone_Book_Exporter {
 		$limit  = 200;
 
 		do {
-			$result = $this->provider->get_recipients_preview(
+			$result = $this->provider->get_phone_book(
+				$study_year,
 				array(
-					'target_type' => 'general',
-					'study_year'  => $study_year,
-					'limit'       => $limit,
-					'offset'      => $offset,
+					'limit'  => $limit,
+					'offset' => $offset,
 				)
 			);
 

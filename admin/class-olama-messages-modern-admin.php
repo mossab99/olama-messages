@@ -373,7 +373,7 @@ class Olama_Messages_Modern_Admin {
 	}
 
 	public function phone_book() {
-		$years = $this->plugin->provider()->get_available_study_years();
+		$years = $this->plugin->provider()->get_phone_book_study_years();
 		$selected_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? ( $years[0] ?? '' ) ) );
 		if ( ! in_array( $selected_year, $years, true ) && $years ) {
 			$selected_year = (string) $years[0];
