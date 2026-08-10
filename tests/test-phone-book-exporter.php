@@ -177,8 +177,8 @@ fclose( $stream );
 if ( Olama_Messages_Phone_Book_Exporter::HEADERS !== $header ) {
 	$failures[] = 'CSV headers do not match the Google Contacts template.';
 }
-if ( 'Mobile' !== $first[29] || '0799988127' !== $first[30] || 'Mobile' !== $first[31] || '0797112932' !== $first[32] ) {
-	$failures[] = 'Mother and father phones are not in the expected Google columns.';
+if ( 'Mobile' !== $first[29] || '="0799988127"' !== $first[30] || 'Mobile' !== $first[31] || '="0797112932"' !== $first[32] ) {
+	$failures[] = 'Mother and father phones are not ordered or formatted as protected text.';
 }
 if ( false === $second || 41 !== count( $second ) ) {
 	$failures[] = 'CSV data row does not contain all Google Contacts columns.';

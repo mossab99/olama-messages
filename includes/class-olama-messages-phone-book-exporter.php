@@ -131,9 +131,9 @@ class Olama_Messages_Phone_Book_Exporter {
 			$row = array_fill( 0, count( self::HEADERS ), '' );
 			$row[0]  = (string) $contact['name'];
 			$row[29] = '' !== $contact['mother_mobile'] ? 'Mobile' : '';
-			$row[30] = (string) $contact['mother_mobile'];
+			$row[30] = $this->spreadsheet_phone( $contact['mother_mobile'] );
 			$row[31] = '' !== $contact['father_mobile'] ? 'Mobile' : '';
-			$row[32] = (string) $contact['father_mobile'];
+			$row[32] = $this->spreadsheet_phone( $contact['father_mobile'] );
 			fputcsv( $stream, $row, ',', '"', '\\' );
 		}
 
@@ -351,6 +351,15 @@ class Olama_Messages_Phone_Book_Exporter {
 
 	private function phone( $value ) {
 		return preg_replace( '/[^0-9+]/', '', (string) $value );
+	}
+
+	/**
+	 * Keep local numbers as text when the Google Contacts CSV is opened in
+	 * Google Sheets, which otherwise removes a leading zero from numeric cells.
+	 */
+	private function spreadsheet_phone( $value ) {
+		$value = $this->phone( $value );
+		return '' === $value ? '' : '="' . $value . '"';
 	}
 
 	private function clean_text( $value ) {
