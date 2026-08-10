@@ -297,6 +297,13 @@
                 var eta = formatEta(d.eta_seconds);
                 $('#olama-msg-progress-eta').text(eta ? 'Est. remaining: ' + eta : '').toggle(!!eta);
 
+                var diagnostic = d.dispatch_diagnostic || {};
+                $('#olama-msg-dispatch-diagnostic')
+                    .toggleClass('notice-error', diagnostic.level === 'error')
+                    .toggleClass('notice-warning', diagnostic.level === 'warning')
+                    .text(diagnostic.message || '')
+                    .prop('hidden', !diagnostic.message);
+
                 $.each(d.rows, function (_, row) {
                     var $row = $('tr[data-queue-id="' + row.id + '"]');
                     $row.find('[data-queue-field="status"]').html(row.status_html);

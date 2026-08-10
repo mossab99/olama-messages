@@ -841,6 +841,36 @@ class Olama_Messages_Admin {
 		}
 
 		$pending = $counter['prepared'] + $counter['reserved'] + $counter['retry_wait'];
+		$dispatch_diagnostic = array( 'level' => '', 'message' => '' );
+		if ( 'sending' === $campaign['status'] && $counter['prepared'] > 0 ) {
+			$agent = $this->plugin->agents()->get_ready_dispatcher_agent();
+			if ( ! $agent ) {
+				$dispatch_diagnostic = array(
+					'level'   => 'error',
+					'message' => __( 'Sending is waiting: no ready dispatcher is online to claim the remaining messages.', 'olama-messages' ),
+				);
+			} else {
+				$heartbeat = (array) ( $agent['heartbeat'] ?? array() );
+				$last_error = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_error'] ?? '' ) );
+				$last_poll  = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_poll_at'] ?? '' ) );
+				$poll_time  = $last_poll ? strtotime( $last_poll ) : false;
+				if ( '' !== $last_error ) {
+					$dispatch_diagnostic = array(
+						'level'   => 'error',
+						'message' => sprintf( __( 'Sending is waiting: the desktop dispatcher reported an error: %s', 'olama-messages' ), $last_error ),
+					);
+				} elseif ( ! $poll_time || $poll_time < ( time() - 90 ) ) {
+					$dispatch_diagnostic = array(
+						'level'   => 'warning',
+						'message' => sprintf(
+							__( 'Sending is waiting: %1$s is online, but its dispatcher has not requested another message since %2$s. Restart or resume the desktop sending agent.', 'olama-messages' ),
+							$agent['agent_name'],
+							$last_poll ?: __( 'it started', 'olama-messages' )
+						),
+					);
+				}
+			}
+		}
 		wp_send_json_success( array(
 			'campaign_status'      => $campaign['status'],
 			'campaign_status_html' => $this->status_badge( $campaign['status'] ),
@@ -852,6 +882,7 @@ class Olama_Messages_Admin {
 				'failed'   => $total ? round( ( $counter['failed'] / $total ) * 100 ) : 0,
 			),
 			'eta_seconds' => $pending * 20,
+			'dispatch_diagnostic' => $dispatch_diagnostic,
 			'rows'        => $row_data,
 		) );
 	}
@@ -1482,6 +1513,7 @@ class Olama_Messages_Admin {
 				); ?>
 			</div>
 			<?php endif; ?>
+			<div id="olama-msg-dispatch-diagnostic" class="notice inline" hidden aria-live="polite"></div>
 
 			<!-- Queue Table -->
 			<div class="olama-msg-table-wrap" style="margin-top:1.5rem;">
