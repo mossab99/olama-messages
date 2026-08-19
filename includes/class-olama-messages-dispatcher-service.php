@@ -60,7 +60,7 @@ class Olama_Messages_Dispatcher_Service {
 		}
 
 		$campaign_ids_list = implode( ',', array_map( 'intval', $sending_campaign_ids ) );
-		$now = current_time( 'mysql' );
+		$now = current_time( 'mysql', true );
 
 		// 2. Select prepared records or expired reserved/retry_wait records for active campaigns
 		// A reservation is expired if status is 'reserved' and reservation_expires_at is in the past
@@ -87,7 +87,7 @@ class Olama_Messages_Dispatcher_Service {
 
 		$reserved_jobs = array();
 		$reservation_ttl = 120; // 2 minutes
-		$expires_at = date( 'Y-m-d H:i:s', time() + $reservation_ttl );
+		$expires_at = gmdate( 'Y-m-d H:i:s', time() + $reservation_ttl );
 
 		foreach ( $rows as $row ) {
 			$queue_id = (int) $row['id'];
@@ -133,6 +133,7 @@ class Olama_Messages_Dispatcher_Service {
 						array( 'queue_id' => $queue_id ),
 						'error'
 					);
+					$this->check_and_finalize_campaign( $campaign_id );
 
 					continue;
 				}
@@ -245,7 +246,7 @@ class Olama_Messages_Dispatcher_Service {
 			);
 		}
 
-		$now = current_time( 'mysql' );
+		$now = current_time( 'mysql', true );
 		$clamped_stdout = substr( $stdout, 0, 4000 );
 		$clamped_stderr = substr( $stderr, 0, 4000 );
 
@@ -329,15 +330,21 @@ class Olama_Messages_Dispatcher_Service {
 	public function cleanup_stale_reservations( int $timeout_seconds = 600 ) {
 		global $wpdb;
 
-		$threshold = date( 'Y-m-d H:i:s', time() - $timeout_seconds );
-		$now = current_time( 'mysql' );
+		$threshold = gmdate( 'Y-m-d H:i:s', time() - $timeout_seconds );
+		$now = current_time( 'mysql', true );
 
-		// Find reserved items that haven't been updated since the threshold
+		// Prefer the explicit UTC reservation deadline. The reserved_at fallback
+		// covers legacy rows that predate reservation_expires_at.
 		$stale_jobs = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT id, campaign_id, reserved_by_agent_id, reserved_by_agent_uuid 
 				 FROM {$this->table_queue} 
-				 WHERE status = 'reserved' AND reserved_at < %s",
+				 WHERE status = 'reserved'
+				   AND (
+				     ( reservation_expires_at IS NOT NULL AND reservation_expires_at < %s )
+				     OR ( reservation_expires_at IS NULL AND reserved_at < %s )
+				   )",
+				$now,
 				$threshold
 			),
 			ARRAY_A
@@ -348,14 +355,15 @@ class Olama_Messages_Dispatcher_Service {
 		}
 
 		$count = 0;
+		$campaign_ids = array();
 		foreach ( $stale_jobs as $job ) {
 			$wpdb->update(
 				$this->table_queue,
 				array(
-					'status'                 => 'prepared', // Reset to prepared so it can be re-reserved
-					'reserved_by_agent_id'   => null,
-					'reserved_by_agent_uuid' => null,
-					'reserved_at'            => null,
+					// Retain the previous owner and reserved_at audit values. A late,
+					// durable result from that agent remains valid until another agent
+					// actually reserves the row and replaces the owner.
+					'status'                 => 'prepared',
 					'reservation_expires_at' => null,
 					'updated_at'             => $now,
 				),
@@ -372,9 +380,31 @@ class Olama_Messages_Dispatcher_Service {
 			);
 
 			$count++;
+			$campaign_ids[] = (int) $job['campaign_id'];
+		}
+
+		foreach ( array_unique( $campaign_ids ) as $campaign_id ) {
+			$this->check_and_finalize_campaign( $campaign_id );
 		}
 
 		return $count;
+	}
+
+	/**
+	 * Reconcile all sending campaigns whose queue may have reached a terminal state
+	 * outside the normal result callback (for example, JIT rendering failures).
+	 *
+	 * @return int Number of campaigns inspected.
+	 */
+	public function reconcile_sending_campaigns() {
+		global $wpdb;
+		$campaign_ids = $wpdb->get_col(
+			"SELECT id FROM {$this->table_campaigns} WHERE status = 'sending'"
+		);
+		foreach ( $campaign_ids as $campaign_id ) {
+			$this->check_and_finalize_campaign( (int) $campaign_id );
+		}
+		return count( $campaign_ids );
 	}
 
 	/**

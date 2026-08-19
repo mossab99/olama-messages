@@ -842,7 +842,7 @@ class Olama_Messages_Admin {
 
 		$pending = $counter['prepared'] + $counter['reserved'] + $counter['retry_wait'];
 		$dispatch_diagnostic = array( 'level' => '', 'message' => '' );
-		if ( 'sending' === $campaign['status'] && $counter['prepared'] > 0 ) {
+		if ( 'sending' === $campaign['status'] && $pending > 0 ) {
 			$agent = $this->plugin->agents()->get_ready_dispatcher_agent();
 			if ( ! $agent ) {
 				$dispatch_diagnostic = array(
@@ -853,7 +853,7 @@ class Olama_Messages_Admin {
 				$heartbeat = (array) ( $agent['heartbeat'] ?? array() );
 				$last_error = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_error'] ?? '' ) );
 				$last_poll  = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_poll_at'] ?? '' ) );
-				$poll_time  = $last_poll ? strtotime( $last_poll ) : false;
+				$poll_time  = $last_poll ? strtotime( $last_poll . ' UTC' ) : false;
 				if ( '' !== $last_error ) {
 					$dispatch_diagnostic = array(
 						'level'   => 'error',
@@ -4295,7 +4295,7 @@ class Olama_Messages_Admin {
 			<?php elseif ( ! $dispatcher_ready_agent ) : ?>
 			<div class="notice notice-error" style="margin: 0 0 20px 0;">
 				<p><strong><?php esc_html_e( '⛔ Dispatcher Disabled', 'olama-messages' ); ?></strong><br>
-				<?php esc_html_e( 'Windows agent is online, but dispatcher is disabled. Right-click the tray icon and choose Enable Dispatcher.', 'olama-messages' ); ?></p>
+				<?php esc_html_e( 'Windows agent is online, but its dispatcher is disabled, stalled, or reporting an error. Check the tray dispatcher status and agent logs.', 'olama-messages' ); ?></p>
 			</div>
 			<?php else : ?>
 			<div class="notice notice-success" style="margin: 0 0 20px 0;">

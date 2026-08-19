@@ -224,7 +224,7 @@ class Olama_Messages_Agent_Service {
 			$json_payload = wp_json_encode( $payload );
 		}
 
-		$now = current_time( 'mysql' );
+		$now = current_time( 'mysql', true );
 		$kde_cli_found        = ! empty( $payload['kde_cli_found'] );
 		$kde_device_reachable = ! empty( $payload['kde_device_reachable'] );
 		// "Online" means the agent is ready to send SMS, not merely that its
@@ -628,13 +628,15 @@ class Olama_Messages_Agent_Service {
 	 *  - kde_device_reachable = 1
 	 *  - revoked_at IS NULL
 	 *  - dispatcher_enabled = true (decoded from last_heartbeat_json)
+	 *  - dispatcher poll timestamp is no more than 90 seconds old
+	 *  - dispatcher state is not Error
 	 *
 	 * @return array|null Agent data or null.
 	 */
 	public function get_ready_dispatcher_agent() {
 		global $wpdb;
 
-		$five_minutes_ago = date( 'Y-m-d H:i:s', time() - 300 );
+		$five_minutes_ago = gmdate( 'Y-m-d H:i:s', time() - 300 );
 		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT * FROM {$this->table_agents}
 			 WHERE status IN ('active', 'online')
@@ -652,8 +654,20 @@ class Olama_Messages_Agent_Service {
 
 		foreach ( $rows as $row ) {
 			$agent = $this->typecast_agent( $row );
-			// Check if dispatcher is enabled in the heartbeat JSON payload
-			if ( ! empty( $agent['heartbeat']['dispatcher_enabled'] ) ) {
+			$heartbeat = (array) ( $agent['heartbeat'] ?? array() );
+			$last_poll = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_poll_at'] ?? '' ) );
+			$poll_time = $last_poll ? strtotime( $last_poll . ' UTC' ) : false;
+			$state     = sanitize_text_field( (string) ( $heartbeat['dispatcher_state'] ?? '' ) );
+
+			// A healthy heartbeat is not enough: the SMS worker must also be
+			// advancing. This catches a hung KDE process while the heartbeat loop
+			// continues to report the desktop application as online.
+			if (
+				! empty( $heartbeat['dispatcher_enabled'] ) &&
+				$poll_time &&
+				$poll_time >= ( time() - 90 ) &&
+				'Error' !== $state
+			) {
 				return $agent;
 			}
 		}

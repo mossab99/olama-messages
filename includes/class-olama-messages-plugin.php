@@ -103,6 +103,26 @@ class Olama_Messages_Plugin {
 
 		// Register REST routes
 		add_action( 'rest_api_init', array( $this, 'register_rest_routes' ) );
+
+		// Recover reservations even when the desktop dispatcher has stopped polling.
+		add_filter( 'cron_schedules', array( $this, 'register_cron_schedules' ) );
+		add_action( 'olama_msg_dispatcher_maintenance', array( $this, 'run_dispatcher_maintenance' ) );
+		if ( ! wp_next_scheduled( 'olama_msg_dispatcher_maintenance' ) ) {
+			wp_schedule_event( time() + 60, 'olama_msg_every_minute', 'olama_msg_dispatcher_maintenance' );
+		}
+	}
+
+	public function register_cron_schedules( $schedules ) {
+		$schedules['olama_msg_every_minute'] = array(
+			'interval' => 60,
+			'display'  => __( 'Every minute (Olama Messages)', 'olama-messages' ),
+		);
+		return $schedules;
+	}
+
+	public function run_dispatcher_maintenance() {
+		$this->dispatcher()->cleanup_stale_reservations( 180 );
+		$this->dispatcher()->reconcile_sending_campaigns();
 	}
 
 	// ─── Rewrite ─────────────────────────────────────────────────────────────

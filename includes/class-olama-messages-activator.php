@@ -40,6 +40,7 @@ class Olama_Messages_Activator {
 	 * Run on plugin deactivation.
 	 */
 	public static function deactivate() {
+		wp_clear_scheduled_hook( 'olama_msg_dispatcher_maintenance' );
 		flush_rewrite_rules();
 	}
 
