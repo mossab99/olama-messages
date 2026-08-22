@@ -160,7 +160,7 @@ class Olama_Messages_Phone_Book_Exporter {
 						'rows'    => array(),
 					);
 				}
-				$groups[ $key ]['rows'][] = array( $name, $grade, $mother );
+				$groups[ $key ]['rows'][] = array( $name, $grade, $section, $mother );
 			}
 		}
 

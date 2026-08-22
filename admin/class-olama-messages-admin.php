@@ -766,9 +766,9 @@ class Olama_Messages_Admin {
 			exit;
 		}
 		try {
-			if ( 'csv' === $format ) {
+			if ( 'school_grade_section' === $format ) {
 				$data      = $this->plugin->phone_book_exporter()->to_active_school_csv( $this->plugin->phone_book_exporter()->build_active_school_grade_sections( $study_year ) );
-				$filename  = 'phone-book-active-school-students-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.csv';
+				$filename  = 'phone-book-school-grade-section-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.csv';
 				$mime_type = 'text/csv; charset=UTF-8';
 			} else {
 				$data      = $this->plugin->phone_book_exporter()->to_csv( $this->plugin->phone_book_exporter()->build_active_school_contacts( $study_year ) );

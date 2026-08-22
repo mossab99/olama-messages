@@ -516,7 +516,7 @@ class Olama_Messages_Modern_Admin {
 						</select>
 					</label>
 					<button class="button button-primary" type="submit" name="format" value="google" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Active School Google CSV', 'olama-messages' ); ?></button>
-					<button class="button" type="submit" name="format" value="csv" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Active School Students CSV', 'olama-messages' ); ?></button>
+					<button class="button" type="submit" name="format" value="school_grade_section" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download School - Grade - Section Phone Book', 'olama-messages' ); ?></button>
 				</div>
 			</form>
 		</section>
