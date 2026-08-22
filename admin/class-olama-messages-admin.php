@@ -747,7 +747,7 @@ class Olama_Messages_Admin {
 		exit;
 	}
 
-	/** Download the current-year Active School contacts and WhatsApp workbook. */
+	/** Download the current-year Active School contacts or student CSV. */
 	public function handle_export_active_school() {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
 			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), '', array( 'response' => 405 ) );
@@ -766,10 +766,10 @@ class Olama_Messages_Admin {
 			exit;
 		}
 		try {
-			if ( 'xlsx' === $format ) {
-				$data      = $this->plugin->phone_book_exporter()->to_xlsx( $this->plugin->phone_book_exporter()->build_active_school_grade_sections( $study_year ) );
-				$filename  = 'phone-book-active-school-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.xlsx';
-				$mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+			if ( 'csv' === $format ) {
+				$data      = $this->plugin->phone_book_exporter()->to_active_school_csv( $this->plugin->phone_book_exporter()->build_active_school_grade_sections( $study_year ) );
+				$filename  = 'phone-book-active-school-students-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.csv';
+				$mime_type = 'text/csv; charset=UTF-8';
 			} else {
 				$data      = $this->plugin->phone_book_exporter()->to_csv( $this->plugin->phone_book_exporter()->build_active_school_contacts( $study_year ) );
 				$filename  = 'phone-book-active-school-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.csv';

@@ -500,7 +500,7 @@ class Olama_Messages_Modern_Admin {
 			<div class="omsg-panel-head">
 				<div>
 					<h2><?php esc_html_e( 'Active School phone book', 'olama-messages' ); ?></h2>
-					<p><?php esc_html_e( 'Current study year only: export Google Contacts using the school naming format, or an Excel workbook grouped by grade and section for WhatsApp groups.', 'olama-messages' ); ?></p>
+					<p><?php esc_html_e( 'Current study year only: export Google Contacts using the school naming format, or a CSV grouped by grade and section for WhatsApp groups.', 'olama-messages' ); ?></p>
 				</div>
 			</div>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -516,7 +516,7 @@ class Olama_Messages_Modern_Admin {
 						</select>
 					</label>
 					<button class="button button-primary" type="submit" name="format" value="google" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Active School Google CSV', 'olama-messages' ); ?></button>
-					<button class="button" type="submit" name="format" value="xlsx" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Grade/Section Excel', 'olama-messages' ); ?></button>
+					<button class="button" type="submit" name="format" value="csv" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Active School Students CSV', 'olama-messages' ); ?></button>
 				</div>
 			</form>
 		</section>

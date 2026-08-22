@@ -173,6 +173,28 @@ class Olama_Messages_Phone_Book_Exporter {
 		return array_values( $groups );
 	}
 
+	/** Convert Active School grade/section rows to a spreadsheet-compatible CSV. */
+	public function to_active_school_csv( array $groups ) {
+		$stream = fopen( 'php://temp', 'w+' );
+		if ( false === $stream ) {
+			throw new RuntimeException( 'Could not create the Active School CSV stream.' );
+		}
+		fwrite( $stream, "\xEF\xBB\xBF" );
+		fputcsv( $stream, array( 'Student full name', 'Grade', 'Section', 'Mother phone number' ), ',', '"', '\\' );
+		foreach ( $groups as $group ) {
+			foreach ( $group['rows'] as $row ) {
+				fputcsv( $stream, $row, ',', '"', '\\' );
+			}
+		}
+		rewind( $stream );
+		$csv = stream_get_contents( $stream );
+		fclose( $stream );
+		if ( false === $csv ) {
+			throw new RuntimeException( 'Could not read the Active School CSV.' );
+		}
+		return $csv;
+	}
+
 	/**
 	 * Convert built contacts to a UTF-8 Google Contacts CSV.
 	 */
@@ -202,103 +224,6 @@ class Olama_Messages_Phone_Book_Exporter {
 		}
 
 		return $csv;
-	}
-
-	/**
-	 * Create a small, dependency-free XLSX workbook with one sheet per
-	 * grade/section. Phones are written as strings so leading zeroes survive.
-	 */
-	public function to_xlsx( array $groups ) {
-		if ( ! class_exists( 'ZipArchive' ) ) {
-			throw new RuntimeException( 'The PHP Zip extension is required for Excel exports.' );
-		}
-		$files = array(
-			'[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' . $this->sheet_content_types( count( $groups ) ) . '</Types>',
-			'_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-			'xl/_rels/workbook.xml.rels' => $this->workbook_relationships( count( $groups ) ),
-		);
-		$sheet_names = array();
-		$used_names  = array();
-		foreach ( $groups as $index => $group ) {
-			$name = $this->sheet_name( $group['grade'] . ( '' !== $group['section'] ? ' - ' . $group['section'] : '' ), $used_names );
-			$sheet_names[] = $name;
-			$files[ 'xl/worksheets/sheet' . ( $index + 1 ) . '.xml' ] = $this->worksheet_xml( $group );
-		}
-		$files['xl/workbook.xml'] = $this->workbook_xml( $sheet_names );
-
-		$path = wp_tempnam( 'olama-active-school-' );
-		$zip  = new ZipArchive();
-		if ( ! $path || true !== $zip->open( $path, ZipArchive::CREATE | ZipArchive::OVERWRITE ) ) {
-			throw new RuntimeException( 'Could not create the Excel workbook.' );
-		}
-		foreach ( $files as $name => $content ) {
-			$zip->addFromString( $name, $content );
-		}
-		$zip->close();
-		$data = file_get_contents( $path );
-		@unlink( $path );
-		if ( false === $data ) {
-			throw new RuntimeException( 'Could not read the generated Excel workbook.' );
-		}
-		return $data;
-	}
-
-	private function worksheet_xml( array $group ) {
-		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1"/></sheetViews><cols><col min="1" max="1" width="34" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="20" customWidth="1"/></cols><sheetData>';
-		$xml .= '<row r="1"><c r="A1" t="inlineStr"><is><t>اسم الطالب الكامل</t></is></c><c r="B1" t="inlineStr"><is><t>الصف</t></is></c><c r="C1" t="inlineStr"><is><t>رقم هاتف الأم</t></is></c></row>';
-		foreach ( $group['rows'] as $row_index => $row ) {
-			$r = $row_index + 2;
-			$xml .= '<row r="' . $r . '">';
-			foreach ( $row as $column => $value ) {
-				$cell = chr( 65 + $column ) . $r;
-				$xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>' . $this->xml_text( $value ) . '</t></is></c>';
-			}
-			$xml .= '</row>';
-		}
-		return $xml . '</sheetData><autoFilter ref="A1:C' . max( 1, count( $group['rows'] ) + 1 ) . '"/></worksheet>';
-	}
-
-	private function workbook_xml( array $sheet_names ) {
-		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
-		foreach ( $sheet_names as $index => $name ) {
-			$xml .= '<sheet name="' . $this->xml_text( $name ) . '" sheetId="' . ( $index + 1 ) . '" r:id="rId' . ( $index + 1 ) . '"/>';
-		}
-		return $xml . '</sheets></workbook>';
-	}
-
-	private function workbook_relationships( $count ) {
-		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
-		for ( $i = 1; $i <= $count; $i++ ) {
-			$xml .= '<Relationship Id="rId' . $i . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $i . '.xml"/>';
-		}
-		return $xml . '</Relationships>';
-	}
-
-	private function sheet_content_types( $count ) {
-		$xml = '';
-		for ( $i = 1; $i <= $count; $i++ ) {
-			$xml .= '<Override PartName="/xl/worksheets/sheet' . $i . '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
-		}
-		return $xml;
-	}
-
-	private function sheet_name( $name, array &$used ) {
-		$name = preg_replace( '~[\\\\/:*?\\[\\]]~u', '-', $this->clean_text( $name ) );
-		$name = trim( (string) $name, " .'" );
-		$name = '' !== $name ? $name : 'Grade';
-		$name = function_exists( 'mb_substr' ) ? mb_substr( $name, 0, 31, 'UTF-8' ) : substr( $name, 0, 31 );
-		$base = $name;
-		$suffix = 2;
-		while ( in_array( $name, $used, true ) ) {
-			$tail = ' (' . $suffix++ . ')';
-			$name = ( function_exists( 'mb_substr' ) ? mb_substr( $base, 0, 31 - mb_strlen( $tail, 'UTF-8' ), 'UTF-8' ) : substr( $base, 0, 31 - strlen( $tail ) ) ) . $tail;
-		}
-		$used[] = $name;
-		return $name;
-	}
-
-	private function xml_text( $value ) {
-		return htmlspecialchars( (string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8' );
 	}
 
 	private function contacts_for_year( $study_year, $year_label, $include_school_details = false, $use_active_school_audience = false ) {
