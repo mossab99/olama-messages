@@ -205,10 +205,9 @@ class Olama_Messages_Phone_Book_Exporter {
 			throw new RuntimeException( 'The PHP Zip extension is required for Excel exports.' );
 		}
 		$files = array(
-			'[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' . $this->sheet_content_types( count( $groups ) ) . '</Types>',
+			'[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' . $this->sheet_content_types( count( $groups ) ) . '</Types>',
 			'_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
 			'xl/_rels/workbook.xml.rels' => $this->workbook_relationships( count( $groups ) ),
-			'xl/styles.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Arial"/></font><font><b/><sz val="11"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="D9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>',
 		);
 		$sheet_names = array();
 		$used_names  = array();
@@ -238,7 +237,7 @@ class Olama_Messages_Phone_Book_Exporter {
 
 	private function worksheet_xml( array $group ) {
 		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView rightToLeft="1"/></sheetViews><cols><col min="1" max="1" width="34" customWidth="1"/><col min="2" max="2" width="16" customWidth="1"/><col min="3" max="3" width="20" customWidth="1"/></cols><sheetData>';
-		$xml .= '<row r="1"><c r="A1" s="1" t="inlineStr"><is><t>اسم الطالب الكامل</t></is></c><c r="B1" s="1" t="inlineStr"><is><t>الصف</t></is></c><c r="C1" s="1" t="inlineStr"><is><t>رقم هاتف الأم</t></is></c></row>';
+		$xml .= '<row r="1"><c r="A1" t="inlineStr"><is><t>اسم الطالب الكامل</t></is></c><c r="B1" t="inlineStr"><is><t>الصف</t></is></c><c r="C1" t="inlineStr"><is><t>رقم هاتف الأم</t></is></c></row>';
 		foreach ( $group['rows'] as $row_index => $row ) {
 			$r = $row_index + 2;
 			$xml .= '<row r="' . $r . '">';
@@ -254,15 +253,15 @@ class Olama_Messages_Phone_Book_Exporter {
 	private function workbook_xml( array $sheet_names ) {
 		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>';
 		foreach ( $sheet_names as $index => $name ) {
-			$xml .= '<sheet name="' . $this->xml_text( $name ) . '" sheetId="' . ( $index + 1 ) . '" r:id="rId' . ( $index + 2 ) . '"/>';
+			$xml .= '<sheet name="' . $this->xml_text( $name ) . '" sheetId="' . ( $index + 1 ) . '" r:id="rId' . ( $index + 1 ) . '"/>';
 		}
 		return $xml . '</sheets></workbook>';
 	}
 
 	private function workbook_relationships( $count ) {
-		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>';
+		$xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">';
 		for ( $i = 1; $i <= $count; $i++ ) {
-			$xml .= '<Relationship Id="rId' . ( $i + 1 ) . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $i . '.xml"/>';
+			$xml .= '<Relationship Id="rId' . $i . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' . $i . '.xml"/>';
 		}
 		return $xml . '</Relationships>';
 	}
