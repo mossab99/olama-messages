@@ -123,7 +123,7 @@ class Olama_Messages_Phone_Book_Exporter {
 	 * merge another year's families.
 	 */
 	public function build_active_school_contacts( $study_year ) {
-		return $this->contacts_for_year( trim( (string) $study_year ), '', true );
+		return $this->contacts_for_year( trim( (string) $study_year ), '', true, true );
 	}
 
 	/**
@@ -131,9 +131,16 @@ class Olama_Messages_Phone_Book_Exporter {
 	 */
 	public function build_active_school_grade_sections( $study_year ) {
 		$groups = array();
-		foreach ( $this->families_for_year( trim( (string) $study_year ) ) as $family ) {
+		foreach ( $this->active_school_families_for_year( trim( (string) $study_year ) ) as $family ) {
 			$mother = $this->phone( $family['mother_mobile'] ?? '' );
-			foreach ( (array) ( $family['student_rows'] ?? array() ) as $student ) {
+			$students = (array) ( $family['student_rows'] ?? array() );
+			if ( ! $students ) {
+				$students = (array) ( $family['students'] ?? array() );
+			}
+			foreach ( $students as $student ) {
+				if ( is_string( $student ) ) {
+					$student = array( 'student_name' => $student );
+				}
 				if ( ! is_array( $student ) ) {
 					continue;
 				}
@@ -141,9 +148,10 @@ class Olama_Messages_Phone_Book_Exporter {
 				$grade   = $this->academic_label( $student['class_name'] ?? '', array( 'الصف', 'صف' ) );
 				$section = $this->academic_label( $student['section_name'] ?? '', array( 'الشعبة', 'شعبة' ) );
 				$grade   = preg_replace( '/\s+(?:أ|ا)?ساسي$/u', '', $grade );
-				if ( '' === $name || '' === $grade ) {
+				if ( '' === $name ) {
 					continue;
 				}
+				$grade = '' !== $grade ? $grade : 'غير محدد';
 				$key = $grade . "\x00" . $section;
 				if ( ! isset( $groups[ $key ] ) ) {
 					$groups[ $key ] = array(
@@ -293,8 +301,8 @@ class Olama_Messages_Phone_Book_Exporter {
 		return htmlspecialchars( (string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8' );
 	}
 
-	private function contacts_for_year( $study_year, $year_label, $include_school_details = false ) {
-		$families       = $this->families_for_year( $study_year );
+	private function contacts_for_year( $study_year, $year_label, $include_school_details = false, $use_active_school_audience = false ) {
+		$families       = $use_active_school_audience ? $this->active_school_families_for_year( $study_year ) : $this->families_for_year( $study_year );
 		$transportation = $this->transportation_for_year( $study_year );
 		$contacts       = array();
 
@@ -365,6 +373,107 @@ class Olama_Messages_Phone_Book_Exporter {
 		} while ( $page && $offset < $total );
 
 		return $items;
+	}
+
+	/**
+	 * The Active School exports require student placements. The Core general
+	 * audience contract supplies those rows, whereas the compact phone-book
+	 * listing only contains parent contact details.
+	 */
+	private function active_school_families_for_year( $study_year ) {
+		$items  = array();
+		$offset = 0;
+		$limit  = 200;
+
+		do {
+			$result = $this->provider->get_recipients_preview(
+				array(
+					'target_type' => 'general',
+					'study_year'  => $study_year,
+					'limit'       => $limit,
+					'offset'      => $offset,
+				)
+			);
+			if ( 'olama_core' !== ( $result['data_source'] ?? '' ) ) {
+				throw new RuntimeException( 'Olama Core Active School data is unavailable.' );
+			}
+
+			$page   = array_values( (array) ( $result['items'] ?? array() ) );
+			$items  = array_merge( $items, $page );
+			$total  = (int) ( $result['total'] ?? count( $items ) );
+			$offset += count( $page );
+		} while ( $page && $offset < $total );
+
+		$has_student_rows = false;
+		foreach ( $items as $item ) {
+			if ( ! empty( $item['student_rows'] ) || ! empty( $item['students'] ) ) {
+				$has_student_rows = true;
+				break;
+			}
+		}
+
+		// Older Core releases expose the family audience without its student
+		// rows. Enrich that response through Core's public read-model contract.
+		return $has_student_rows ? $items : $this->attach_active_school_students( $items ?: $this->families_for_year( $study_year ), $study_year );
+	}
+
+	private function attach_active_school_students( array $families, $study_year ) {
+		if ( ! $families ) {
+			return $families;
+		}
+
+		$ids = array_values( array_unique( array_filter( array_map( 'strval', wp_list_pluck( $families, 'family_id' ) ) ) ) );
+		if ( ! $ids ) {
+			return $families;
+		}
+
+		global $wpdb;
+		$family_table  = $wpdb->prefix . 'olama_core_families';
+		$student_table = $wpdb->prefix . 'olama_core_students';
+		$year_table    = $wpdb->prefix . 'olama_core_student_years';
+		if ( function_exists( 'olama_core' ) && method_exists( olama_core(), 'read_models' ) ) {
+			$models = olama_core()->read_models();
+			if ( is_object( $models ) && method_exists( $models, 'table' ) ) {
+				$family_table  = $models->table( 'families' );
+				$student_table = $models->table( 'students' );
+				$year_table    = $models->table( 'student_years' );
+			}
+		}
+		$placeholders  = implode( ',', array_fill( 0, count( $ids ), '%s' ) );
+		$values        = array_merge( array( $study_year ), $ids );
+		$active_sql    = "(
+			LOWER(TRIM(COALESCE(sy.student_status, ''))) IN ('1', 'active', 'enabled', 'current')
+			OR LOWER(TRIM(COALESCE(sy.student_status_name, ''))) IN ('active', 'enabled', 'current')
+			OR TRIM(COALESCE(sy.student_status_name, '')) IN ('فعال', 'نشط', 'مستمر')
+			OR (TRIM(COALESCE(sy.student_status, '')) = '' AND TRIM(COALESCE(sy.student_status_name, '')) = '' AND sy.withdraw_date IS NULL)
+		)";
+		$sql = "SELECT f.oracle_family_id, sy.oracle_student_id, sy.class_id, sy.class_name, sy.section_id, sy.section_name, sy.study_year, s.student_name
+			FROM `" . esc_sql( $family_table ) . "` f
+			INNER JOIN `" . esc_sql( $year_table ) . "` sy ON sy.family_uid = f.family_uid
+			LEFT JOIN `" . esc_sql( $student_table ) . "` s ON s.student_uid = sy.student_uid
+			WHERE sy.study_year = %s AND f.oracle_family_id IN ({$placeholders}) AND {$active_sql}
+			ORDER BY f.oracle_family_id, sy.student_uid";
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $values ), ARRAY_A );
+		$by_family = array();
+		foreach ( (array) $rows as $row ) {
+			$by_family[ (string) $row['oracle_family_id'] ][] = array(
+				'student_id'   => $row['oracle_student_id'],
+				'student_name' => (string) ( $row['student_name'] ?? '' ),
+				'class_id'     => $row['class_id'],
+				'class_name'   => $row['class_name'],
+				'section_id'   => $row['section_id'],
+				'section_name' => $row['section_name'],
+				'study_year'   => $row['study_year'],
+			);
+		}
+		foreach ( $families as &$family ) {
+			$student_rows = $by_family[ (string) ( $family['family_id'] ?? $family['oracle_family_id'] ?? '' ) ] ?? array();
+			$family['student_rows'] = $student_rows;
+			$family['students']     = array_values( array_filter( wp_list_pluck( $student_rows, 'student_name' ) ) );
+		}
+		unset( $family );
+
+		return $families;
 	}
 
 	private function transportation_for_year( $study_year ) {
