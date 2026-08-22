@@ -132,7 +132,7 @@ class Olama_Messages_Phone_Book_Exporter {
 	public function build_active_school_grade_sections( $study_year ) {
 		$groups = array();
 		foreach ( $this->active_school_families_for_year( trim( (string) $study_year ) ) as $family ) {
-			$mother = $this->phone( $family['mother_mobile'] ?? '' );
+			$mother = $this->school_phone( $family['mother_mobile'] ?? '' );
 			$students = (array) ( $family['student_rows'] ?? array() );
 			if ( ! $students ) {
 				$students = (array) ( $family['students'] ?? array() );
@@ -183,6 +183,9 @@ class Olama_Messages_Phone_Book_Exporter {
 		fputcsv( $stream, array( 'Student full name', 'Grade', 'Section', 'Mother phone number' ), ',', '"', '\\' );
 		foreach ( $groups as $group ) {
 			foreach ( $group['rows'] as $row ) {
+				if ( 'wrong number' !== $row[3] ) {
+					$row[3] = $this->spreadsheet_phone( $row[3] );
+				}
 				fputcsv( $stream, $row, ',', '"', '\\' );
 			}
 		}
@@ -532,6 +535,12 @@ class Olama_Messages_Phone_Book_Exporter {
 
 	private function phone( $value ) {
 		return preg_replace( '/[^0-9+]/', '', (string) $value );
+	}
+
+	/** Validate school CSV mobile numbers without dropping the leading zero. */
+	private function school_phone( $value ) {
+		$digits = preg_replace( '/[^0-9]/', '', (string) $value );
+		return preg_match( '/^0[0-9]{9}$/', $digits ) ? $digits : 'wrong number';
 	}
 
 	/**
