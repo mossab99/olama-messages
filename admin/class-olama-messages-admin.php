@@ -47,6 +47,7 @@ class Olama_Messages_Admin {
 		add_action( 'admin_post_olama_msg_save_settings',   array( $this, 'handle_save_settings' ) );
 		add_action( 'admin_post_olama_msg_sync_phone_book', array( $this, 'handle_sync_phone_book' ) );
 		add_action( 'admin_post_olama_msg_export_phone_book', array( $this, 'handle_export_phone_book' ) );
+		add_action( 'admin_post_olama_msg_export_active_school', array( $this, 'handle_export_active_school' ) );
 
 		// Template actions (Phase 2)
 		add_action( 'admin_post_olama_msg_save_template',   array( $this, 'handle_save_template' ) );
@@ -743,6 +744,50 @@ class Olama_Messages_Admin {
 		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Content-Length: ' . strlen( $csv ) );
 		echo $csv; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Deliberate CSV download.
+		exit;
+	}
+
+	/** Download the current-year Active School contacts and WhatsApp workbook. */
+	public function handle_export_active_school() {
+		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
+			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), '', array( 'response' => 405 ) );
+		}
+		if ( ! current_user_can( 'olama_access_messages' ) ) {
+			wp_die( esc_html__( 'You are not allowed to export the phone book.', 'olama-messages' ), '', array( 'response' => 403 ) );
+		}
+		check_admin_referer( 'olama_msg_export_active_school' );
+		$study_year = sanitize_text_field( wp_unslash( $_POST['study_year'] ?? '' ) );
+		$format     = sanitize_key( wp_unslash( $_POST['format'] ?? 'google' ) );
+		$years      = array_map( 'strval', $this->plugin->provider()->get_phone_book_study_years() );
+		$redirect   = add_query_arg( array( 'page' => 'olama-messages-phone-book', 'study_year' => $study_year ), admin_url( 'admin.php' ) );
+		if ( ! in_array( $study_year, $years, true ) ) {
+			$this->set_flash( __( 'Choose a valid current study year before exporting.', 'olama-messages' ), 'error' );
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+		try {
+			if ( 'xlsx' === $format ) {
+				$data      = $this->plugin->phone_book_exporter()->to_xlsx( $this->plugin->phone_book_exporter()->build_active_school_grade_sections( $study_year ) );
+				$filename  = 'phone-book-active-school-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.xlsx';
+				$mime_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+			} else {
+				$data      = $this->plugin->phone_book_exporter()->to_csv( $this->plugin->phone_book_exporter()->build_active_school_contacts( $study_year ) );
+				$filename  = 'phone-book-active-school-' . preg_replace( '/[^A-Za-z0-9-]+/', '-', $study_year ) . '.csv';
+				$mime_type = 'text/csv; charset=UTF-8';
+			}
+		} catch ( Throwable $e ) {
+			$this->set_flash( __( 'Active School export failed: ', 'olama-messages' ) . sanitize_text_field( $e->getMessage() ), 'error' );
+			wp_safe_redirect( $redirect );
+			exit;
+		}
+		while ( ob_get_level() ) {
+			ob_end_clean();
+		}
+		nocache_headers();
+		header( 'Content-Type: ' . $mime_type );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Content-Length: ' . strlen( $data ) );
+		echo $data; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Deliberate file download.
 		exit;
 	}
 

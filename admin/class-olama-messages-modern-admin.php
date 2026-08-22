@@ -378,6 +378,10 @@ class Olama_Messages_Modern_Admin {
 		if ( ! in_array( $selected_year, $years, true ) && $years ) {
 			$selected_year = (string) $years[0];
 		}
+		$active_school_year = $this->plugin->provider()->get_current_study_year();
+		if ( ! in_array( $active_school_year, $years, true ) ) {
+			$active_school_year = $selected_year;
+		}
 		$merge_year_default = '';
 		$selected_year_index = array_search( $selected_year, $years, true );
 		if ( false !== $selected_year_index && isset( $years[ $selected_year_index + 1 ] ) ) {
@@ -490,6 +494,30 @@ class Olama_Messages_Modern_Admin {
 				<p class="description">
 					<?php esc_html_e( 'When merging, a family that exists in both years is exported once. The selected phone book year takes priority.', 'olama-messages' ); ?>
 				</p>
+			</form>
+		</section>
+		<section class="omsg-panel omsg-phonebook-export">
+			<div class="omsg-panel-head">
+				<div>
+					<h2><?php esc_html_e( 'Active School phone book', 'olama-messages' ); ?></h2>
+					<p><?php esc_html_e( 'Current study year only: export Google Contacts using the school naming format, or an Excel workbook grouped by grade and section for WhatsApp groups.', 'olama-messages' ); ?></p>
+				</div>
+			</div>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="olama_msg_export_active_school">
+				<?php wp_nonce_field( 'olama_msg_export_active_school' ); ?>
+				<div class="omsg-phonebook-export-fields">
+					<label>
+						<?php esc_html_e( 'Current study year', 'olama-messages' ); ?>
+						<select name="study_year" required>
+							<?php foreach ( $years as $year ) : ?>
+								<option value="<?php echo esc_attr( $year ); ?>" <?php selected( $active_school_year, $year ); ?>><?php echo esc_html( $year ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</label>
+					<button class="button button-primary" type="submit" name="format" value="google" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Active School Google CSV', 'olama-messages' ); ?></button>
+					<button class="button" type="submit" name="format" value="xlsx" <?php disabled( empty( $years ) ); ?>><?php esc_html_e( 'Download Grade/Section Excel', 'olama-messages' ); ?></button>
+				</div>
 			</form>
 		</section>
 		<form class="omsg-filterbar omsg-phonebook-filter" method="get">
