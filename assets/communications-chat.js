@@ -73,24 +73,42 @@
     async function threads(root, before = '', archived = false, inboxId = 0) {
         activateNav(root, inboxId ? 'requests' : 'conversations');
         const view = newView(root);
-        const content = body(root), heading = pageHeader(inboxId ? 'طلبات الصندوق' : 'المحادثات', inboxId ? 'تابع الطلبات المفتوحة وسجل المعالجة.' : 'المراسلات المباشرة مع الأسر والمعلمين والموظفين.', 'مساحة العمل');
+        const title = inboxId ? 'طلبات الصندوق' : (archived ? 'أرشيف المحادثات' : 'صندوق المحادثات');
+        const content = body(root), heading = pageHeader(title, inboxId ? 'تابع الطلبات المفتوحة وسجل المعالجة.' : 'تابع أحدث الرسائل وافتح المحادثة مباشرة من القائمة.', 'مساحة العمل');
         if (!inboxId) heading.actions.append(button('محادثة جديدة', () => contacts(root), 'olama-comm-primary'));
         heading.actions.append(button(archived ? 'الوارد' : 'الأرشيف', () => threads(root, 0, !archived, inboxId)));
         content.replaceChildren(heading.header);
-        const list = el('div'); content.append(list);
+        const list = el('div', undefined, 'olama-comm-inbox'); content.append(list);
+        const inboxDate = value => {
+            if (!value) return '—';
+            const instant = new Date(value.replace(' ', 'T') + 'Z'), today = new Date();
+            const options = instant.toDateString() === today.toDateString() ? {hour: 'numeric', minute: '2-digit'} : (instant.getFullYear() === today.getFullYear() ? {day: 'numeric', month: 'short'} : {day: 'numeric', month: 'short', year: 'numeric'});
+            try { return instant.toLocaleString('ar-JO', {...options, timeZone: config.timezone || 'Asia/Amman'}); } catch (_) { return date(value); }
+        };
         const load = async () => {
             const rows = await api('chat/threads?cursor=' + encodeURIComponent(before || '') + '&archived=' + Number(archived) + '&inbox_id=' + inboxId);
             if (root._view !== view) return;
             list.replaceChildren();
             if (!rows.length) list.append(el('p', 'لا توجد محادثات هنا.', 'olama-comm-empty'));
+            if (rows.length) {
+                const unread = rows.filter(row => Number(row.unread_count) || Number(row.manual_unread)).length;
+                const summary = el('div', undefined, 'olama-comm-inbox-summary');
+                summary.append(el('strong', archived ? 'المحادثات المؤرشفة' : 'كل الرسائل'), el('span', rows.length + ' محادثة' + (unread ? ' · ' + unread + ' غير مقروءة' : ''))); list.append(summary);
+            }
             rows.forEach(row => {
-                const card = el('article', undefined, 'olama-comm-card');
-                card.append(el('h3', (Number(row.pinned) ? '📌 ' : '') + row.subject), el('p', labels[row.status] + ' · ' + row.unread_count + ' غير مقروء' + (Number(row.manual_unread) ? ' · معلّم للمتابعة' : '')));
-                if (row.kind === 'service' && row.assignee_key !== undefined) card.append(el('small', row.assignee_key ? 'المسؤول: ' + row.assignee_key : 'دون مسؤول — بانتظار التعيين'));
-                card.append(button('فتح المحادثة', () => conversation(root, row.id))); list.append(card);
+                const unread = Number(row.unread_count) || Number(row.manual_unread);
+                const who = row.kind === 'direct' ? (row.correspondent_name || 'محادثة مباشرة') : row.subject;
+                const previewText = row.last_message ? (Number(row.last_message_own) ? 'أنت: ' : '') + row.last_message : 'لم تبدأ الرسائل بعد';
+                const item = button('', () => conversation(root, row.id), 'olama-comm-inbox-row' + (unread ? ' is-unread' : ''));
+                item.dataset.threadId = row.id; item.setAttribute('aria-label', 'فتح محادثة مع ' + who + (unread ? '، ' + row.unread_count + ' غير مقروء' : ''));
+                const marker = el('span', unread ? String(row.unread_count || '') : '', 'olama-comm-inbox-marker'); marker.setAttribute('aria-hidden', 'true');
+                const person = el('span', undefined, 'olama-comm-inbox-person'); person.append(el('strong', (Number(row.pinned) ? 'مثبت · ' : '') + who), el('small', labels[row.status] || row.status));
+                const message = el('span', undefined, 'olama-comm-inbox-preview'); message.append(el('strong', row.subject), el('span', ' — ' + previewText));
+                const meta = el('span', undefined, 'olama-comm-inbox-meta'); const time = el('time', inboxDate(row.last_message_at)); if (row.last_message_at) time.dateTime = row.last_message_at.replace(' ', 'T') + 'Z'; meta.append(time);
+                item.append(marker, person, message, meta); list.append(item);
             });
-            if (rows.length === 30) list.append(button('محادثات أقدم', () => threads(root, rows[rows.length - 1].page_cursor, archived, inboxId)));
-            if (before) list.append(button('الأحدث', () => threads(root, 0, archived, inboxId)));
+            if (rows.length === 30) list.append(button('محادثات أقدم', () => threads(root, rows[rows.length - 1].page_cursor, archived, inboxId), 'olama-comm-inbox-page'));
+            if (before) list.append(button('الأحدث', () => threads(root, 0, archived, inboxId), 'olama-comm-inbox-page'));
         };
         root._chatRefresh = load; await load();
     }

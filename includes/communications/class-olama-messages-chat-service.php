@@ -168,14 +168,20 @@ class Olama_Messages_Chat_Service {
         global $wpdb;
         Olama_Messages_Chat_Policy::require_use( $actor );
         $join = $this->join( $actor ); $access = $this->access_sql( $actor ); $unread = $this->unread_sql( $actor );
+        $messages = Olama_Messages_Communications_DB::table( 'messages' );
+        $participants = Olama_Messages_Communications_DB::table( 'thread_participants' );
+        $correspondent = $wpdb->prepare( "(SELECT cp.display_name FROM {$participants} cp WHERE cp.thread_id=t.id AND cp.actor_key<>%s ORDER BY cp.id LIMIT 1)", $actor['actor_key'] );
         $keyset = '';
         if ( $cursor ) {
             if ( ! preg_match( '/^([01]):([0-9]{1,19}):([0-9]{1,19})$/', $cursor, $parts ) ) { throw new InvalidArgumentException( 'مؤشر القائمة غير صالح.' ); }
             $keyset = $wpdb->prepare( ' AND (COALESCE(p.pinned,0)<%d OR (COALESCE(p.pinned,0)=%d AND (t.last_message_id<%d OR (t.last_message_id=%d AND t.id<%d))))', $parts[1], $parts[1], $parts[2], $parts[2], $parts[3] );
         }
-        $rows = $wpdb->get_results( $wpdb->prepare( "SELECT t.id,t.kind,t.subject,t.inbox_id,t.status,t.assignee_key,t.last_message_id,COALESCE(p.pinned,0) AS pinned,COALESCE(p.muted,0) AS muted,COALESCE(p.manual_unread,0) AS manual_unread,{$unread} AS unread_count FROM {$join} WHERE {$access} AND (%d=0 OR t.id<%d) AND COALESCE(p.archived,0)=%d AND (%d=0 OR t.inbox_id=%d) {$keyset} ORDER BY COALESCE(p.pinned,0) DESC,t.last_message_id DESC,t.id DESC LIMIT 30", $before, $before, $archived ? 1 : 0, $inbox, $inbox ), ARRAY_A );
+        $rows = $wpdb->get_results( $wpdb->prepare( "SELECT t.id,t.kind,t.subject,t.inbox_id,t.status,t.assignee_key,t.last_message_id,COALESCE(p.pinned,0) AS pinned,COALESCE(p.muted,0) AS muted,COALESCE(p.manual_unread,0) AS manual_unread,{$unread} AS unread_count,{$correspondent} AS correspondent_name,CASE WHEN lm.redacted_at_utc IS NOT NULL THEN 'تم حجب الرسالة' ELSE LEFT(lm.body,280) END AS last_message,lm.sender_key AS last_sender_key,lm.sent_at_utc AS last_message_at FROM {$join} LEFT JOIN {$messages} lm ON lm.id=t.last_message_id WHERE {$access} AND (%d=0 OR t.id<%d) AND COALESCE(p.archived,0)=%d AND (%d=0 OR t.inbox_id=%d) {$keyset} ORDER BY COALESCE(p.pinned,0) DESC,t.last_message_id DESC,t.id DESC LIMIT 30", $before, $before, $archived ? 1 : 0, $inbox, $inbox ), ARRAY_A );
         foreach ( $rows as &$row ) {
             $row['page_cursor'] = $row['pinned'] . ':' . $row['last_message_id'] . ':' . $row['id'];
+            $row['last_message_own'] = $actor['actor_key'] === (string) $row['last_sender_key'];
+            if ( 'direct' !== $row['kind'] ) { $row['correspondent_name'] = ''; }
+            unset( $row['last_sender_key'] );
             if ( 'family' === $actor['actor_type'] ) { unset( $row['assignee_key'] ); }
         } unset( $row );
         return $rows;

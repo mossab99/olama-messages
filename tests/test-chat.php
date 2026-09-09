@@ -96,6 +96,9 @@ comm_assert( array( 'employee:T-001' ) === array_column( $provider->contacts( $w
 $admin_thread = $chat->create( $wp_admin, array( 'target' => 'employee:OTHER-004' ) )['id'];
 $admin_message = $chat->send( $wp_admin, $admin_thread, chat_send_data( 'رسالة إدارية مباشرة' ) );
 comm_assert( ! empty( $admin_message['id'] ), 'administrator can start and send an unrestricted direct conversation to an eligible user' );
+$admin_recipient = chat_as( $other_user );
+$admin_inbox_row = array_values( array_filter( $chat->listing( $admin_recipient ), function ( $row ) use ( $admin_thread ) { return (int) $row['id'] === (int) $admin_thread; } ) )[0];
+comm_assert( 'مدير النظام' === $admin_inbox_row['correspondent_name'] && 'رسالة إدارية مباشرة' === $admin_inbox_row['last_message'] && ! $admin_inbox_row['last_message_own'] && ! empty( $admin_inbox_row['last_message_at'] ), 'administrative inbox row exposes the correspondent and safe latest-message preview to its participant' );
 $actor = chat_as( $family_user );
 comm_throws( function () use ( $chat, $actor ) { $chat->create( $actor, array( 'kind' => 'group' ) ); }, 'arbitrary group creation denied' );
 $thread_id = $chat->create( $actor, array( 'target' => 'employee:T-001', 'context' => $context ) )['id'];
