@@ -40,7 +40,7 @@ Passing local tests does not authorize all-family activation or waive the Releas
 
 ## Release B automated verification
 
-`php tests/test-chat.php` uses the same disposable WordPress/MariaDB harness. **93 assertions pass**. Fixtures model current Users identities, Core enrollment/student/employee and academic read models, and School's actual assignment/section/subject columns; no live school records are loaded.
+`php tests/test-chat.php` uses the same disposable WordPress/MariaDB harness. **96 assertions pass**. Fixtures model the explicit WordPress administrator actor, current Users identities, Core enrollment/student/employee and academic read models, and School's actual assignment/section/subject columns; no live school records are loaded.
 
 Coverage includes defaults/migration repeatability, family and teacher initiation, child-scoped contacts, canonical mappings, stale/missing sources, Core subject removal overriding a stale School mirror, employee/family capability boundaries, UUID retries before/after edits, text limits, edit expiry/revisions, quote boundaries/redaction, delivery/read/manual unread, successor and withdrawn-enrollment history, report scope/audited content access, restriction expiry and notice independence, service ownership and all four history policies, removed-member content/send/receipt/feed denial, mute hints, pin/keyset order, rate limits, unread repair, REST nonce/actor/no-store checks, and zero SMS queue effects.
 
@@ -50,7 +50,7 @@ This is local sequential integration plus browser verification, not a claim of c
 
 ## Remaining-suite verification
 
-`php tests/test-suite.php` passed **93 assertions**. Together with A (60) and B (93), this is **246 Communications integration assertions**. The fixture uses real GD for image variants, actual Office-capable PHP dependencies, real SQL transactions, a controllable scanner interface and a read-only source fixture. It does not certify an installed production scanner or arbitrary Office content.
+`php tests/test-suite.php` passed **93 assertions**. Together with A (60) and B (96), this is **249 Communications integration assertions**. The fixture uses real GD for image variants, actual Office-capable PHP dependencies, real SQL transactions, a controllable scanner interface and a read-only source fixture. It does not certify an installed production scanner or arbitrary Office content.
 
 Coverage: reviewed/outside-web-root storage, MIME spoofing, blocked formats, scanner infection/outage, staged ownership, attachment-only retries/conflicts, removed member download/search denial, restricted claiming rollback, deadlines/escalation/reopen cycles, independent per-child acknowledgements and RSVP, future/stale/mismatched pairs, minor edits, source outage/removal, action history, private ICS and all-day dates, interrupted uploads, office hours, 150-target fanout continuation and full per-actor target pagination. Read, acknowledgement and completion remain distinct.
 

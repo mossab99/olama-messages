@@ -32,6 +32,22 @@ class Olama_Messages_Relationship_Provider {
         return array( 'actor_key' => $key, 'name' => $profile['full_name'], 'wp_user_id' => $user->ID, 'teacher' => in_array( 'olama_teacher', $user->roles, true ), 'source' => $this->source( 'employee_mapping', $profile['last_synced_at'] ?? null ) );
     }
 
+    /** Resolve a display-safe actor record for direct-message participants. */
+    public function actor( $key ) {
+        if ( 0 === strpos( (string) $key, 'administrator:' ) ) {
+            $user_id = absint( substr( (string) $key, 14 ) );
+            $user = $user_id ? get_userdata( $user_id ) : false;
+            return $user && Olama_Messages_Communication_Policy::administrator( $user_id )
+                ? array( 'actor_key' => $key, 'name' => $user->display_name, 'wp_user_id' => $user_id ) : null;
+        }
+        if ( 0 === strpos( (string) $key, 'employee:' ) ) { return $this->employee( $key ); }
+        if ( 0 === strpos( (string) $key, 'family:' ) && function_exists( 'olama_core' ) ) {
+            $family = olama_core()->families()->get_by_uid( substr( (string) $key, 7 ) );
+            return $family ? array( 'actor_key' => $key, 'name' => $family['sponsor_full_name'] ?? $family['father_name'] ?? 'الأسرة' ) : null;
+        }
+        return null;
+    }
+
     public function academic() {
         if ( ! function_exists( 'olama_core' ) ) { throw new RuntimeException( 'OLAMA Core غير متاح.' ); }
         $context = (array) olama_core()->academic_context()->current();
@@ -77,6 +93,14 @@ class Olama_Messages_Relationship_Provider {
     public function relationship( $left, $right, array $requested = array() ) {
         try {
             if ( $left === $right ) { return $this->result( 'invalid' ); }
+            if ( 0 === strpos( $left, 'administrator:' ) || 0 === strpos( $right, 'administrator:' ) ) {
+                $administrator = 0 === strpos( $left, 'administrator:' ) ? $left : $right;
+                $other = $administrator === $left ? $right : $left;
+                $admin_record = $this->actor( $administrator );
+                $other_record = $this->actor( $other );
+                if ( ! $admin_record || ! $other_record || ! ( new Olama_Messages_Actor_Resolver() )->eligible( $other ) ) { return $this->result( 'mapping_missing' ); }
+                return $this->result( 'valid', array(), array( 'scope' => 'administrator' ) );
+            }
             $family = 0 === strpos( $left, 'family:' ) ? $left : ( 0 === strpos( $right, 'family:' ) ? $right : '' );
             if ( $family ) {
                 $teacher_key = $family === $left ? $right : $left;
@@ -120,7 +144,20 @@ class Olama_Messages_Relationship_Provider {
 
     public function contacts( array $actor, $student_uid = '', $after = 0 ) {
         $items = array(); $children = array(); $cursor = 0;
-        if ( 'family' === $actor['actor_type'] ) {
+        if ( 'administrator' === $actor['actor_type'] ) {
+            global $wpdb;
+            $resolver = new Olama_Messages_Actor_Resolver();
+            $ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->users} WHERE ID>%d ORDER BY ID LIMIT 100", $after ) );
+            foreach ( $ids as $id ) {
+                $cursor = (int) $id;
+                foreach ( $resolver->available( (int) $id ) as $candidate ) {
+                    if ( $candidate['actor_key'] === $actor['actor_key'] || 'eligible_account' !== $resolver->reachability( $candidate['actor_key'] ) ) { continue; }
+                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'context' => array( 'scope' => 'administrator' ) );
+                    if ( 30 === count( $items ) ) { break 2; }
+                }
+            }
+            if ( count( $ids ) < 100 && count( $items ) < 30 ) { $cursor = 0; }
+        } elseif ( 'family' === $actor['actor_type'] ) {
             $academic = $this->academic();
             foreach ( $this->children( $actor['actor_key'] ) as $student ) {
                 $children[] = array( 'student_uid' => $student['student_uid'], 'name' => $student['student_name'] ?? $student['student_uid'], 'class_name' => $student['class_name'] ?? '', 'section_name' => $student['section_name'] ?? '' );

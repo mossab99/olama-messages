@@ -10,14 +10,14 @@ class Olama_Messages_Action_Service {
         if ( ! $row ) { throw new RuntimeException( 'الإجراء غير موجود.' ); }
         if ( $row['thread_id'] ) { ( new Olama_Messages_Chat_Service() )->get( $actor, $row['thread_id'] ); }
         if ( 'event_target' === $row['source_type'] ) {
-            if ( 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_manage_events' ) ) {
+            if ( Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_events' ) ) {
                 $targets = Olama_Messages_Communications_DB::table( 'event_targets' ); $event_id = $wpdb->get_var( $wpdb->prepare( "SELECT event_id FROM {$targets} WHERE id=%d", $row['source_id'] ) );
                 ( new Olama_Messages_Event_Service() )->visible( $actor, $event_id );
             } else { ( new Olama_Messages_Event_Service() )->target( $actor, $row['source_id'] ); }
         }
         $allowed = $row['owner_key'] === $actor['actor_key'] || $row['created_by_key'] === $actor['actor_key'];
         if ( $row['owner_inbox_id'] ) { $allowed = (bool) ( new Olama_Messages_Service_Inbox_Service() )->member( $row['owner_inbox_id'], $actor ); }
-        if ( ! $allowed && ! ( 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_manage_actions' ) && ! $row['thread_id'] && 'event_target' !== $row['source_type'] ) ) { throw new RuntimeException( 'لا تملك صلاحية هذا الإجراء.' ); }
+        if ( ! $allowed && ! ( Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_actions' ) && ! $row['thread_id'] && 'event_target' !== $row['source_type'] ) ) { throw new RuntimeException( 'لا تملك صلاحية هذا الإجراء.' ); }
         return $row;
     }
 

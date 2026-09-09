@@ -23,8 +23,8 @@ class Olama_Messages_Suite_Rest_Controller {
             $events = new Olama_Messages_Event_Service(); $actions = new Olama_Messages_Action_Service(); $activity = new Olama_Messages_Activity_Service(); $ops = new Olama_Messages_Suite_Operations();
             if ( preg_match( '~/suite/me$~', $path ) ) {
                 $settings = Olama_Messages_Communication_Policy::settings(); $result = array( 'timezone' => wp_timezone_string() );
-                foreach ( array( 'events', 'actions', 'attachments' ) as $feature ) { $result[$feature] = ! empty( $settings[$feature . '_enabled'] ) && current_user_can( 'olama_messages_' . $feature ); }
-                foreach ( array( 'manage_events', 'manage_actions', 'view_dashboard', 'configure' ) as $cap ) { $result[$cap] = 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_' . $cap ); }
+                foreach ( array( 'events', 'actions', 'attachments' ) as $feature ) { $result[$feature] = ! empty( $settings[$feature . '_enabled'] ) && Olama_Messages_Communication_Policy::can( 'olama_messages_' . $feature ); }
+                foreach ( array( 'manage_events', 'manage_actions', 'view_dashboard', 'configure' ) as $cap ) { $result[$cap] = Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_' . $cap ); }
                 $result['attachment_limits'] = array_intersect_key( $settings, array_flip( array( 'max_attachment_count', 'max_total_attachment_bytes', 'max_image_bytes', 'max_document_bytes', 'max_presentation_bytes' ) ) );
             } elseif ( false !== strpos( $path, '/suite/attachments' ) ) {
                 $files = new Olama_Messages_Attachment_Service();

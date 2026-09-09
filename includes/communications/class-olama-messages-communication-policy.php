@@ -2,6 +2,21 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class Olama_Messages_Communication_Policy {
+    /** WordPress administrators are first-class Communications operators. */
+    public static function administrator( $user_id = 0 ) {
+        $user_id = $user_id ?: get_current_user_id();
+        $user = $user_id ? get_userdata( $user_id ) : false;
+        return $user && in_array( 'administrator', (array) $user->roles, true );
+    }
+
+    public static function staff_actor( array $actor ) {
+        return in_array( $actor['actor_type'] ?? '', array( 'employee', 'administrator' ), true );
+    }
+
+    public static function can( $capability ) {
+        return self::administrator() || current_user_can( $capability );
+    }
+
     public static function settings() {
         return array_merge( array( 'enabled' => false, 'notifications' => false, 'pilot_users' => array(), 'app_url' => '', 'poll_seconds' => 20,
             'chat_enabled' => false, 'message_max_chars' => 5000, 'edit_minutes' => 15,
@@ -17,19 +32,19 @@ class Olama_Messages_Communication_Policy {
 
     public static function enabled() {
         $settings = self::settings();
-        return ! empty( $settings['enabled'] ) && ( ! $settings['pilot_users'] || in_array( get_current_user_id(), array_map( 'intval', $settings['pilot_users'] ), true ) );
+        return ! empty( $settings['enabled'] ) && ( self::administrator() || ! $settings['pilot_users'] || in_array( get_current_user_id(), array_map( 'intval', $settings['pilot_users'] ), true ) );
     }
 
     public static function require_use( array $actor ) {
-        if ( ! self::enabled() || ! current_user_can( 'olama_messages_use' ) || 'suspended' === get_user_meta( get_current_user_id(), 'olama_account_status', true ) || (int) $actor['wp_user_id'] !== get_current_user_id() ) {
+        if ( ! self::enabled() || ! self::can( 'olama_messages_use' ) || 'suspended' === get_user_meta( get_current_user_id(), 'olama_account_status', true ) || (int) $actor['wp_user_id'] !== get_current_user_id() ) {
             throw new RuntimeException( 'خدمة الاتصالات غير متاحة لهذا الحساب.' );
         }
     }
 
     public static function require_manage( array $actor ) {
         self::require_use( $actor );
-        if ( 'employee' !== $actor['actor_type'] || ! current_user_can( 'olama_messages_manage_campaigns' ) ) {
-            throw new RuntimeException( 'إدارة الإعلانات تتطلب هوية موظف وصلاحية مخولة.' );
+        if ( ! self::staff_actor( $actor ) || ! self::can( 'olama_messages_manage_campaigns' ) ) {
+            throw new RuntimeException( 'إدارة الإعلانات تتطلب هوية موظف أو مدير وصلاحية مخولة.' );
         }
     }
 }

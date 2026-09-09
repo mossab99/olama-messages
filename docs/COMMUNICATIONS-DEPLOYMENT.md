@@ -1,4 +1,4 @@
-# Communications deployment and rollback — 4.0.2
+# Communications deployment and rollback — 4.0.3
 
 ## Current state
 
@@ -21,7 +21,7 @@ Enable only the intended flags. Event publication requires a finalized audience 
 
 ## Verification already completed
 
-Real WordPress, wpdb, dbDelta and MariaDB 10.6.23: 60 announcement assertions, 93 chat assertions and 93 remaining-suite assertions passed. Existing phone normalization/export, renewal-audience (22 cases), PHP SMS segmentation and JavaScript SMS segmentation passed. PHP/JavaScript syntax checks passed. Browser fixtures verified Arabic desktop/mobile views, separate child acknowledgement/RSVP, workflow completion, source-field locking, quiet preferences and actor-dependent controls. Real GD generated authorized private previews.
+Real WordPress, wpdb, dbDelta and MariaDB 10.6.23: 60 announcement assertions, 96 chat assertions and 93 remaining-suite assertions passed. Existing phone normalization/export, renewal-audience (22 cases), PHP SMS segmentation and JavaScript SMS segmentation passed. PHP/JavaScript syntax checks passed. Browser fixtures verified Arabic desktop/mobile views, administrator access and directory loading, separate child acknowledgement/RSVP, workflow completion, source-field locking, quiet preferences and actor-dependent controls. Real GD generated authorized private previews.
 
 Tests used PHP 8.4.12 and fictional Core/Users/source/scanner records in disposable databases. They are not production throughput, actual PHP 7.4 execution, a real ClamAV installation, web-server alias review, multi-process load or real upstream/theme/device acceptance. Validate those deployment conditions on the actual host. No additional implementation stage is being reserved for them.
 

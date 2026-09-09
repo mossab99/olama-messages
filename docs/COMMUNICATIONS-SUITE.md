@@ -1,4 +1,4 @@
-# Integrated Communications delivery — 4.0.2
+# Integrated Communications delivery — 4.0.3
 
 This completes the remaining core C/D implementation in the existing Messages plugin. The original specification is constrained by the mandatory architecture amendment and final clarification. Features are independently gated and default off. No production messages, capability grants, public pages, or live rollout settings are created by the implementation.
 

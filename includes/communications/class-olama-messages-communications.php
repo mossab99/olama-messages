@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class Olama_Messages_Communications {
     public function init() {
+        add_filter( 'user_has_cap', array( $this, 'administrator_capabilities' ), 10, 4 );
         add_action( 'init', array( $this, 'install' ), 15 );
         add_action( 'olama_users_register_modules', array( $this, 'register_module' ) );
         add_action( 'rest_api_init', array( new Olama_Messages_Communications_Rest_Controller(), 'register_routes' ) );
@@ -63,6 +64,15 @@ class Olama_Messages_Communications {
         add_submenu_page( 'olama-communications', 'إعدادات الاتصالات', 'إعدادات الاتصالات', 'olama_messages_configure', 'olama-communications-settings', array( $this, 'settings_page' ) );
     }
 
+    /** Administrators always receive every declared Communications capability. */
+    public function administrator_capabilities( $allcaps, $caps, $args, $user ) {
+        if ( ! $user || ! in_array( 'administrator', (array) $user->roles, true ) ) { return $allcaps; }
+        foreach ( array( 'use', 'manage_campaigns', 'configure', 'chat', 'contact_teachers', 'service_inbox', 'manage_inboxes', 'moderate', 'audit', 'attachments', 'actions', 'manage_actions', 'events', 'manage_events', 'view_dashboard' ) as $cap ) {
+            $allcaps['olama_messages_' . $cap] = true;
+        }
+        return $allcaps;
+    }
+
     /** Add the Communications workspace to the permission-filtered Olama Hub. */
     public function hub_card( array $cards ) {
         foreach ( $cards as $card ) {
@@ -90,16 +100,16 @@ class Olama_Messages_Communications {
 
     public function app() {
         if ( ! is_user_logged_in() ) { return '<p dir="rtl">يرجى تسجيل الدخول إلى حساب OLAMA.</p>'; }
-        if ( ! current_user_can( 'olama_messages_use' ) ) { return '<p dir="rtl">لا يملك هذا الحساب صلاحية استخدام OLAMA Communications.</p>'; }
+        if ( ! Olama_Messages_Communication_Policy::can( 'olama_messages_use' ) ) { return '<p dir="rtl">لا يملك هذا الحساب صلاحية استخدام OLAMA Communications.</p>'; }
         $settings = Olama_Messages_Communication_Policy::settings();
         if ( empty( $settings['enabled'] ) ) {
             $message = '<section class="notice notice-warning inline" dir="rtl"><h2>الاتصالات غير مفعلة</h2><p>يلزم تفعيل «الاتصالات الداخلية» من إعدادات OLAMA Communications في هذا الموقع.</p>';
-            if ( is_admin() && current_user_can( 'olama_messages_configure' ) ) {
+            if ( is_admin() && Olama_Messages_Communication_Policy::can( 'olama_messages_configure' ) ) {
                 $message .= '<p><a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=olama-communications-settings' ) ) . '">فتح إعدادات الاتصالات</a></p>';
             }
             return $message . '</section>';
         }
-        if ( ! empty( $settings['pilot_users'] ) && ! in_array( get_current_user_id(), array_map( 'intval', $settings['pilot_users'] ), true ) ) {
+        if ( ! Olama_Messages_Communication_Policy::administrator() && ! empty( $settings['pilot_users'] ) && ! in_array( get_current_user_id(), array_map( 'intval', $settings['pilot_users'] ), true ) ) {
             return '<p dir="rtl">الاتصالات مفعلة لمجموعة التجربة، وهذا الحساب غير مضاف إليها.</p>';
         }
         $actors = ( new Olama_Messages_Actor_Resolver() )->available( get_current_user_id(), true );
@@ -115,7 +125,7 @@ class Olama_Messages_Communications {
     }
 
     public function enqueue( $force = false ) {
-        if ( ! is_user_logged_in() || ! Olama_Messages_Communication_Policy::enabled() || ! current_user_can( 'olama_messages_use' ) ) { return; }
+        if ( ! is_user_logged_in() || ! Olama_Messages_Communication_Policy::enabled() || ! Olama_Messages_Communication_Policy::can( 'olama_messages_use' ) ) { return; }
         global $post;
         $is_olama = is_admin() ? false !== strpos( (string) ( $_GET['page'] ?? '' ), 'olama' ) : ( $post && preg_match( '/\[olama_/', $post->post_content ) );
         if ( true !== $force && ! apply_filters( 'olama_messages_is_portal_page', $is_olama ) ) { return; }
@@ -133,7 +143,7 @@ class Olama_Messages_Communications {
             'timezone' => wp_timezone_string(),
             'notifications' => ! empty( $settings['notifications'] ), 'pollSeconds' => max( 10, min( 120, (int) $settings['poll_seconds'] ) ),
             'suite' => ! empty( $settings['events_enabled'] ) || ! empty( $settings['actions_enabled'] ) || ! empty( $settings['attachments_enabled'] ),
-            'chat' => ! empty( $settings['chat_enabled'] ) && current_user_can( 'olama_messages_chat' ), 'messageMaxChars' => (int) $settings['message_max_chars'], 'editMinutes' => (int) $settings['edit_minutes'],
+            'chat' => ! empty( $settings['chat_enabled'] ) && Olama_Messages_Communication_Policy::can( 'olama_messages_chat' ), 'messageMaxChars' => (int) $settings['message_max_chars'], 'editMinutes' => (int) $settings['edit_minutes'],
         ) );
     }
 
@@ -186,7 +196,7 @@ class Olama_Messages_Communications {
     }
 
     public function settings_page() {
-        if ( ! current_user_can( 'olama_messages_configure' ) ) { return; }
+        if ( ! Olama_Messages_Communication_Policy::can( 'olama_messages_configure' ) ) { return; }
         $settings = Olama_Messages_Communication_Policy::settings();
         echo '<div class="wrap" dir="rtl"><h1>إعدادات OLAMA Communications</h1><p>الإعلانات والمراسلات المقيدة. امنح الصلاحيات من OLAMA Users وأكمل فحوص بيئة المدرسة قبل التفعيل.</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
         wp_nonce_field( 'olama_communications_settings' );
@@ -210,7 +220,7 @@ class Olama_Messages_Communications {
     }
 
     public function save_settings() {
-        if ( ! current_user_can( 'olama_messages_configure' ) ) { wp_die( 'غير مخول', '', array( 'response' => 403 ) ); }
+        if ( ! Olama_Messages_Communication_Policy::can( 'olama_messages_configure' ) ) { wp_die( 'غير مخول', '', array( 'response' => 403 ) ); }
         check_admin_referer( 'olama_communications_settings' );
         $settings = Olama_Messages_Communication_Policy::settings();
         $settings['enabled'] = ! empty( $_POST['enabled'] );

@@ -4,14 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 class Olama_Messages_Chat_Policy {
     public static function require_use( array $actor ) {
         Olama_Messages_Communication_Policy::require_use( $actor );
-        if ( empty( Olama_Messages_Communication_Policy::settings()['chat_enabled'] ) || ! current_user_can( 'olama_messages_chat' ) ) { throw new RuntimeException( 'المراسلات الخاصة غير مفعلة لهذا الحساب.' ); }
+        if ( empty( Olama_Messages_Communication_Policy::settings()['chat_enabled'] ) || ! Olama_Messages_Communication_Policy::can( 'olama_messages_chat' ) ) { throw new RuntimeException( 'المراسلات الخاصة غير مفعلة لهذا الحساب.' ); }
         $verified = ( new Olama_Messages_Actor_Resolver() )->resolve( $actor['actor_key'], true );
         if ( $verified['actor_key'] !== $actor['actor_key'] ) { throw new RuntimeException( 'هوية غير مخولة.' ); }
     }
 
     public static function require_staff( array $actor, $cap ) {
         self::require_use( $actor );
-        if ( 'employee' !== $actor['actor_type'] || ! current_user_can( 'olama_messages_' . $cap ) ) { throw new RuntimeException( 'يتطلب هذا الإجراء هوية موظف وصلاحية مخولة.' ); }
+        if ( ! Olama_Messages_Communication_Policy::staff_actor( $actor ) || ! Olama_Messages_Communication_Policy::can( 'olama_messages_' . $cap ) ) { throw new RuntimeException( 'يتطلب هذا الإجراء هوية موظف أو مدير وصلاحية مخولة.' ); }
     }
 
     public static function restrictions( array $actor, $operation, array $thread = array(), $target = '' ) {

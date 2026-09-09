@@ -6,7 +6,7 @@ Repository audit: 2026-09-08. The table below records the A audit; the B contrac
 
 | Owner | Actual contract | Identifiers / behavior | Failure and fallback |
 | --- | --- | --- | --- |
-| Users | `olama_users_get_identity($wp_user_id)` | Read-only; returns one identity with `identity_type`, opaque `oracle_identifier`, `account_status`, `wp_user_id`. Underlying lookup chooses first row. | Release A explicitly reports `single_verified`. No additional identity inferred. Missing/suspended mapping denies business operations. |
+| Users | `olama_users_get_identity($wp_user_id)` | Read-only; returns one identity with `identity_type`, opaque `oracle_identifier`, `account_status`, `wp_user_id`. Underlying lookup chooses first row. | Release A explicitly reports `single_verified`. No additional family/employee identity is inferred. Missing/suspended mapping denies non-administrator business operations. |
 | Users | `Olama_Users_DB::get_identity($type, $oracle_identifier)` | Read-only reverse account lookup for audience reachability. | Missing means no provisioned account, not unread/offline. Adapter contains all usage. |
 | Users | `olama_users_register_modules` action, `olama_users_register_module()` | Declares module and granular capabilities. Non-administrators require grants in Users. | Never grant parent/staff roles automatically. Configuration permission alone does not authorize sending as an employee. |
 | Core | `families()->get_by_oracle_id()`, `get_by_uid()` | Map Oracle external reference to canonical opaque `family_uid`. Read-only. | Missing record denies actor resolution; no name/phone identity inference. |
@@ -21,7 +21,7 @@ Repository audit: 2026-09-08. The table below records the A audit; the B contrac
 
 ## Actor and permission decisions
 
-Family receipts describe the account, never a named physical guardian. Store business actor and authenticated WP account in audit. Employee actor IDs are employee numbers, not WP user IDs. No invented admin actor. An unmapped WP administrator can configure the module but cannot publish as a fabricated employee.
+Family receipts describe the account, never a named physical guardian. Store business actor and authenticated WP account in audit. Employee actor IDs are employee numbers, not WP user IDs. WordPress administrators use the explicit `administrator:<wp_user_id>` actor, receive every Communications capability, and may contact any currently eligible Communications account without an academic relationship. They never impersonate or fabricate an employee identity.
 
 The current verified identity API supports a single identity. The resolver has an available-actors contract for later authoritative Users integration; no guessed future function is called. Selected actor is supplied per request, validated against the account, and stored only in tab-local client state. There is no mutable session-global current actor. Selected family context never inherits staff business permission.
 

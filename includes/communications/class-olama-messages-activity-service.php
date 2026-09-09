@@ -44,7 +44,7 @@ class Olama_Messages_Activity_Service {
     }
     public function feed( array $actor ) {
         global $wpdb; Olama_Messages_Suite_Policy::actor( $actor ); $critical = array();
-        if ( ! empty( Olama_Messages_Communication_Policy::settings()['events_enabled'] ) && current_user_can( 'olama_messages_events' ) ) {
+        if ( ! empty( Olama_Messages_Communication_Policy::settings()['events_enabled'] ) && Olama_Messages_Communication_Policy::can( 'olama_messages_events' ) ) {
             $t = Olama_Messages_Communications_DB::table( 'event_targets' ); $e = Olama_Messages_Communications_DB::table( 'events' );
             $critical = $wpdb->get_results( $wpdb->prepare( "SELECT t.id AS target_id,e.id AS event_id,e.title,e.content_version FROM {$t} t INNER JOIN {$e} e ON e.id=t.event_id WHERE t.actor_key=%s AND t.released_version>0 AND e.status='published' AND e.priority='critical' AND e.requires_ack=1 AND t.acknowledged_ack_version<e.ack_required_version ORDER BY e.id DESC LIMIT 100", $actor['actor_key'] ), ARRAY_A );
         }

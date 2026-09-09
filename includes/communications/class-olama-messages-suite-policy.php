@@ -8,11 +8,11 @@ class Olama_Messages_Suite_Policy {
     }
     public static function feature( array $actor, $feature ) {
         self::actor( $actor );
-        if ( empty( Olama_Messages_Communication_Policy::settings()[$feature . '_enabled'] ) || ! current_user_can( 'olama_messages_' . $feature ) ) { throw new RuntimeException( 'هذه الخدمة غير مفعلة لهذا الحساب.' ); }
+        if ( empty( Olama_Messages_Communication_Policy::settings()[$feature . '_enabled'] ) || ! Olama_Messages_Communication_Policy::can( 'olama_messages_' . $feature ) ) { throw new RuntimeException( 'هذه الخدمة غير مفعلة لهذا الحساب.' ); }
     }
     public static function staff( array $actor, $cap, $feature = '' ) {
         if ( $feature ) { self::feature( $actor, $feature ); } else { self::actor( $actor ); }
-        if ( 'employee' !== $actor['actor_type'] || ! current_user_can( 'olama_messages_' . $cap ) ) { throw new RuntimeException( 'يتطلب الإجراء هوية موظف وصلاحية مخولة.' ); }
+        if ( ! Olama_Messages_Communication_Policy::staff_actor( $actor ) || ! Olama_Messages_Communication_Policy::can( 'olama_messages_' . $cap ) ) { throw new RuntimeException( 'يتطلب الإجراء هوية موظف أو مدير وصلاحية مخولة.' ); }
     }
     public static function update( $table, array $data, array $where ) {
         global $wpdb;

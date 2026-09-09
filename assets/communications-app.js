@@ -131,7 +131,7 @@
         roots.add(root); root._suite = null; root.replaceChildren();
         const head = el('header', undefined, 'olama-comm-head'); head.append(el('small', 'OLAMA COMMUNICATIONS'), el('h2', 'اتصالات المدرسة'), el('p', 'الإعلانات والمراسلات الخاصة لحسابك في مكان واحد.'));
         const select = el('select'); select.setAttribute('aria-label', 'استخدام OLAMA كـ');
-        config.actors.forEach(item => { const option = el('option', (item.actor_type === 'family' ? 'حساب الأسرة — ' : 'موظف — ') + item.display_name); option.value = item.actor_key; option.selected = item.actor_key === actor.actor_key; select.append(option); });
+        config.actors.forEach(item => { const type = item.actor_type === 'family' ? 'حساب الأسرة — ' : item.actor_type === 'administrator' ? 'مدير النظام — ' : 'موظف — '; const option = el('option', type + item.display_name); option.value = item.actor_key; option.selected = item.actor_key === actor.actor_key; select.append(option); });
         select.addEventListener('change', () => switchActor(select.value)); head.append(select); root.append(head);
         const nav = el('nav', undefined, 'olama-comm-nav'); nav.setAttribute('aria-label', 'أقسام الاتصالات');
         nav.append(button('الإعلانات', () => showNotices(root)), button('الإشعارات', () => showNotifications(root)));

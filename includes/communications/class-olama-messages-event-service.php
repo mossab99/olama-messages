@@ -10,7 +10,7 @@ class Olama_Messages_Event_Service {
     public function visible( array $actor, $id ) {
         global $wpdb;
         Olama_Messages_Suite_Policy::feature( $actor, 'events' ); $row = $this->get( $id );
-        if ( 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_manage_events' ) ) { return $row; }
+        if ( Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_events' ) ) { return $row; }
         $t = Olama_Messages_Communications_DB::table( 'event_targets' );
         if ( ! $row['published_at_utc'] || ! $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t} WHERE event_id=%d AND actor_key=%s AND released_version>0 LIMIT 1", $id, $actor['actor_key'] ) ) ) { throw new RuntimeException( 'الفعالية غير متاحة لهذا الحساب.' ); }
         return $row;
@@ -195,7 +195,7 @@ class Olama_Messages_Event_Service {
         $row['starts_at_local'] = ( new DateTimeImmutable( $row['starts_at_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( new DateTimeZone( $row['timezone'] ) )->format( 'Y-m-d\TH:i' );
         $row['ends_at_local'] = ( new DateTimeImmutable( $row['ends_at_utc'], new DateTimeZone( 'UTC' ) ) )->setTimezone( new DateTimeZone( $row['timezone'] ) )->format( 'Y-m-d\TH:i' );
         $row['attachments'] = ( new Olama_Messages_Attachment_Service() )->listing( $actor, 'event', $id );
-        if ( 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_manage_events' ) ) {
+        if ( Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_events' ) ) {
             $row['statistics'] = $wpdb->get_row( $wpdb->prepare( "SELECT COUNT(*) AS targets,SUM(reachability='eligible_account') AS reachable,SUM(sent_at_utc IS NOT NULL) AS sent,SUM(delivered_content_version>0) AS delivered,SUM(read_content_version>0) AS read_count,SUM(acknowledged_ack_version=%d AND %d>0) AS acknowledged,SUM(rsvp_required_version=%d AND rsvp_status='yes' AND %d>0) AS rsvp_yes FROM {$t} WHERE event_id=%d", $row['ack_required_version'], $row['ack_required_version'], $row['rsvp_required_version'], $row['rsvp_required_version'], $id ), ARRAY_A );
             $row['reachability_statistics'] = $wpdb->get_results( $wpdb->prepare( "SELECT reachability,COUNT(*) AS total FROM {$t} WHERE event_id=%d GROUP BY reachability", $id ), ARRAY_A );
             $action_table = Olama_Messages_Communications_DB::table( 'action_items' );

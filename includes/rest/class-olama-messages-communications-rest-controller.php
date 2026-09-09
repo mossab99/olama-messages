@@ -39,11 +39,11 @@ class Olama_Messages_Communications_Rest_Controller {
             $id = absint( $request['id'] );
             $data = (array) $request->get_json_params();
             if ( substr( $route, -3 ) === '/me' ) {
-                $staff = 'employee' === $actor['actor_type'];
-                $teacher = $staff ? ( new Olama_Messages_Relationship_Provider() )->employee( $actor['actor_key'] ) : null;
-                $result = array( 'actor' => $actor, 'available_actors' => $resolver->available( get_current_user_id(), true ), 'identity_mode' => 'single_verified', 'can_manage' => $staff && current_user_can( 'olama_messages_manage_campaigns' ),
-                    'chat' => ! empty( Olama_Messages_Communication_Policy::settings()['chat_enabled'] ) && current_user_can( 'olama_messages_chat' ),
-                    'is_teacher' => $teacher && $teacher['teacher'], 'can_moderate' => $staff && current_user_can( 'olama_messages_moderate' ), 'can_manage_inboxes' => $staff && current_user_can( 'olama_messages_manage_inboxes' ), 'can_audit' => $staff && current_user_can( 'olama_messages_audit' ) );
+                $staff = Olama_Messages_Communication_Policy::staff_actor( $actor );
+                $teacher = 'employee' === $actor['actor_type'] ? ( new Olama_Messages_Relationship_Provider() )->employee( $actor['actor_key'] ) : null;
+                $result = array( 'actor' => $actor, 'available_actors' => $resolver->available( get_current_user_id(), true ), 'identity_mode' => 'single_verified', 'can_manage' => $staff && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_campaigns' ),
+                    'chat' => ! empty( Olama_Messages_Communication_Policy::settings()['chat_enabled'] ) && Olama_Messages_Communication_Policy::can( 'olama_messages_chat' ),
+                    'is_teacher' => $teacher && $teacher['teacher'], 'can_moderate' => $staff && Olama_Messages_Communication_Policy::can( 'olama_messages_moderate' ), 'can_manage_inboxes' => $staff && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_inboxes' ), 'can_audit' => $staff && Olama_Messages_Communication_Policy::can( 'olama_messages_audit' ) );
             } elseif ( false !== strpos( $route, '/campaigns' ) ) {
                 if ( $request['command'] ) { $result = $service->command( $id, $request['command'], $actor, $data ); }
                 elseif ( 'POST' === $request->get_method() ) { $result = array( 'id' => $service->save( $data, $actor, $id ) ); }

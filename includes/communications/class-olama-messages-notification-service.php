@@ -18,7 +18,7 @@ class Olama_Messages_Notification_Service {
         if ( ! $row ) { throw new RuntimeException( 'الإعلان غير متاح لهذا الحساب.' ); }
         $row['attachments'] = ( new Olama_Messages_Attachment_Service() )->listing( $actor, 'campaign', $row['campaign_id'] );
         $row['action_id'] = 0;
-        if ( ! empty( Olama_Messages_Communication_Policy::settings()['actions_enabled'] ) && current_user_can( 'olama_messages_actions' ) ) { $a = Olama_Messages_Communications_DB::table( 'action_items' ); $row['action_id'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$a} WHERE source_type='campaign_delivery' AND source_id=%d AND owner_key=%s", $id, $actor['actor_key'] ) ); }
+        if ( ! empty( Olama_Messages_Communication_Policy::settings()['actions_enabled'] ) && Olama_Messages_Communication_Policy::can( 'olama_messages_actions' ) ) { $a = Olama_Messages_Communications_DB::table( 'action_items' ); $row['action_id'] = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$a} WHERE source_type='campaign_delivery' AND source_id=%d AND owner_key=%s", $id, $actor['actor_key'] ) ); }
         return $row;
     }
 

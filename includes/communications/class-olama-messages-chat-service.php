@@ -54,7 +54,7 @@ class Olama_Messages_Chat_Service {
                 // Semester is a snapshot; assignments are year-owned. Assignment ID prevents successor inheritance.
                 $key_context = $context; unset( $key_context['semester_id'], $key_context['student_name'], $key_context['class_name'], $key_context['section_name'], $key_context['subject_name'] );
                 $key = 'direct:' . hash( 'sha256', wp_json_encode( array( $keys, $key_context ) ) );
-                $subject = isset( $context['student_name'] ) ? $context['student_name'] . ' · ' . $context['subject_name'] : 'مراسلة الموظفين';
+                $subject = isset( $context['student_name'] ) ? $context['student_name'] . ' · ' . $context['subject_name'] : ( 'administrator' === ( $context['scope'] ?? '' ) ? 'مراسلة إدارية' : 'مراسلة الموظفين' );
             } else {
                 $inbox_id = absint( $data['inbox_id'] ?? 0 );
                 $inbox = ( new Olama_Messages_Service_Inbox_Service() )->require_contact( $inbox_id, $actor, true );
@@ -77,9 +77,9 @@ class Olama_Messages_Chat_Service {
             $id = (int) $wpdb->insert_id;
             $this->participant( $id, $actor );
             if ( 'direct' === $kind ) {
-                list( $type, $external ) = explode( ':', $target, 2 );
-                $record = 'employee' === $type ? olama_core()->employees()->get_by_employee_id( $external ) : olama_core()->families()->get_by_uid( $external );
-                $this->participant( $id, array( 'actor_key' => $target, 'display_name' => $record['full_name'] ?? $record['sponsor_full_name'] ?? $target ) );
+                $record = ( new Olama_Messages_Relationship_Provider() )->actor( $target );
+                if ( ! $record ) { throw new RuntimeException( 'تعذر تحميل حساب المستلم.' ); }
+                $this->participant( $id, array( 'actor_key' => $target, 'display_name' => $record['name'] ?? $target ) );
             }
             Olama_Messages_Communications_DB::audit( 'thread_created', $id, $actor, array( 'kind' => $kind ) );
             $this->change( $id, 'created' );

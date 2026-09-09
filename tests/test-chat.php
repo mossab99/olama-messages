@@ -27,6 +27,7 @@ add_role( 'olama_teacher', 'Teacher', array( 'read' => true ) );
 $family_user = comm_user( 'family', '0008' ); $other_family_user = comm_user( 'family', '0009' );
 $teacher_user = comm_user( 'employee', 'T-001' ); $teacher2_user = comm_user( 'employee', 'T-002' );
 $admin_user = comm_user( 'employee', 'ADMIN-003' ); $other_user = comm_user( 'employee', 'OTHER-004' ); $mod_user = comm_user( 'employee', 'MOD-005' );
+$wp_admin_user = wp_insert_user( array( 'user_login' => 'communications_wp_admin', 'user_pass' => wp_generate_password( 30 ), 'role' => 'administrator', 'display_name' => 'مدير النظام' ) );
 foreach ( array( $teacher_user, $teacher2_user ) as $uid ) { get_user_by( 'id', $uid )->set_role( 'olama_teacher' ); }
 foreach ( array( $family_user, $other_family_user, $teacher_user, $teacher2_user, $admin_user, $other_user, $mod_user ) as $uid ) {
     foreach ( array( 'use', 'chat', 'service_inbox' ) as $cap ) { get_user_by( 'id', $uid )->add_cap( 'olama_messages_' . $cap ); }
@@ -79,6 +80,14 @@ comm_assert( 'mapping_missing' === $provider->relationship( 'family:F-A', 'famil
 comm_assert( 'valid' === $provider->relationship( 'employee:T-001', 'employee:T-002' )['relationship_status'], 'verified teacher-to-teacher relationship permitted' );
 comm_assert( 'valid' === $provider->relationship( 'employee:ADMIN-003', 'employee:T-001' )['relationship_status'], 'administrative employee capability permits teacher contact' );
 comm_assert( 'invalid' === $provider->relationship( 'employee:OTHER-004', 'employee:T-001' )['relationship_status'], 'ordinary employee cannot inherit administrative contact privilege' );
+$wp_admin = chat_as( $wp_admin_user );
+comm_assert( 'administrator:' . $wp_admin_user === $wp_admin['actor_key'] && Olama_Messages_Communication_Policy::can( 'olama_messages_chat' ), 'WordPress administrator receives an audited actor and every Communications capability without an OLAMA identity' );
+$admin_contacts = $provider->contacts( $wp_admin );
+comm_assert( in_array( 'family:F-B', array_column( $admin_contacts['contacts'], 'actor_key' ), true ) && in_array( 'employee:T-001', array_column( $admin_contacts['contacts'], 'actor_key' ), true ), 'administrator directory includes eligible families and employees regardless of role or academic relationship' );
+$admin_thread = $chat->create( $wp_admin, array( 'target' => 'employee:OTHER-004' ) )['id'];
+$admin_message = $chat->send( $wp_admin, $admin_thread, chat_send_data( 'رسالة إدارية مباشرة' ) );
+comm_assert( ! empty( $admin_message['id'] ), 'administrator can start and send an unrestricted direct conversation to an eligible user' );
+$actor = chat_as( $family_user );
 comm_throws( function () use ( $chat, $actor ) { $chat->create( $actor, array( 'kind' => 'group' ) ); }, 'arbitrary group creation denied' );
 $thread_id = $chat->create( $actor, array( 'target' => 'employee:T-001', 'context' => $context ) )['id'];
 comm_assert( $thread_id === $chat->create( $actor, array( 'target' => 'employee:T-001', 'context' => $context ) )['id'], 'direct context uniqueness reuses only same participants and assignment' );

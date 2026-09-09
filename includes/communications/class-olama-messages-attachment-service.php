@@ -155,7 +155,7 @@ class Olama_Messages_Attachment_Service {
         }
         if ( 'campaign' === $row['owner_type'] ) {
             $campaign = ( new Olama_Messages_Internal_Campaign_Service() )->get( $row['owner_id'] );
-            if ( 'employee' === $actor['actor_type'] && current_user_can( 'olama_messages_manage_campaigns' ) ) { return; }
+            if ( Olama_Messages_Communication_Policy::staff_actor( $actor ) && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_campaigns' ) ) { return; }
             $delivery = $wpdb->get_var( $wpdb->prepare( 'SELECT id FROM ' . Olama_Messages_Communications_DB::table( 'internal_deliveries' ) . ' WHERE campaign_id=%d AND actor_key=%s LIMIT 1', $row['owner_id'], $actor['actor_key'] ) );
             if ( ! $delivery ) { throw new RuntimeException( 'المرفق خارج جمهور الإعلان.' ); } return;
         }
@@ -164,7 +164,7 @@ class Olama_Messages_Attachment_Service {
     }
     public function listing( array $actor, $type, $id ) {
         global $wpdb;
-        if ( empty( Olama_Messages_Communication_Policy::settings()['attachments_enabled'] ) || ! current_user_can( 'olama_messages_attachments' ) ) { return array(); }
+        if ( empty( Olama_Messages_Communication_Policy::settings()['attachments_enabled'] ) || ! Olama_Messages_Communication_Policy::can( 'olama_messages_attachments' ) ) { return array(); }
         $table = Olama_Messages_Communications_DB::table( 'attachments' );
         $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE owner_type=%s AND owner_id=%d AND active=1 ORDER BY id LIMIT 20", $type, $id ), ARRAY_A );
         foreach ( $rows as $row ) { $this->authorize( $actor, $row ); }

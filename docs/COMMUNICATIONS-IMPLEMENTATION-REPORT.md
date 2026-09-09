@@ -1,6 +1,6 @@
 # Communications implementation report — 2026-09-09
 
-## Integrated delivery: version 4.0.2
+## Integrated delivery: version 4.0.3
 
 All remaining approved core C/D stages are now implemented together, preserving the existing A/B work and legacy SMS boundaries. New feature flags default off. No real school messages, external SMS, accounts, role grants or public pages were created during implementation.
 
@@ -19,7 +19,7 @@ Communications schema **4** has 28 dedicated tables. The 4.0.1 upgrade repairs a
 
 ## Verification
 
-**246 Communications integration assertions passed:** A 60, B 93, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes Hub discovery, private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
+**249 Communications integration assertions passed:** A 60, B 96, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes Hub discovery, explicit administrator actors and unrestricted eligible-account contact, private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
 
 Existing PHP phone normalization, Google Contacts export, renewal audience (22 cases), SMS segmentation and JavaScript SMS segmentation checks passed. PHP and JavaScript syntax checks passed. Browser fixtures verified Arabic calendar/list/detail, staff controls hidden for family actors, separate sibling acknowledgement/RSVP, action completion/history, School field locking, quiet preferences, literal script text and 390px layout without horizontal overflow. Private preview generation used real GD.
 
@@ -33,7 +33,7 @@ Stage B is implemented inside the existing plugin, preserving Release A. Its sep
 
 Delivered:
 
-- Family ↔ assigned teacher (either side can initiate), teacher ↔ teacher, and authorized administrative employee ↔ teacher chat. Child-first family contacts and assignment-limited teacher family directory; no global family directory or fabricated identity mappings.
+- Family ↔ assigned teacher (either side can initiate), teacher ↔ teacher, authorized administrative employee ↔ teacher, and WordPress administrator ↔ any eligible Communications account. Child-first family contacts, assignment-limited teacher family directory, and a bounded administrator directory; no fabricated family or employee identity mappings.
 - Read-only Core/Users/School relationship provider with per-domain freshness, current Core subject/section checks, canonical employee IDs and explicit failure states. Historical read-only behavior and successor-teacher isolation.
 - Plain-text messages, quoted replies, immutable request hashes and UUID retry deduplication; 5000-character default limit and configurable 15-minute own-edit window with retained revisions.
 - Independent sent/delivered/read semantics, monotonic cursors, manual unread, archive/mute/pin, composite keyset lists, commit-ordered change feed and bounded unread reconciliation.
@@ -45,7 +45,7 @@ New B modules: `chat-schema`, `relationship-provider`, `chat-policy`, `chat-serv
 
 Verification: **93 B integration assertions** and **56 A integration assertions** passed on real WordPress/`wpdb`/`dbDelta` with MariaDB 10.6.23 and fictional business records. Existing PHP phone normalization, phone-book export, renewal audience (22 cases), SMS segmentation and JavaScript SMS segmentation checks passed. PHP lint and JavaScript syntax checks passed. Browser checks covered simultaneous isolated employee/family tabs, staff-control hiding, literal HTML/script text, sending/editing, draft cleanup after actor switch, inbox configuration, and 390px layout without horizontal overflow. The mobile launcher/composer overlap and primary-button hover contrast were corrected.
 
-Still required before school rollout: actual Core/Users/School/Gateway/theme acceptance, the school's sync cadence and freshness settings, PHP 7.4 execution if deployed, concurrent multi-process/hosting load, cron behavior and school-approved SMS device regression. Tests used PHP 8.4.12; no production throughput or upstream multi-identity API is claimed. At that historical checkpoint, attachments, actions/SLA and events were still C/D work; they are included in 4.0.2 above.
+Still required before school rollout: actual Core/Users/School/Gateway/theme acceptance, the school's sync cadence and freshness settings, PHP 7.4 execution if deployed, concurrent multi-process/hosting load, cron behavior and school-approved SMS device regression. Tests used PHP 8.4.12; no production throughput or upstream multi-identity API is claimed. At that historical checkpoint, attachments, actions/SLA and events were still C/D work; they are included in 4.0.3 above.
 
 See COMMUNICATIONS-DEPLOYMENT.md for pilot enablement and rollback, and COMMUNICATIONS-TESTING.md for reproducible checks.
 

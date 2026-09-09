@@ -12,10 +12,11 @@ class Olama_Messages_Service_Inbox_Service {
 
     public function member( $id, array $actor, $lock = false ) {
         global $wpdb;
-        if ( 'employee' !== $actor['actor_type'] || ! current_user_can( 'olama_messages_service_inbox' ) ) { return null; }
+        if ( 'administrator' === $actor['actor_type'] ) { return array( 'actor_key' => $actor['actor_key'], 'active' => 1, 'is_manager' => 1 ); }
+        if ( 'employee' !== $actor['actor_type'] || ! Olama_Messages_Communication_Policy::can( 'olama_messages_service_inbox' ) ) { return null; }
         $table = Olama_Messages_Communications_DB::table( 'inbox_members' );
         $member = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE inbox_id=%d AND actor_key=%s AND active=1" . ( $lock ? ' FOR UPDATE' : '' ), $id, $actor['actor_key'] ), ARRAY_A );
-        if ( $member ) { $member['is_manager'] = $member['is_manager'] && current_user_can( 'olama_messages_manage_inboxes' ); }
+        if ( $member ) { $member['is_manager'] = $member['is_manager'] && Olama_Messages_Communication_Policy::can( 'olama_messages_manage_inboxes' ); }
         return $member;
     }
 
@@ -23,10 +24,11 @@ class Olama_Messages_Service_Inbox_Service {
     public function access_sql( array $actor ) {
         global $wpdb;
         $requester = $wpdb->prepare( 't.requester_key=%s', $actor['actor_key'] );
-        if ( 'employee' !== $actor['actor_type'] || ! current_user_can( 'olama_messages_service_inbox' ) ) { return $requester; }
+        if ( 'administrator' === $actor['actor_type'] ) { return '1=1'; }
+        if ( 'employee' !== $actor['actor_type'] || ! Olama_Messages_Communication_Policy::can( 'olama_messages_service_inbox' ) ) { return $requester; }
         $members = Olama_Messages_Communications_DB::table( 'inbox_members' );
         $inboxes = Olama_Messages_Communications_DB::table( 'service_inboxes' );
-        $manager = current_user_can( 'olama_messages_manage_inboxes' ) ? 'im.is_manager=1' : '0=1';
+        $manager = Olama_Messages_Communication_Policy::can( 'olama_messages_manage_inboxes' ) ? 'im.is_manager=1' : '0=1';
         return '(' . $requester . $wpdb->prepare( " OR EXISTS (SELECT 1 FROM {$members} im INNER JOIN {$inboxes} si ON si.id=im.inbox_id WHERE im.inbox_id=t.inbox_id AND im.actor_key=%s AND im.active=1 AND (
             {$manager} OR si.history_policy='all_history' OR t.status IN ('open','in_progress')
             OR (si.history_policy IN ('active_only','active_and_recent') AND t.assignee_key=%s)
@@ -36,6 +38,7 @@ class Olama_Messages_Service_Inbox_Service {
 
     public function require_contact( $id, array $actor, $lock = false ) {
         $inbox = $this->get( $id, $lock );
+        if ( 'administrator' === $actor['actor_type'] && $inbox['active'] ) { return $inbox; }
         $teacher = 'employee' === $actor['actor_type'] ? ( new Olama_Messages_Relationship_Provider() )->employee( $actor['actor_key'] ) : null;
         $allowed = ( 'family' === $actor['actor_type'] && $inbox['allow_family'] ) || ( $teacher && $teacher['teacher'] && 'valid' === $teacher['source']['status'] && $inbox['allow_teacher'] );
         if ( ! $inbox['active'] || ! $allowed || ! ( new Olama_Messages_Actor_Resolver() )->eligible( $actor['actor_key'] ) ) { throw new RuntimeException( 'لا يمكن بدء طلب لهذا الصندوق.' ); }

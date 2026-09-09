@@ -44,6 +44,15 @@ class Olama_Messages_Actor_Resolver {
     }
     public function available( $user_id, $history = false ) {
         if ( 'suspended' === get_user_meta( $user_id, 'olama_account_status', true ) ) { return array(); }
+        if ( Olama_Messages_Communication_Policy::administrator( $user_id ) ) {
+            $user = get_userdata( $user_id );
+            return array( array(
+                'actor_type' => 'administrator', 'actor_id' => (string) $user_id,
+                'actor_key' => 'administrator:' . $user_id,
+                'display_name' => (string) $user->display_name,
+                'wp_user_id' => (int) $user_id, 'external_id' => (string) $user_id,
+            ) );
+        }
         if ( ! function_exists( 'olama_users_get_identity' ) || ! function_exists( 'olama_core' ) ) { return array(); }
         $identity = olama_users_get_identity( $user_id );
         if ( ! $identity || 'active' !== $identity['account_status'] || (int) $identity['wp_user_id'] !== (int) $user_id ) { return array(); }
@@ -78,6 +87,10 @@ class Olama_Messages_Actor_Resolver {
     }
 
     public function eligible( $key ) {
+        if ( 0 === strpos( (string) $key, 'administrator:' ) ) {
+            $user_id = absint( substr( (string) $key, 14 ) );
+            return $user_id && Olama_Messages_Communication_Policy::administrator( $user_id ) && 'suspended' !== get_user_meta( $user_id, 'olama_account_status', true );
+        }
         if ( ! function_exists( 'olama_core' ) ) { return false; }
         $parts = explode( ':', (string) $key, 2 );
         if ( 2 !== count( $parts ) ) { return false; }
@@ -103,6 +116,9 @@ class Olama_Messages_Actor_Resolver {
 
     public function reachability( $key ) {
         if ( ! $this->eligible( $key ) ) { return 'ineligible'; }
+        if ( 0 === strpos( (string) $key, 'administrator:' ) ) {
+            return 'eligible_account';
+        }
         if ( ! class_exists( 'Olama_Users_DB' ) ) { return 'identity_unavailable'; }
         list( $type, $id ) = explode( ':', $key, 2 );
         if ( 'family' === $type ) {
