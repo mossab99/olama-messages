@@ -8,7 +8,7 @@ Uses the installed WordPress runtime and real `wpdb`/`dbDelta`/InnoDB transactio
 
 Provide `OLAMA_TEST_DB_HOST`, `OLAMA_TEST_DB_PORT`, `OLAMA_TEST_DB_USER`, `OLAMA_TEST_DB_PASSWORD` for a disposable development database server with create/drop database permission. Defaults target the implementation's isolated localhost test server on port 13387, not the school database. Never point this harness at production infrastructure.
 
-The suite passes **59 assertions**. It checks repeated migrations/legacy row preservation; channel isolation; incomplete snapshots; batching and deduplication; event-free informational/acknowledgement purposes; draft/published retention rules; exact actor authorization; current eligibility; suspended accounts; independent receipt states; audit idempotency; stale worker fencing; rollback/retry; cancellation after reservation; nonce/REST permission; pilot isolation; disabled flags; missing unique-index detection/repair; and distinct UI diagnostics for a disabled site, pilot exclusion and an authorized account without a verified OLAMA identity.
+The suite passes **60 assertions**. It checks Hub card discovery; repeated migrations/legacy row preservation; channel isolation; incomplete snapshots; batching and deduplication; event-free informational/acknowledgement purposes; draft/published retention rules; exact actor authorization; current eligibility; suspended accounts; independent receipt states; audit idempotency; stale worker fencing; rollback/retry; cancellation after reservation; nonce/REST permission; pilot isolation; disabled flags; missing unique-index detection/repair; and distinct UI diagnostics for a disabled site, pilot exclusion and an authorized account without a verified OLAMA identity.
 
 ## Legacy checks
 
@@ -50,7 +50,7 @@ This is local sequential integration plus browser verification, not a claim of c
 
 ## Remaining-suite verification
 
-`php tests/test-suite.php` passed **93 assertions**. Together with A (59) and B (93), this is **245 Communications integration assertions**. The fixture uses real GD for image variants, actual Office-capable PHP dependencies, real SQL transactions, a controllable scanner interface and a read-only source fixture. It does not certify an installed production scanner or arbitrary Office content.
+`php tests/test-suite.php` passed **93 assertions**. Together with A (60) and B (93), this is **246 Communications integration assertions**. The fixture uses real GD for image variants, actual Office-capable PHP dependencies, real SQL transactions, a controllable scanner interface and a read-only source fixture. It does not certify an installed production scanner or arbitrary Office content.
 
 Coverage: reviewed/outside-web-root storage, MIME spoofing, blocked formats, scanner infection/outage, staged ownership, attachment-only retries/conflicts, removed member download/search denial, restricted claiming rollback, deadlines/escalation/reopen cycles, independent per-child acknowledgements and RSVP, future/stale/mismatched pairs, minor edits, source outage/removal, action history, private ICS and all-day dates, interrupted uploads, office hours, 150-target fanout continuation and full per-actor target pagination. Read, acknowledgement and completion remain distinct.
 

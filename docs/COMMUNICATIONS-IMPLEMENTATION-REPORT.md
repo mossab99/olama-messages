@@ -1,6 +1,6 @@
 # Communications implementation report — 2026-09-09
 
-## Integrated delivery: version 4.0.1
+## Integrated delivery: version 4.0.2
 
 All remaining approved core C/D stages are now implemented together, preserving the existing A/B work and legacy SMS boundaries. New feature flags default off. No real school messages, external SMS, accounts, role grants or public pages were created during implementation.
 
@@ -12,13 +12,14 @@ Delivered:
 - Standalone and School-source events, immutable audience snapshots, explicit audience additions, separate child responses and current eligibility checks.
 - Independent content/acknowledgement/RSVP versions, major/minor edit rules, source reconciliation, versioned reminders, completion providers, retained cancellation and private ICS export.
 - Arabic RTL month/list/detail calendar, action and management screens, notification preferences, persistent critical obligations and existing-coordinator polling.
+- Permission-filtered OLAMA Communications card in Olama Hub, linking verified users to the complete Communications workspace.
 - Permission-aware bounded search, metadata dashboard, archive-only retention preview/execution, capabilities and deployment documentation.
 
 Communications schema **4** has 28 dedicated tables. The 4.0.1 upgrade repairs an existing schema-3 `action_items` table missing `request_hash`, and settings save retries additive schema repair before refusing configuration. Legacy schema remains **2.5.1**. No upstream business table is written. See [the integrated suite contract](COMMUNICATIONS-SUITE.md) and [deployment notes](COMMUNICATIONS-DEPLOYMENT.md).
 
 ## Verification
 
-**245 Communications integration assertions passed:** A 59, B 93, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
+**246 Communications integration assertions passed:** A 60, B 93, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes Hub discovery, private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
 
 Existing PHP phone normalization, Google Contacts export, renewal audience (22 cases), SMS segmentation and JavaScript SMS segmentation checks passed. PHP and JavaScript syntax checks passed. Browser fixtures verified Arabic calendar/list/detail, staff controls hidden for family actors, separate sibling acknowledgement/RSVP, action completion/history, School field locking, quiet preferences, literal script text and 390px layout without horizontal overflow. Private preview generation used real GD.
 
@@ -44,7 +45,7 @@ New B modules: `chat-schema`, `relationship-provider`, `chat-policy`, `chat-serv
 
 Verification: **93 B integration assertions** and **56 A integration assertions** passed on real WordPress/`wpdb`/`dbDelta` with MariaDB 10.6.23 and fictional business records. Existing PHP phone normalization, phone-book export, renewal audience (22 cases), SMS segmentation and JavaScript SMS segmentation checks passed. PHP lint and JavaScript syntax checks passed. Browser checks covered simultaneous isolated employee/family tabs, staff-control hiding, literal HTML/script text, sending/editing, draft cleanup after actor switch, inbox configuration, and 390px layout without horizontal overflow. The mobile launcher/composer overlap and primary-button hover contrast were corrected.
 
-Still required before school rollout: actual Core/Users/School/Gateway/theme acceptance, the school's sync cadence and freshness settings, PHP 7.4 execution if deployed, concurrent multi-process/hosting load, cron behavior and school-approved SMS device regression. Tests used PHP 8.4.12; no production throughput or upstream multi-identity API is claimed. At that historical checkpoint, attachments, actions/SLA and events were still C/D work; they are included in 4.0.1 above.
+Still required before school rollout: actual Core/Users/School/Gateway/theme acceptance, the school's sync cadence and freshness settings, PHP 7.4 execution if deployed, concurrent multi-process/hosting load, cron behavior and school-approved SMS device regression. Tests used PHP 8.4.12; no production throughput or upstream multi-identity API is claimed. At that historical checkpoint, attachments, actions/SLA and events were still C/D work; they are included in 4.0.2 above.
 
 See COMMUNICATIONS-DEPLOYMENT.md for pilot enablement and rollback, and COMMUNICATIONS-TESTING.md for reproducible checks.
 
@@ -87,7 +88,7 @@ Rollout option `olama_msg_communications` contains `enabled` (internal official 
 
 ## Verification
 
-- **56 integration assertions passed** at the Release A checkpoint using real WordPress database/migration/REST APIs and MariaDB 10.6.23, with fictional Core/Users records in disposable databases. The current integrated A suite has 59 assertions, including explicit disabled, pilot-excluded and unmapped-identity UI diagnostics.
+- **56 integration assertions passed** at the Release A checkpoint using real WordPress database/migration/REST APIs and MariaDB 10.6.23, with fictional Core/Users records in disposable databases. The current integrated A suite has 60 assertions, including Hub discovery and explicit disabled, pilot-excluded and unmapped-identity UI diagnostics.
 - Existing PHP phone normalization, phone-book export, SMS segmentation and renewal-audience suites passed (renewal suite: 22 cases).
 - Existing JavaScript SMS segmentation suite passed.
 - PHP lint passed for all changed/new PHP files; JavaScript syntax check and Git whitespace checks passed.

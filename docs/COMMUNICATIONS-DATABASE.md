@@ -1,6 +1,6 @@
 # Communications A–D database
 
-Plugin version 4.0.1. Legacy schema version remains 2.5.1 (`OLAMA_MSG_LEGACY_DB_VERSION`). Independent Communications schema version is **4**, option `olama_msg_communications_db_version`. Schema 4 adds the immutable manual-action `request_hash` missing from an earlier schema-3 installation.
+Plugin version 4.0.2. Legacy schema version remains 2.5.1 (`OLAMA_MSG_LEGACY_DB_VERSION`). Independent Communications schema version is **4**, option `olama_msg_communications_db_version`. Schema 4 adds the immutable manual-action `request_hash` missing from an earlier schema-3 installation.
 
 All new tables use the active WordPress prefix, InnoDB, utf8mb4 and UTC timestamps. Actor keys use binary collation because opaque business IDs must not collapse by case. No foreign keys, file blobs, or changes to existing column definitions.
 

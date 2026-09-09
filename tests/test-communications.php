@@ -13,6 +13,8 @@ try {
     $resolver = new Olama_Messages_Actor_Resolver();
     $employee = $resolver->resolve();
     comm_assert( 'employee:E-42' === $employee['actor_key'], 'opaque employee identity is not WP ID' );
+    $hub_cards = ( new Olama_Messages_Communications() )->hub_card( array() );
+    comm_assert( 1 === count( $hub_cards ) && 'olama-communications' === $hub_cards[0]['id'] && 'olama_messages_use' === $hub_cards[0]['capability'], 'Olama Hub receives a permission-filtered Communications card' );
     $svc = new Olama_Messages_Internal_Campaign_Service();
     $jobs = new Olama_Messages_Job_Service();
     $notifications = new Olama_Messages_Notification_Service();

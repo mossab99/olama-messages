@@ -11,6 +11,7 @@ class Olama_Messages_Communications {
         add_action( 'rest_api_init', array( new Olama_Messages_Suite_Rest_Controller(), 'register_routes' ) );
         add_action( 'olama_msg_communications_tick', array( $this, 'tick' ) );
         add_action( 'admin_menu', array( $this, 'menu' ), 40 );
+        add_filter( 'olama_dashboard_cards', array( $this, 'hub_card' ) );
         add_action( 'admin_post_olama_communications_settings', array( $this, 'save_settings' ) );
         add_shortcode( 'olama_communications', array( $this, 'app' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue' ) );
@@ -60,6 +61,29 @@ class Olama_Messages_Communications {
     public function menu() {
         add_menu_page( 'OLAMA Communications', 'OLAMA Communications', 'olama_messages_use', 'olama-communications', array( $this, 'admin_page' ), 'dashicons-megaphone', 31 );
         add_submenu_page( 'olama-communications', 'إعدادات الاتصالات', 'إعدادات الاتصالات', 'olama_messages_configure', 'olama-communications-settings', array( $this, 'settings_page' ) );
+    }
+
+    /** Add the Communications workspace to the permission-filtered Olama Hub. */
+    public function hub_card( array $cards ) {
+        foreach ( $cards as $card ) {
+            if ( 'olama-communications' === ( $card['id'] ?? '' ) ) { return $cards; }
+        }
+        $cards[] = array(
+            'id'          => 'olama-communications',
+            'label'       => 'OLAMA Communications',
+            'description' => 'الإعلانات والمحادثات وصناديق الخدمة والفعاليات والإجراءات.',
+            'icon'        => 'dashicons-megaphone',
+            'accent'      => '#0f766e',
+            'accent_rgb'  => '15,118,110',
+            'active'      => true,
+            'capability'  => 'olama_messages_use',
+            'primary_url' => admin_url( 'admin.php?page=olama-communications' ),
+            'submenus'    => array(
+                array( 'id' => 'communications.workspace', 'label' => 'مركز الاتصالات', 'icon' => 'dashicons-megaphone', 'url' => admin_url( 'admin.php?page=olama-communications' ), 'capability' => 'olama_messages_use', 'color' => '#0f766e' ),
+                array( 'id' => 'communications.settings', 'label' => 'إعدادات الاتصالات', 'icon' => 'dashicons-admin-settings', 'url' => admin_url( 'admin.php?page=olama-communications-settings' ), 'capability' => 'olama_messages_configure', 'color' => '#0f766e' ),
+            ),
+        );
+        return $cards;
     }
 
     public function admin_page() { echo '<div class="wrap">' . $this->app() . '</div>'; }

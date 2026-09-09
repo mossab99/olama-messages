@@ -27,7 +27,7 @@ Shared inboxes have explicit active membership, manager capabilities, first-view
 | C | Private attachments and variants, scanner policy, actions, action-required campaigns, SLA | B private access and moderation verified |
 | D | Source-aware events, calendar, content/ack/RSVP versions, reminders, source reconciliation, ICS | Exact-version acknowledgement and cancellation tests |
 
-The A-only flag state exposes notices; B additionally installs its additive tables but requires explicit chat enablement and capabilities. C/D are now implemented together in 4.0.1; attachments, actions and events each require their own flag and capabilities. See [the integrated suite contract](COMMUNICATIONS-SUITE.md) for the current implementation, exact version rules, source interfaces and deployment boundaries.
+The A-only flag state exposes notices; B additionally installs its additive tables but requires explicit chat enablement and capabilities. C/D are now implemented together in 4.0.2; attachments, actions and events each require their own flag and capabilities. See [the integrated suite contract](COMMUNICATIONS-SUITE.md) for the current implementation, exact version rules, source interfaces and deployment boundaries.
 
 ## Invariants across releases
 
