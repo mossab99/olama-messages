@@ -1,0 +1,31 @@
+.olama-communications{--comm-ink:#173c39;--comm-accent:#08796d;max-width:1040px;margin:24px auto;color:var(--comm-ink);font:16px/1.8 Tahoma,Arial,sans-serif;text-align:right;background:#f5f8f6;padding:24px;border:1px solid #dce7e1;border-radius:18px;box-sizing:border-box}
+.olama-communications *{box-sizing:border-box}.olama-comm-head{background:#143f39;color:#fff;padding:28px;border-radius:12px;margin-bottom:20px}.olama-comm-head small{letter-spacing:2px;color:#c6e3d7}.olama-comm-head h2{font-size:30px;color:#fff;margin:8px 0}.olama-comm-head p{color:#e0eee7}.olama-comm-head select{max-width:100%}
+.olama-communications button,.olama-comm-toast button,.olama-comm-dialog>button{font:inherit;cursor:pointer;background:#fff;color:#17443d;border:1px solid #b4cfc3;border-radius:8px;padding:9px 16px;min-height:44px;margin:4px}.olama-communications button:hover{background:#e6f1eb}.olama-communications button:disabled{opacity:.55;cursor:wait}.olama-communications .olama-comm-primary{background:#08796d;color:#fff;border-color:#08796d}.olama-communications :focus-visible,.olama-comm-launcher:focus-visible{outline:3px solid #e1a94a;outline-offset:3px}
+.olama-comm-nav{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #d5e3dc;padding-bottom:15px;margin-bottom:20px}.olama-comm-card{padding:20px;margin:16px 0;border:1px solid #dbe6df;border-radius:12px;background:#fff}.olama-comm-card h3{margin:6px 0}.olama-comm-card small{color:#526960}.olama-comm-message{white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext;background:#fff;padding:24px;border-radius:12px;font-size:18px}.olama-comm-form{display:grid;gap:16px}.olama-comm-form label,.olama-comm-card label{display:grid;gap:6px;font-weight:600}.olama-communications input,.olama-communications textarea,.olama-communications select{font:inherit;border:1px solid #afc6ba;border-radius:8px;padding:10px;background:white;color:#173c39;min-height:44px}.olama-comm-form textarea{min-height:140px;resize:vertical}.olama-comm-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.olama-comm-metrics p{padding:14px;background:#e4efe8;border-radius:8px;margin:0}.olama-comm-empty{padding:40px;text-align:center}.olama-comm-diagnostics{direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#fff;padding:20px}
+.olama-comm-launcher{position:fixed;bottom:20px;left:20px;z-index:9990;background:#143f39;color:#fff;border:1px solid #b5d6c9;border-radius:28px;padding:13px 20px;font:14px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 5px 24px #173c3926;min-height:44px}.olama-comm-toasts{position:fixed;bottom:85px;left:20px;z-index:100000;max-width:360px;font:15px/1.6 Tahoma,Arial,sans-serif}.olama-comm-toast{background:#fff;border:1px solid #aacabb;border-radius:12px;padding:16px;margin-top:8px;box-shadow:0 8px 35px #143f3926}.olama-comm-toast span{display:block}.olama-comm-dialog{width:min(1000px,94vw);max-height:90vh;overflow:auto;border:1px solid #b5cfc2;border-radius:18px;padding:15px}.olama-comm-dialog::backdrop{background:#102d32b3}.olama-comm-dialog .olama-communications{margin:0}
+@media(max-width:600px){.olama-communications{margin:10px 0;padding:12px;border-radius:10px}.olama-comm-head{padding:18px}.olama-comm-head h2{font-size:24px}.olama-comm-card{padding:14px}.olama-comm-launcher{left:10px;bottom:12px;max-width:94vw}.olama-comm-dialog{padding:8px}.olama-comm-toasts{left:10px;right:10px;max-width:none}}
+.olama-chat-messages { display: flex; flex-direction: column; gap: 12px; margin-block: 20px; }
+.olama-chat-bubble { align-self: flex-start; width: min(85%, 620px); padding: 14px 18px; border: 1px solid #d8e5e0; border-radius: 18px 18px 4px 18px; background: #fff; overflow-wrap: anywhere; }
+.olama-chat-bubble.olama-chat-own { align-self: flex-end; background: #e9f4ed; border-radius: 18px 18px 18px 4px; }
+.olama-chat-bubble blockquote { border-inline-start: 3px solid #609080; margin: 8px 0; padding: 8px; white-space: pre-wrap; color: #425951; }
+.olama-chat-bubble button { font-size: 12px; padding: 5px 9px; margin: 5px 2px 0; }
+.olama-chat-compose { border-top: 1px solid #d8e5e0; padding-block-start: 14px; }
+.olama-chat-compose textarea { min-height: 100px; }
+.olama-chat-bubble .olama-comm-message { background: transparent; padding: 0; }
+[data-olama-communications] { padding-bottom: 84px; }
+.olama-communications .olama-comm-primary:hover { background: #065f56; }
+@media (max-width: 520px) { .olama-chat-bubble { width: 93%; box-sizing: border-box; padding: 12px; } }
+.olama-suite-critical { border:2px solid #a62b25; background:#fff1ed; color:#6a1714; border-radius:12px; padding:16px; margin-block:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.olama-suite-critical strong { flex-basis:100%; }
+.olama-suite-picker { border:1px dashed #b6c8c2; border-radius:10px; padding:14px; display:grid; gap:12px; min-width:0; }
+.olama-suite-picker input { max-width:100%; }
+.olama-suite-files { display:grid; gap:8px; }
+.olama-suite-files .olama-comm-card { overflow-wrap:anywhere; }
+.olama-suite-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; margin-block:16px; }
+.olama-suite-calendar > strong { text-align:center; font-size:12px; padding-block:8px; }
+.olama-suite-day { min-height:108px; border:1px solid #dce6e0; border-radius:8px; background:#fff; padding:7px; display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+.olama-suite-day > strong { font-size:12px; color:#53665e; }
+.olama-suite-day .olama-suite-calendar-event { margin:0; padding:5px; font-size:12px; text-align:start; white-space:normal; overflow-wrap:anywhere; border-color:#b7d4c5; background:#eaf5ef; color:#174833; }
+.olama-communications table { border-collapse:collapse; width:100%; margin-block:12px; }
+.olama-communications th,.olama-communications td { padding:9px; border-bottom:1px solid #e1e8e3; text-align:start; overflow-wrap:anywhere; }
+@media(max-width:600px) { .olama-suite-calendar { gap:2px; } .olama-suite-day { padding:3px; min-height:76px; border-radius:4px; } .olama-suite-calendar > strong { font-size:9px; } .olama-suite-day .olama-suite-calendar-event { font-size:10px; padding:2px; } .olama-suite-critical { padding:10px; } }

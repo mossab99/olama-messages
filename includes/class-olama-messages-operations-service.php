@@ -34,7 +34,7 @@ class Olama_Messages_Operations_Service {
 	public function campaign_counts() {
 		global $wpdb;
 		$counts = array_fill_keys( array( 'draft', 'prepared', 'sending', 'paused', 'completed', 'cancelled' ), 0 );
-		$rows = $wpdb->get_results( "SELECT status, COUNT(*) AS total FROM {$this->campaigns} GROUP BY status", ARRAY_A );
+		$rows = $wpdb->get_results( "SELECT status, COUNT(*) AS total FROM {$this->campaigns} WHERE channel='sms' GROUP BY status", ARRAY_A );
 		foreach ( (array) $rows as $row ) {
 			$key = 'completed_with_errors' === $row['status'] ? 'completed' : $row['status'];
 			$counts[ $key ] = ( $counts[ $key ] ?? 0 ) + (int) $row['total'];

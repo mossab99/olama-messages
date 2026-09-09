@@ -16,7 +16,7 @@ class Olama_Messages_Activator {
 	 */
 	public static function activate() {
 		self::create_tables();
-		update_option( 'olama_msg_db_version', OLAMA_MSG_VERSION );
+		update_option( 'olama_msg_db_version', OLAMA_MSG_LEGACY_DB_VERSION );
 
 		// Register the rewrite rule NOW, before flushing, so the flush
 		// actually persists the rule into the rewrite cache.
@@ -41,6 +41,7 @@ class Olama_Messages_Activator {
 	 */
 	public static function deactivate() {
 		wp_clear_scheduled_hook( 'olama_msg_dispatcher_maintenance' );
+		wp_clear_scheduled_hook( 'olama_msg_communications_tick' );
 		flush_rewrite_rules();
 	}
 

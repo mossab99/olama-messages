@@ -81,9 +81,11 @@ class Olama_Messages_Plugin {
 		}
 
 		// Maybe upgrade DB tables.
-		if ( get_option( 'olama_msg_db_version' ) !== OLAMA_MSG_VERSION ) {
+		if ( get_option( 'olama_msg_db_version' ) !== OLAMA_MSG_LEGACY_DB_VERSION ) {
 			Olama_Messages_Activator::activate();
 		}
+
+		( new Olama_Messages_Communications() )->init();
 
 		// Admin.
 		if ( is_admin() ) {

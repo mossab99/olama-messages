@@ -51,7 +51,7 @@ class Olama_Messages_Dispatcher_Service {
 
 		// 1. Fetch campaigns that are in 'sending' status
 		$sending_campaign_ids = $wpdb->get_col(
-			"SELECT id FROM {$this->table_campaigns} WHERE status = 'sending'"
+			"SELECT id FROM {$this->table_campaigns} WHERE status = 'sending' AND channel = 'sms'"
 		);
 
 		if ( empty( $sending_campaign_ids ) ) {
@@ -70,7 +70,7 @@ class Olama_Messages_Dispatcher_Service {
 			 JOIN {$this->table_campaigns} c ON q.campaign_id = c.id
 			 WHERE q.campaign_id IN ($campaign_ids_list)
 			   AND ( q.status = 'prepared' OR q.status = 'retry_wait' OR ( q.status = 'reserved' AND q.reservation_expires_at < %s ) )
-			   AND q.attempt_count < q.max_attempts
+			   AND q.channel = 'sms' AND c.channel = 'sms' AND q.attempt_count < q.max_attempts
 			 ORDER BY q.id ASC
 			 LIMIT %d
 			 FOR UPDATE",
@@ -399,7 +399,7 @@ class Olama_Messages_Dispatcher_Service {
 	public function reconcile_sending_campaigns() {
 		global $wpdb;
 		$campaign_ids = $wpdb->get_col(
-			"SELECT id FROM {$this->table_campaigns} WHERE status = 'sending'"
+			"SELECT id FROM {$this->table_campaigns} WHERE status = 'sending' AND channel = 'sms'"
 		);
 		foreach ( $campaign_ids as $campaign_id ) {
 			$this->check_and_finalize_campaign( (int) $campaign_id );
@@ -412,6 +412,7 @@ class Olama_Messages_Dispatcher_Service {
 	 */
 	private function check_and_finalize_campaign( int $campaign_id ) {
 		global $wpdb;
+		if ( 'sms' !== $wpdb->get_var( $wpdb->prepare( "SELECT channel FROM {$this->table_campaigns} WHERE id=%d", $campaign_id ) ) ) { return; }
 
 		// Count items in sending loop states ('prepared', 'reserved', 'retry_wait')
 		$pending_count = (int) $wpdb->get_var(

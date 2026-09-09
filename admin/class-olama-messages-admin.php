@@ -948,9 +948,9 @@ class Olama_Messages_Admin {
 		$total_views  = $tokens_svc->count_views();
 
 		// Phase 2 dashboard metrics
-		$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns" );
-		$draft_campaigns = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status = %s", 'draft' ) );
-		$prep_campaigns  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status = %s", 'prepared' ) );
+		$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms'" );
+		$draft_campaigns = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms' AND status = %s", 'draft' ) );
+		$prep_campaigns  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms' AND status = %s", 'prepared' ) );
 		$total_templates = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_templates" );
 		$queue_prepared  = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_queue WHERE status = %s", 'prepared' ) );
 
@@ -1094,11 +1094,11 @@ class Olama_Messages_Admin {
 
 		global $wpdb;
 		if ( 'completed' === $status_filter ) {
-			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status IN ('completed', 'completed_with_errors')" );
+			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms' AND status IN ('completed', 'completed_with_errors')" );
 		} elseif ( $status_filter ) {
-			$total_campaigns = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE status = %s", $status_filter ) );
+			$total_campaigns = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms' AND status = %s", $status_filter ) );
 		} else {
-			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns" );
+			$total_campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms'" );
 		}
 		$total_pages     = (int) ceil( $total_campaigns / $per_page );
 
@@ -2193,7 +2193,7 @@ class Olama_Messages_Admin {
 
 		// Fetch all prepared/cancelled campaigns for filtering
 		$campaigns = $wpdb->get_results(
-			$wpdb->prepare( "SELECT id, title FROM {$wpdb->prefix}olama_msg_campaigns WHERE status IN (%s, %s) ORDER BY id DESC", 'prepared', 'cancelled' ),
+			$wpdb->prepare( "SELECT id, title FROM {$wpdb->prefix}olama_msg_campaigns WHERE channel='sms' AND status IN (%s, %s) ORDER BY id DESC", 'prepared', 'cancelled' ),
 			ARRAY_A
 		);
 

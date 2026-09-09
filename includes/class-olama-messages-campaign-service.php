@@ -41,6 +41,9 @@ class Olama_Messages_Campaign_Service {
 	 */
 	public function create_campaign( array $data ) {
 		global $wpdb;
+		if ( 'sms' !== ( $data['channel'] ?? 'sms' ) ) {
+			throw new InvalidArgumentException( 'Use the internal campaign handler for non-SMS campaigns.' );
+		}
 
 		$defaults = array(
 			'title'                   => '',
@@ -88,6 +91,9 @@ class Olama_Messages_Campaign_Service {
 	 */
 	public function update_campaign( int $campaign_id, array $data ) {
 		global $wpdb;
+		if ( isset( $data['channel'] ) && 'sms' !== $data['channel'] ) {
+			throw new InvalidArgumentException( 'Campaign channels cannot be changed.' );
+		}
 
 		$campaign = $this->get_campaign( $campaign_id );
 		if ( ! $campaign ) {
@@ -126,7 +132,7 @@ class Olama_Messages_Campaign_Service {
 		global $wpdb;
 
 		$row = $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM {$this->table_campaigns} WHERE id = %d", $campaign_id ),
+			$wpdb->prepare( "SELECT * FROM {$this->table_campaigns} WHERE id = %d AND channel = 'sms'", $campaign_id ),
 			ARRAY_A
 		);
 
@@ -206,7 +212,7 @@ class Olama_Messages_Campaign_Service {
 
 		$args = array_merge( $defaults, $args );
 
-		$where  = array();
+		$where  = array( "channel = 'sms'" );
 		$values = array();
 
 		if ( ! empty( $args['status'] ) ) {
@@ -553,6 +559,9 @@ class Olama_Messages_Campaign_Service {
 			throw new Exception( 'Invalid campaign parameters provided.' );
 		}
 
+		if ( 'sms' !== ( $campaign['channel'] ?? 'sms' ) ) {
+			throw new InvalidArgumentException( 'Internal campaigns cannot use SMS audience preparation.' );
+		}
 		$study_year = $campaign['study_year'];
 		$target_type = $campaign['target_type'] ?? 'collection';
 		if ( empty( $study_year ) ) {
