@@ -10,6 +10,7 @@ const chatFixture = require('./communications-chat-browser-fixture');
 const suiteFixture = require('./communications-suite-browser-fixture');
 http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://127.0.0.1:13388');
+    if (url.pathname === '/favicon.ico') { res.statusCode = 204; res.end(); return; }
     if (url.pathname === '/') {
         const config = {root: '/api/', nonce: 'fixture', actors, userId: 1, sessionScope: 'isolated-fixture', notifications: true, pollSeconds: 10, chat: true, suite: true, timezone: "Asia/Amman", messageMaxChars: 5000, editMinutes: 15};
         res.setHeader('Content-Type', 'text/html; charset=utf-8');

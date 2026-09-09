@@ -12,15 +12,30 @@ module.exports = (url, actor, data, method, receipts) => {
     if (path === 'feed') return {changes: [{id: seq, thread_id: 1, kind: 'message'}], cursor: seq, unread: prefs.read_cursor ? 0 : 1};
     if (path === 'contacts') {
         const query = (url.searchParams.get('query') || '').trim();
+        const group = url.searchParams.get('group') || '';
         const directory = url.searchParams.get('directory');
         const children = staff ? [] : [{student_uid: 'fixture-child', name: 'أحمد', class_name: 'الرابع', section_name: 'ب'}];
+        const groups = staff
+            ? [
+                {key: 'administrators', label: 'الإدارة', description: 'مديرو النظام وإدارة المدرسة', symbol: 'إ'},
+                {key: 'teachers', label: 'المعلمون', description: 'أعضاء الهيئة التدريسية', symbol: 'م'},
+                {key: 'employees', label: 'الموظفون', description: 'الموظفون المخولون بالتواصل', symbol: 'و'},
+                {key: 'families', label: 'الأسر', description: 'أسر الطلاب المرتبطة بالتعيينات', symbol: 'أ', directory: 'assigned_families'}
+            ]
+            : [{key: 'teachers', label: 'المعلمون', description: 'المعلمون المعينون للطالب', symbol: 'م'}];
         let contacts = directory === 'assigned_families'
-            ? [{actor_key: 'family:test-family', name: 'أحمد · أسرة أحمد وسارة', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', class_name: 'الرابع', section_name: 'ب', subject_name: 'العلوم', contact_type: 'أسرة طالب'}}]
+            ? [{actor_key: 'family:test-family', name: 'أحمد · أسرة أحمد وسارة', group: 'families', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', class_name: 'الرابع', section_name: 'ب', subject_name: 'العلوم', contact_type: 'أسرة طالب', contact_group: 'families'}}]
             : staff
-                ? [{actor_key: 'employee:fixture-teacher', name: 'أحمد محمد', context: {scope: 'staff', contact_type: 'معلم'}}, {actor_key: 'employee:fixture-colleague', name: 'سارة محمود', context: {scope: 'staff', contact_type: 'موظف'}}]
-                : url.searchParams.get('student_uid') ? [{actor_key: 'employee:fixture-teacher', name: 'معلم العلوم', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', subject_name: 'العلوم', contact_type: 'معلم'}}] : [];
-        contacts = query.length < 2 ? [] : contacts.filter(contact => [contact.name, ...Object.values(contact.context)].some(value => String(value).includes(query)));
-        return {children, contacts, next: 0};
+                ? [
+                    {actor_key: 'administrator:9', name: 'مدير المدرسة', group: 'administrators', context: {scope: 'administrator', contact_type: 'مدير نظام', contact_group: 'administrators'}},
+                    {actor_key: 'employee:fixture-teacher', name: 'أحمد محمد', group: 'teachers', context: {scope: 'staff', contact_type: 'معلم', contact_group: 'teachers'}},
+                    {actor_key: 'employee:fixture-colleague', name: 'سارة محمود', group: 'employees', context: {scope: 'staff', contact_type: 'موظف', contact_group: 'employees'}}
+                ]
+                : url.searchParams.get('student_uid') ? [{actor_key: 'employee:fixture-teacher', name: 'معلم العلوم', group: 'teachers', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', subject_name: 'العلوم', contact_type: 'معلم', contact_group: 'teachers'}}] : [];
+        if (!directory) contacts = group ? contacts.filter(contact => contact.group === group || group === 'all') : [];
+        if (query.length === 1) contacts = [];
+        else if (query.length >= 2) contacts = contacts.filter(contact => [contact.name, ...Object.values(contact.context)].some(value => String(value).includes(query)));
+        return {children, contacts, next: 0, groups};
     }
     if (path === 'inboxes') return {items: [{id: 1, name: 'شؤون الطلبة', can_contact: true, active: 1, allow_family: 1, allow_teacher: 1, history_policy: 'active_and_recent', recent_days: 30, members: [{actor_key: 'employee:E-42', active: 1, is_manager: 1}]}], next: 0};
     if (path === 'threads' && method === 'POST') return {id: data.kind === 'service' ? 2 : 1};

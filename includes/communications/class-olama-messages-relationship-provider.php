@@ -145,23 +145,64 @@ class Olama_Messages_Relationship_Provider {
     private function contact_query( $query ) {
         if ( null === $query ) { return null; }
         $query = trim( wp_strip_all_tags( (string) $query ) );
-        return mb_strlen( $query ) < 2 ? '' : mb_substr( $query, 0, 100 );
+        if ( '' === $query ) { return ''; }
+        return mb_strlen( $query ) < 2 ? false : mb_substr( $query, 0, 100 );
     }
 
-    private function contact_matches( $query, array $values ) {
+    private function contact_matches( $query, array $values, $browse = false ) {
         if ( null === $query ) { return true; }
-        if ( '' === $query ) { return false; }
+        if ( false === $query || ( '' === $query && ! $browse ) ) { return false; }
+        if ( '' === $query ) { return true; }
         foreach ( $values as $value ) {
             if ( '' !== trim( (string) $value ) && false !== mb_stripos( (string) $value, $query ) ) { return true; }
         }
         return false;
     }
 
-    public function contacts( array $actor, $student_uid = '', $after = 0, $query = null ) {
-        $query = $this->contact_query( $query );
-        $items = array(); $children = array(); $cursor = 0;
+    private function contact_groups( array $actor ) {
+        $groups = array(
+            'administrators' => array( 'key' => 'administrators', 'label' => 'الإدارة', 'description' => 'مديرو النظام وإدارة المدرسة', 'symbol' => 'إ' ),
+            'teachers'       => array( 'key' => 'teachers', 'label' => 'المعلمون', 'description' => 'أعضاء الهيئة التدريسية', 'symbol' => 'م' ),
+            'employees'      => array( 'key' => 'employees', 'label' => 'الموظفون', 'description' => 'الموظفون المخولون بالتواصل', 'symbol' => 'و' ),
+            'families'       => array( 'key' => 'families', 'label' => 'الأسر', 'description' => 'أسر الطلاب المرتبطة بالتعيينات', 'symbol' => 'أ' ),
+        );
         if ( 'administrator' === $actor['actor_type'] ) {
-            if ( '' === $query ) { return array( 'children' => array(), 'contacts' => array(), 'next' => 0 ); }
+            return array_merge( array( array( 'key' => 'all', 'label' => 'جميع المستخدمين', 'description' => 'البحث في كل المجموعات', 'symbol' => 'ك' ) ), array_values( $groups ) );
+        }
+        if ( 'family' === $actor['actor_type'] ) { return array( $groups['teachers'] ); }
+        $employee = 'employee' === $actor['actor_type'] ? $this->employee( $actor['actor_key'] ) : null;
+        if ( ! $employee ) { return array(); }
+        $available = array( $groups['administrators'] );
+        if ( $employee['teacher'] ) {
+            $groups['families']['directory'] = 'assigned_families';
+            return array_merge( $available, array( $groups['teachers'], $groups['employees'], $groups['families'] ) );
+        }
+        if ( user_can( $employee['wp_user_id'], 'olama_messages_contact_teachers' ) ) { $available[] = $groups['teachers']; }
+        return $available;
+    }
+
+    private function selected_contact_group( $group, array $groups ) {
+        if ( null === $group || '' === trim( (string) $group ) ) { return ''; }
+        $group = sanitize_key( (string) $group );
+        return in_array( $group, array_column( $groups, 'key' ), true ) ? $group : false;
+    }
+
+    private function contact_group_matches( $selected, $candidate ) {
+        return '' === $selected || 'all' === $selected || $selected === $candidate;
+    }
+
+    private function contact_response( array $children, array $contacts, $next, array $groups ) {
+        return array( 'children' => $children, 'contacts' => $contacts, 'next' => $next, 'groups' => $groups );
+    }
+
+    public function contacts( array $actor, $student_uid = '', $after = 0, $query = null, $group = null ) {
+        $query = $this->contact_query( $query );
+        $groups = $this->contact_groups( $actor );
+        $selected_group = $this->selected_contact_group( $group, $groups );
+        $items = array(); $children = array(); $cursor = 0;
+        if ( false === $selected_group || false === $query ) { return $this->contact_response( $children, $items, 0, $groups ); }
+        if ( 'administrator' === $actor['actor_type'] ) {
+            if ( '' === $query && '' === $selected_group ) { return $this->contact_response( $children, $items, 0, $groups ); }
             global $wpdb;
             $resolver = new Olama_Messages_Actor_Resolver();
             $ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->users} WHERE ID>%d ORDER BY ID LIMIT 100", $after ) );
@@ -171,8 +212,9 @@ class Olama_Messages_Relationship_Provider {
                     if ( $candidate['actor_key'] === $actor['actor_key'] || 'eligible_account' !== $resolver->reachability( $candidate['actor_key'] ) ) { continue; }
                     $candidate_employee = 'employee' === $candidate['actor_type'] ? $this->employee( $candidate['actor_key'] ) : null;
                     $type = 'family' === $candidate['actor_type'] ? 'أسرة' : ( $candidate_employee && $candidate_employee['teacher'] ? 'معلم' : ( 'employee' === $candidate['actor_type'] ? 'موظف' : 'مدير نظام' ) );
-                    if ( ! $this->contact_matches( $query, array( $candidate['display_name'], $type ) ) ) { continue; }
-                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'context' => array( 'scope' => 'administrator', 'contact_type' => $type ) );
+                    $candidate_group = 'family' === $candidate['actor_type'] ? 'families' : ( $candidate_employee && $candidate_employee['teacher'] ? 'teachers' : ( 'employee' === $candidate['actor_type'] ? 'employees' : 'administrators' ) );
+                    if ( ! $this->contact_group_matches( $selected_group, $candidate_group ) || ! $this->contact_matches( $query, array( $candidate['display_name'], $type ), '' !== $selected_group ) ) { continue; }
+                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'group' => $candidate_group, 'context' => array( 'scope' => 'administrator', 'contact_type' => $type, 'contact_group' => $candidate_group ) );
                     if ( 30 === count( $items ) ) { break 2; }
                 }
             }
@@ -182,43 +224,53 @@ class Olama_Messages_Relationship_Provider {
             foreach ( $this->children( $actor['actor_key'] ) as $student ) {
                 $children[] = array( 'student_uid' => $student['student_uid'], 'name' => $student['student_name'] ?? $student['student_uid'], 'class_name' => $student['class_name'] ?? '', 'section_name' => $student['section_name'] ?? '' );
                 if ( (string) $student['student_uid'] !== (string) $student_uid ) { continue; }
-                if ( '' === $query ) { continue; }
+                if ( '' !== $selected_group && 'teachers' !== $selected_group ) { continue; }
+                if ( '' === $query && '' === $selected_group ) { continue; }
                 foreach ( $this->assignments( $student, $academic ) as $assignment ) {
                     $key = 'employee:' . $assignment['teacher_employee_id'];
                     $context = array( 'student_uid' => $student_uid, 'assignment_id' => (int) $assignment['id'] );
                     $relation = $this->relationship( $actor['actor_key'], $key, $context );
                     $employee = $this->employee( $key );
-                    if ( 'valid' === $relation['relationship_status'] && $employee && $this->contact_matches( $query, array( $employee['name'], $relation['context']['subject_name'] ?? '', $relation['context']['student_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'معلم' ) ) ) { $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => array_merge( $relation['context'], array( 'contact_type' => 'معلم' ) ) ); }
+                    if ( 'valid' === $relation['relationship_status'] && $employee && $this->contact_matches( $query, array( $employee['name'], $relation['context']['subject_name'] ?? '', $relation['context']['student_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'معلم' ), '' !== $selected_group ) ) {
+                        $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'group' => 'teachers', 'context' => array_merge( $relation['context'], array( 'contact_type' => 'معلم', 'contact_group' => 'teachers' ) ) );
+                    }
                 }
             }
         } elseif ( $this->employee( $actor['actor_key'] ) ) {
-            if ( '' === $query ) { return array( 'children' => array(), 'contacts' => array(), 'next' => 0 ); }
+            if ( 'families' === $selected_group ) { return $this->contact_response( $children, $items, 0, $groups ); }
+            if ( '' === $query && '' === $selected_group ) { return $this->contact_response( $children, $items, 0, $groups ); }
             global $wpdb;
-            // Keyset scan, bounded; filtered contacts never expose a family directory.
+            $resolver = new Olama_Messages_Actor_Resolver();
+            // Keyset scan, bounded; family contacts use the teacher's assignment-scoped directory.
             $ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->users} WHERE ID>%d ORDER BY ID LIMIT 100", $after ) );
             foreach ( $ids as $id ) {
                 $cursor = (int) $id;
-                $identity = olama_users_get_identity( $id );
-                if ( ! $identity || 'employee' !== $identity['identity_type'] ) { continue; }
-                $key = 'employee:' . $identity['oracle_identifier'];
-                if ( 'valid' !== $this->relationship( $actor['actor_key'], $key )['relationship_status'] ) { continue; }
-                $employee = $this->employee( $key );
-                $type = $employee['teacher'] ? 'معلم' : 'موظف';
-                if ( ! $this->contact_matches( $query, array( $employee['name'], $type ) ) ) { continue; }
-                $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => array( 'scope' => 'staff', 'contact_type' => $type ) );
-                if ( count( $items ) === 30 ) { break; }
+                foreach ( $resolver->available( (int) $id ) as $candidate ) {
+                    if ( $candidate['actor_key'] === $actor['actor_key'] || ! in_array( $candidate['actor_type'], array( 'employee', 'administrator' ), true ) || 'eligible_account' !== $resolver->reachability( $candidate['actor_key'] ) ) { continue; }
+                    $relation = $this->relationship( $actor['actor_key'], $candidate['actor_key'] );
+                    if ( 'valid' !== $relation['relationship_status'] ) { continue; }
+                    $employee = 'employee' === $candidate['actor_type'] ? $this->employee( $candidate['actor_key'] ) : null;
+                    if ( 'employee' === $candidate['actor_type'] && ! $employee ) { continue; }
+                    $candidate_group = 'administrator' === $candidate['actor_type'] ? 'administrators' : ( $employee['teacher'] ? 'teachers' : 'employees' );
+                    $type = 'administrator' === $candidate['actor_type'] ? 'مدير نظام' : ( $employee['teacher'] ? 'معلم' : 'موظف' );
+                    if ( ! $this->contact_group_matches( $selected_group, $candidate_group ) || ! $this->contact_matches( $query, array( $candidate['display_name'], $type ), '' !== $selected_group ) ) { continue; }
+                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'group' => $candidate_group, 'context' => array_merge( $relation['context'], array( 'contact_type' => $type, 'contact_group' => $candidate_group ) ) );
+                    if ( count( $items ) === 30 ) { break 2; }
+                }
             }
             if ( count( $ids ) < 100 && count( $items ) < 30 ) { $cursor = 0; }
         }
-        return array( 'children' => $children, 'contacts' => $items, 'next' => $cursor );
+        return $this->contact_response( $children, $items, $cursor, $groups );
     }
 
-    public function teacher_contacts( array $actor, $after_student = '', $after_assignment = 0, $query = null ) {
+    public function teacher_contacts( array $actor, $after_student = '', $after_assignment = 0, $query = null, $group = null ) {
         global $wpdb;
         $query = $this->contact_query( $query );
         $teacher = 'employee' === $actor['actor_type'] ? $this->employee( $actor['actor_key'] ) : null;
         if ( ! $teacher || ! $teacher['teacher'] || 'valid' !== $teacher['source']['status'] ) { throw new RuntimeException( 'دليل الأسر متاح للمعلم المعين فقط.' ); }
-        if ( '' === $query ) { return array( 'contacts' => array(), 'next' => null ); }
+        $groups = array( array( 'key' => 'families', 'label' => 'الأسر', 'description' => 'أسر الطلاب المرتبطة بتعييناتك', 'symbol' => 'أ', 'directory' => 'assigned_families' ) );
+        $selected_group = $this->selected_contact_group( $group, $groups );
+        if ( false === $selected_group || false === $query || ( '' === $query && '' === $selected_group ) ) { return $this->contact_response( array(), array(), null, $groups ); }
         $academic = $this->academic(); $sy = olama_core()->read_models()->table( 'student_years' );
         // Only the teacher's current mapped sections enter this bounded keyset scan.
         $rows = $wpdb->get_results( $wpdb->prepare( "SELECT sy.student_uid,sy.family_uid,a.id AS assignment_id
@@ -237,10 +289,10 @@ class Olama_Messages_Relationship_Provider {
             $family = olama_core()->families()->get_by_uid( $row['family_uid'] );
             if ( ! $family || empty( $family['is_active'] ) ) { continue; }
             $name = $relation['context']['student_name'] . ' · ' . ( $family['sponsor_full_name'] ?? 'الأسرة' );
-            if ( ! $this->contact_matches( $query, array( $name, $relation['context']['subject_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'أسرة' ) ) ) { continue; }
-            $items[] = array( 'actor_key' => $key, 'name' => $name, 'context' => array_merge( $relation['context'], array( 'contact_type' => 'أسرة طالب' ) ) );
+            if ( ! $this->contact_matches( $query, array( $name, $relation['context']['subject_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'أسرة' ), '' !== $selected_group ) ) { continue; }
+            $items[] = array( 'actor_key' => $key, 'name' => $name, 'group' => 'families', 'context' => array_merge( $relation['context'], array( 'contact_type' => 'أسرة طالب', 'contact_group' => 'families' ) ) );
         }
         $last = $rows ? end( $rows ) : null;
-        return array( 'contacts' => $items, 'next' => count( $rows ) === 30 ? array( 'student_uid' => $last['student_uid'], 'assignment_id' => (int) $last['assignment_id'] ) : null );
+        return $this->contact_response( array(), $items, count( $rows ) === 30 ? array( 'student_uid' => $last['student_uid'], 'assignment_id' => (int) $last['assignment_id'] ) : null, $groups );
     }
 }
