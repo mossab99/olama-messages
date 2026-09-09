@@ -427,3 +427,189 @@
     .olama-comm-toasts { right: 10px; left: 10px; max-width: none; }
     .olama-suite-critical { padding: 10px; }
 }
+
+/* Conversation workspace: compact messaging UI inside WordPress admin. */
+.olama-communications.olama-comm-chat-focus {
+    --comm-accent: #287d70;
+    --comm-accent-dark: #1f685d;
+    height: var(--olama-chat-height, calc(100vh - 72px));
+    min-height: 560px;
+    overflow: hidden;
+    background: #f3f7f5;
+    position: relative;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+}
+body.olama-chat-is-open .olama-comm-launcher { display: none; }
+.olama-comm-chat-focus > .olama-comm-head { display: none; }
+.olama-comm-chat-focus .olama-comm-shell { position: relative; display: block; height: auto; min-height: 0; }
+.olama-comm-chat-focus .olama-comm-main { height: 100%; padding: 0; }
+.olama-comm-chat-focus [data-comm-body] { height: 100%; max-width: none; }
+.olama-comm-chat-focus .olama-comm-nav {
+    position: absolute;
+    z-index: 45;
+    inset: 0 0 0 auto;
+    width: min(286px, 88vw);
+    flex-direction: column;
+    overflow-y: auto;
+    transform: translateX(105%);
+    transition: transform .2s ease;
+    box-shadow: -14px 0 38px rgba(21, 54, 49, .15);
+}
+.olama-comm-chat-focus.is-chat-nav-open .olama-comm-nav { transform: translateX(0); }
+.olama-comm-chat-focus .olama-comm-nav-group > small { display: block; }
+.olama-comm-chat-focus .olama-comm-nav-group > div { display: grid; gap: 4px; }
+.olama-communications.olama-comm-chat-focus .olama-comm-nav-item { width: 100%; white-space: normal; }
+.olama-communications.olama-comm-chat-focus .olama-comm-nav-item.is-active { box-shadow: inset -3px 0 var(--comm-accent); }
+.olama-chat-app { position: relative; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: #f6f9f8; }
+.olama-chat-header {
+    position: relative;
+    z-index: 20;
+    min-height: 70px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 18px;
+    background: #fff;
+    border-bottom: 1px solid #dce7e3;
+    box-shadow: 0 2px 12px rgba(28, 67, 61, .04);
+}
+.olama-communications .olama-chat-icon {
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-grid;
+    place-items: center;
+    margin: 0;
+    padding: 0;
+    color: #33544f;
+    background: transparent;
+    border-color: transparent;
+    border-radius: 50%;
+    font-size: 20px;
+    line-height: 1;
+}
+.olama-communications .olama-chat-icon:hover,
+.olama-communications .olama-chat-icon.is-active { color: #287d70; background: #e6f3ef; border-color: transparent; }
+.olama-communications .olama-chat-back { border: 1px solid #d8e4e0; border-radius: 10px; }
+.olama-communications .olama-chat-identity {
+    min-width: 0;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 11px;
+    margin: 0;
+    padding: 2px 4px;
+    background: transparent;
+    border: 0;
+    text-align: right;
+}
+.olama-communications .olama-chat-identity:hover { background: transparent; border: 0; }
+.olama-chat-avatar { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; color: #fff; background: #287d70; border-radius: 50%; font-weight: 700; }
+.olama-chat-avatar-large { width: 64px; height: 64px; font-size: 22px; }
+.olama-chat-identity-copy { min-width: 0; display: grid; line-height: 1.35; }
+.olama-chat-identity-copy strong { overflow: hidden; color: #18332f; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.olama-chat-identity-copy small { overflow: hidden; color: #71817d; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; }
+.olama-chat-header-actions { display: flex; align-items: center; gap: 2px; }
+.olama-chat-canvas {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+    background-color: #f1f6f4;
+    background-image: radial-gradient(rgba(40, 125, 112, .07) .7px, transparent .7px);
+    background-size: 18px 18px;
+}
+.olama-chat-search { position: sticky; z-index: 10; top: 0; display: flex; align-items: center; gap: 8px; padding: 8px 18px; background: rgba(255,255,255,.96); border-bottom: 1px solid #dce7e3; }
+.olama-chat-search[hidden] { display: none; }
+.olama-chat-search input { min-width: 0; flex: 1; height: 38px; padding: 7px 12px; border: 1px solid #cbdcd6; border-radius: 10px; }
+.olama-chat-search span { min-width: 70px; color: #667a74; font-size: 11px; }
+.olama-chat-messages { min-height: 100%; display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 22px clamp(14px, 4vw, 52px); background: transparent; border-radius: 0; direction: ltr; }
+.olama-chat-date { display: flex; align-items: center; gap: 12px; margin: 13px 0; color: #71817d; font-size: 11px; direction: rtl; }
+.olama-chat-date::before,.olama-chat-date::after { height: 1px; flex: 1; content: ''; background: #dce7e3; }
+.olama-chat-date span { padding: 3px 10px; background: rgba(255,255,255,.78); border-radius: 12px; }
+.olama-chat-row { width: 100%; display: flex; align-items: center; gap: 6px; direction: ltr; }
+.olama-chat-row.is-incoming { justify-content: flex-start; }
+.olama-chat-row.is-outgoing { justify-content: flex-end; }
+.olama-chat-row[hidden] { display: none; }
+.olama-chat-bubble {
+    width: auto;
+    max-width: min(68%, 680px);
+    padding: 9px 12px 7px;
+    overflow-wrap: anywhere;
+    color: #18332f;
+    background: #fff;
+    border: 1px solid #dce7e3;
+    border-radius: 15px 15px 15px 5px;
+    box-shadow: 0 2px 7px rgba(24, 51, 47, .035);
+    direction: rtl;
+}
+.olama-chat-bubble.olama-chat-own { background: #e6f3ef; border-color: #cbe3dc; border-radius: 15px 15px 5px 15px; }
+.olama-chat-bubble .olama-comm-message { margin: 0; padding: 0; background: transparent; border: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.65; }
+.olama-chat-bubble blockquote { margin: 0 0 7px; padding: 6px 9px; overflow: hidden; color: #55706a; background: rgba(40,125,112,.07); border: 0; border-inline-start: 3px solid #287d70; border-radius: 6px; white-space: nowrap; text-overflow: ellipsis; font-size: 12px; }
+.olama-chat-bubble footer { display: flex; align-items: center; justify-content: flex-end; gap: 7px; margin-top: 4px; color: #71817d; font-size: 9px; line-height: 1.3; }
+.olama-chat-receipt { color: #287d70; }
+.olama-chat-sender { display: block; margin-bottom: 3px; color: #287d70; font-size: 11px; }
+.olama-chat-message-tools { display: flex; align-items: center; opacity: 0; transition: opacity .15s ease; direction: rtl; }
+.olama-chat-row:hover .olama-chat-message-tools,.olama-chat-row:focus-within .olama-chat-message-tools { opacity: 1; }
+.olama-communications .olama-chat-message-tools .olama-chat-icon { width: 30px; min-width: 30px; min-height: 30px; font-size: 14px; }
+.olama-chat-message-menu { position: relative; }
+.olama-chat-message-menu summary { width: 30px; height: 30px; display: grid; place-items: center; cursor: pointer; list-style: none; border-radius: 50%; }
+.olama-chat-message-menu summary::-webkit-details-marker { display: none; }
+.olama-chat-message-menu[open] > div { position: absolute; z-index: 25; top: 31px; left: 0; min-width: 125px; display: grid; padding: 5px; background: #fff; border: 1px solid #dce7e3; border-radius: 9px; box-shadow: 0 9px 28px rgba(24,51,47,.16); direction: rtl; }
+.olama-communications .olama-chat-message-menu button { min-height: 32px; margin: 0; padding: 4px 9px; border: 0; text-align: right; font-size: 12px; }
+.olama-communications button.is-danger { color: #a62b25; }
+.olama-chat-paging { display: flex; justify-content: center; gap: 6px; direction: rtl; }
+.olama-chat-composer { position: relative; z-index: 18; padding: 9px clamp(12px, 3vw, 34px) 10px; background: rgba(255,255,255,.98); border-top: 1px solid #dce7e3; box-shadow: 0 -5px 18px rgba(24,51,47,.04); }
+.olama-chat-compose-row { display: flex; align-items: flex-end; gap: 8px; }
+.olama-chat-compose-row textarea { min-width: 0; min-height: 42px; max-height: 132px; flex: 1; resize: none; padding: 10px 13px; border: 1px solid #cbdcd6; border-radius: 13px; box-shadow: none; font: inherit; line-height: 1.45; }
+.olama-chat-compose-row textarea:focus { border-color: #5b9d91; box-shadow: 0 0 0 2px rgba(40,125,112,.1); outline: none; }
+.olama-communications .olama-chat-send { width: 44px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; color: #fff; background: #287d70; border-color: #287d70; border-radius: 50%; font-size: 18px; transform: scaleX(-1); }
+.olama-communications .olama-chat-send:hover { color: #fff; background: #1f685d; }
+.olama-chat-reply-preview { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 46px 7px 0; padding: 6px 10px; color: #55706a; background: #edf5f2; border-inline-start: 3px solid #287d70; border-radius: 7px; font-size: 11px; }
+.olama-chat-reply-preview[hidden] { display: none; }
+.olama-chat-reply-preview span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.olama-chat-compose-status { display: block; min-height: 0; margin: 4px 50px 0 0; color: #667a74; font-size: 10px; }
+.olama-suite-picker.is-compact { width: 44px; min-width: 44px; display: contents; padding: 0; border: 0; }
+.olama-suite-picker.is-compact > input { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.olama-communications .olama-chat-attach { width: 42px; min-width: 42px; min-height: 42px; margin: 0; padding: 0; color: #287d70; background: #f3f8f6; border-color: #cbdcd6; border-radius: 50%; font-size: 22px; }
+.olama-suite-picker.is-compact > div { position: absolute; right: clamp(12px, 3vw, 34px); bottom: calc(100% + 6px); left: clamp(12px, 3vw, 34px); display: flex; flex-wrap: wrap; gap: 5px; pointer-events: none; }
+.olama-suite-file-chip { max-width: 220px; display: flex; align-items: center; gap: 5px; padding: 4px 8px; background: #fff; border: 1px solid #cbdcd6; border-radius: 16px; box-shadow: 0 3px 10px rgba(24,51,47,.08); pointer-events: auto; font-size: 10px; }
+.olama-suite-file-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.olama-communications .olama-suite-file-remove { width: 20px; min-width: 20px; min-height: 20px; margin: 0; padding: 0; border: 0; border-radius: 50%; }
+.olama-chat-bubble .olama-suite-files { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+.olama-chat-bubble .olama-suite-files .olama-comm-card { display: flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: 8px; box-shadow: none; font-size: 10px; }
+.olama-chat-bubble .olama-suite-files button { min-height: 26px; margin: 0; padding: 2px 6px; }
+.olama-chat-popover { position: absolute; z-index: 50; top: 61px; left: 14px; min-width: 220px; display: grid; padding: 6px; background: #fff; border: 1px solid #dce7e3; border-radius: 11px; box-shadow: 0 13px 36px rgba(24,51,47,.18); }
+.olama-chat-popover > button { min-height: 36px; margin: 0; padding: 6px 10px; background: transparent; border: 0; text-align: right; font-size: 12px; }
+.olama-chat-popover hr { width: 100%; margin: 5px 0; border: 0; border-top: 1px solid #e3ebe8; }
+.olama-chat-backdrop { position: absolute!important; z-index: 40; inset: 0; width: 100%; height: 100%; margin: 0!important; padding: 0!important; background: rgba(18,43,39,.28)!important; border: 0!important; border-radius: 0!important; }
+.olama-chat-drawer { position: absolute; z-index: 50; inset: 0 0 0 auto; width: min(340px, 92vw); overflow-y: auto; padding: 22px; background: #fff; box-shadow: -15px 0 40px rgba(24,51,47,.18); }
+.olama-chat-drawer header { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid #e3ebe8; }
+.olama-chat-drawer header > h3:first-child { grid-column: 1 / 3; }
+.olama-chat-drawer h3 { margin: 0; font-size: 17px; }
+.olama-chat-drawer h4 { margin: 20px 0 8px; font-size: 13px; }
+.olama-chat-drawer dl { display: grid; grid-template-columns: 80px minmax(0,1fr); gap: 8px; margin: 18px 0; font-size: 12px; }
+.olama-chat-drawer dt { color: #71817d; }
+.olama-chat-drawer dd { margin: 0; overflow-wrap: anywhere; }
+.olama-chat-profile-student { display: grid; padding: 9px 10px; background: #f4f8f7; border-radius: 8px; }
+.olama-chat-profile-student small { color: #71817d; font-size: 10px; }
+.olama-chat-profile-links { display: grid; gap: 6px; }
+.olama-chat-profile-links a { padding: 8px 10px; color: #287d70; background: #f0f7f5; border-radius: 8px; text-decoration: none; }
+.olama-comm-chat-focus > .olama-comm-form { position: absolute; z-index: 70; top: 50%; right: 50%; width: min(480px, calc(100% - 28px)); max-height: calc(100% - 40px); overflow-y: auto; transform: translate(50%, -50%); background: #fff; box-shadow: 0 18px 55px rgba(18,43,39,.28); }
+
+@media (max-width: 782px) {
+    .olama-communications.olama-comm-chat-focus { height: var(--olama-chat-height, calc(100vh - 54px)); min-height: 440px; margin: 0; border-radius: 0; }
+    .olama-chat-header { min-height: 62px; gap: 7px; padding: 7px 9px; }
+    .olama-chat-header-actions { gap: 0; }
+    .olama-communications .olama-chat-icon { width: 36px; min-width: 36px; min-height: 36px; }
+    .olama-chat-header-actions .olama-chat-icon:nth-child(2) { display: none; }
+    .olama-chat-messages { padding: 15px 10px; }
+    .olama-chat-bubble { max-width: 84%; }
+    .olama-chat-message-tools { opacity: 1; }
+    .olama-chat-composer { padding: 7px 8px 8px; }
+    .olama-chat-identity-copy small { max-width: 42vw; }
+    .olama-chat-popover { top: 55px; left: 6px; }
+}

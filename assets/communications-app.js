@@ -162,7 +162,15 @@
         roots.forEach(root => mount(root)); startCoordinator();
     }
     function body(root) { return root.querySelector('[data-comm-body]'); }
-    function newView(root) { window.OlamaSuiteClient?.closePreviews(); root._chatRefresh = null; root._chatRead = null; root._view = (root._view || 0) + 1; return root._view; }
+    function newView(root) {
+        window.OlamaSuiteClient?.closePreviews(); root._chatRefresh = null; root._chatRead = null;
+        if (root._chatResize) window.removeEventListener('resize', root._chatResize); root._chatResize = null;
+        root.style.removeProperty('--olama-chat-height');
+        root.classList.remove('olama-comm-chat-focus', 'is-chat-nav-open');
+        if (!document.querySelector('.olama-comm-chat-focus')) document.body.classList.remove('olama-chat-is-open');
+        root.querySelectorAll('.olama-chat-popover,.olama-chat-drawer,.olama-chat-backdrop').forEach(node => node.remove());
+        root._view = (root._view || 0) + 1; return root._view;
+    }
     async function showHome(root) {
         activateNav(root, 'home');
         const view = newView(root), content = body(root);

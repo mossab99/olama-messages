@@ -28,6 +28,57 @@ class Olama_Messages_Chat_Service {
         Olama_Messages_Communications_DB::query( $wpdb->prepare( "INSERT INTO {$p} (thread_id,actor_key,display_name) VALUES (%d,%s,%s) ON DUPLICATE KEY UPDATE id=id", $id, $actor['actor_key'], mb_substr( $actor['display_name'], 0, 190 ) ) );
     }
 
+    /** Profile data already available to a participant, used by the compact chat drawer. */
+    private function conversation_participant( array $actor, array $thread ) {
+        global $wpdb;
+        if ( 'direct' !== $thread['kind'] ) {
+            return array( 'display_name' => $thread['subject'], 'type_label' => 'طلب خدمة', 'role' => 'قسم المدرسة', 'identifier' => '', 'phones' => array(), 'students' => array(), 'links' => array() );
+        }
+        $p = Olama_Messages_Communications_DB::table( 'thread_participants' );
+        $row = $wpdb->get_row( $wpdb->prepare( "SELECT actor_key,display_name FROM {$p} WHERE thread_id=%d AND actor_key<>%s ORDER BY id LIMIT 1", $thread['id'], $actor['actor_key'] ), ARRAY_A );
+        if ( ! $row ) { return null; }
+        $key = (string) $row['actor_key']; $record = ( new Olama_Messages_Relationship_Provider() )->actor( $key );
+        $profile = array(
+            'display_name' => $record['name'] ?? $row['display_name'], 'type_label' => 'مستخدم', 'role' => 'مستخدم المدرسة',
+            'identifier' => (string) preg_replace( '/^[^:]+:/', '', $key ), 'phones' => array(), 'students' => array(), 'links' => array(),
+        );
+        $family_id = ''; $study_year = (string) ( $thread['context']['study_year'] ?? '' );
+        if ( 0 === strpos( $key, 'family:' ) ) {
+            $profile['type_label'] = 'أسرة'; $profile['role'] = 'ولي أمر'; $family_id = substr( $key, 7 );
+            if ( function_exists( 'olama_core' ) ) {
+                $family = (array) olama_core()->families()->get_by_uid( $family_id );
+                foreach ( array( 'primary_mobile', 'father_mobile', 'mother_mobile', 'family_home_phone' ) as $field ) {
+                    $phone = trim( (string) ( $family[$field] ?? '' ) ); if ( $phone && ! in_array( $phone, $profile['phones'], true ) ) { $profile['phones'][] = $phone; }
+                }
+                try {
+                    foreach ( ( new Olama_Messages_Relationship_Provider() )->children( $key ) as $student ) {
+                        $profile['students'][] = array( 'id' => (string) $student['student_uid'], 'name' => (string) ( $student['student_name'] ?? $student['student_uid'] ), 'context' => trim( (string) ( $student['class_name'] ?? '' ) . ' · ' . (string) ( $student['section_name'] ?? '' ), " ·" ) );
+                    }
+                } catch ( Throwable $error ) { /* Historical conversations remain readable when Core context is unavailable. */ }
+            }
+        } elseif ( 0 === strpos( $key, 'employee:' ) ) {
+            $employee = function_exists( 'olama_core' ) ? (array) olama_core()->employees()->get_by_employee_id( substr( $key, 9 ) ) : array();
+            $is_teacher = ! empty( $record['teacher'] ); $profile['type_label'] = $is_teacher ? 'معلم' : 'موظف';
+            $profile['role'] = (string) ( $employee['job_title'] ?? ( $is_teacher ? 'معلم' : 'موظف المدرسة' ) );
+            $phone = trim( (string) ( $employee['phones'] ?? '' ) ); if ( $phone ) { $profile['phones'][] = $phone; }
+        } elseif ( 0 === strpos( $key, 'administrator:' ) ) { $profile['type_label'] = 'إدارة'; $profile['role'] = 'مدير النظام'; }
+        if ( ! empty( $thread['context']['student_uid'] ) ) {
+            $student_id = (string) $thread['context']['student_uid'];
+            if ( ! array_filter( $profile['students'], static function ( $student ) use ( $student_id ) { return $student['id'] === $student_id; } ) ) {
+                $profile['students'][] = array( 'id' => $student_id, 'name' => (string) ( $thread['context']['student_name'] ?? $student_id ), 'context' => trim( (string) ( $thread['context']['class_name'] ?? '' ) . ' · ' . (string) ( $thread['context']['section_name'] ?? '' ), " ·" ) );
+            }
+            if ( ! $family_id && ! empty( $thread['context']['family_key'] ) ) { $family_id = substr( (string) $thread['context']['family_key'], 7 ); }
+        }
+        if ( $family_id && current_user_can( 'manage_options' ) ) {
+            $base = array( 'family_id' => absint( $family_id ) ); if ( $study_year ) { $base['study_year'] = $study_year; }
+            foreach ( array( 'olama-core-family-360' => 'ملف الأسرة', 'olama-core-family-financial-card' => 'السجل المالي', 'olama-core-family-transportation-card' => 'سجل المواصلات' ) as $page => $label ) {
+                $profile['links'][] = array( 'label' => $label, 'url' => add_query_arg( array_merge( array( 'page' => $page ), $base ), admin_url( 'admin.php' ) ) );
+            }
+            foreach ( $profile['students'] as $student ) { $profile['links'][] = array( 'label' => 'بطاقة ' . $student['name'], 'url' => add_query_arg( array_merge( array( 'page' => 'olama-core-student-card', 'student_id' => absint( $student['id'] ) ), $base ), admin_url( 'admin.php' ) ) ); }
+        }
+        return $profile;
+    }
+
     /** Called inside the mutation transaction. Single clock lock guarantees commit-ordered feed IDs. */
     public function change( $id, $kind ) {
         global $wpdb;
@@ -209,8 +260,9 @@ class Olama_Messages_Chat_Service {
         $actions = $member ? $wpdb->get_results( $wpdb->prepare( 'SELECT action,actor_key,target_key,created_at_utc FROM ' . Olama_Messages_Communications_DB::table( 'thread_actions' ) . ' WHERE thread_id=%d ORDER BY id DESC LIMIT 50', $id ), ARRAY_A ) : array();
         $state = $this->send_state( $actor, $thread );
         $thread['context'] = json_decode( $thread['context_json'], true ); unset( $thread['context_json'], $thread['thread_key'] );
+        $participant = $this->conversation_participant( $actor, $thread );
         if ( $inbox && ! $member ) { unset( $thread['assignee_key'], $thread['requester_key'] ); }
-        return array( 'thread' => $thread, 'messages' => array_reverse( $rows ), 'send_state' => $state, 'receipts' => $receipts, 'personal' => $personal, 'member' => $member ? array( 'manager' => (bool) $member['is_manager'] ) : null, 'actions' => $actions, 'next' => count( $rows ) === 50 ? (int) end( $rows )['id'] : 0 );
+        return array( 'thread' => $thread, 'participant' => $participant, 'messages' => array_reverse( $rows ), 'send_state' => $state, 'receipts' => $receipts, 'personal' => $personal, 'member' => $member ? array( 'manager' => (bool) $member['is_manager'] ) : null, 'actions' => $actions, 'next' => count( $rows ) === 50 ? (int) end( $rows )['id'] : 0 );
     }
 
     public function receipt( array $actor, $id, $cursor, $kind ) {

@@ -32,18 +32,20 @@
             }));list.append(card);
         }); parent.append(list);
     }
-    function picker(parent, scopeType, scopeId, existing=[]) {
-        const box=el('fieldset',undefined,'olama-suite-picker');box.append(el('legend','مرفقات خاصة'),el('small','حتى 5 ملفات ومجموع 25 MB. صور 8 MB، مستندات 15 MB، عروض 20 MB. الملفات المؤقتة تنتهي خلال ساعة.'));
+    function picker(parent, scopeType, scopeId, existing=[], options={}) {
+        const compact=Boolean(options.compact),box=el('fieldset',undefined,'olama-suite-picker'+(compact?' is-compact':''));
+        if(!compact)box.append(el('legend','مرفقات خاصة'),el('small','حتى 5 ملفات ومجموع 25 MB. صور 8 MB، مستندات 15 MB، عروض 20 MB. الملفات المؤقتة تنتهي خلال ساعة.'));
         const input=el('input');input.type='file';input.multiple=true;input.accept='.jpg,.jpeg,.png,.webp,.pdf,.txt,.csv,.docx,.xlsx,.pptx';input.setAttribute('aria-label','اختيار مرفقات');const list=el('div');box.append(input,list);parent.append(box);
+        let trigger=null;if(compact){trigger=button('＋',()=>input.click(),'olama-chat-attach');trigger.title='إرفاق ملفات';trigger.setAttribute('aria-label','إرفاق ملفات');box.insertBefore(trigger,input);}
         let rows=[...existing], pending=false;
-        const render=()=>{list.replaceChildren();rows.forEach(row=>{const item=el('div');item.append(el('span',row.original_name),button('إزالة '+row.original_name,()=>{rows=rows.filter(r=>r.id!==row.id);render();}));list.append(item);});};render();
+        const render=()=>{list.replaceChildren();rows.forEach(row=>{const item=el('div',undefined,compact?'olama-suite-file-chip':'');item.append(el('span',row.original_name),button('×',()=>{rows=rows.filter(r=>r.id!==row.id);render();},compact?'olama-suite-file-remove':''));list.append(item);});};render();
         input.addEventListener('change',async()=>{
             if (pending) return; pending=true;input.disabled=true;
             try { if (rows.length+input.files.length>5) throw new Error('الحد الأقصى خمسة ملفات.');
                 for (const file of input.files) {const form=new FormData();form.append('file',file);form.append('scope_type',scopeType);form.append('scope_id',scopeId||0);const row=await binary('suite/attachments',form);if (!box.isConnected) return;rows.push(row);render();}
             } catch(error){if(error.name!=='AbortError')toast(error.message);}finally{pending=false;input.disabled=false;input.value='';}
         });
-        return {ids(){if(pending)throw new Error('انتظر اكتمال رفع الملفات.');return rows.map(r=>Number(r.id));},clear(){rows=[];render();}};
+        return {ids(){if(pending)throw new Error('انتظر اكتمال رفع الملفات.');return rows.map(r=>Number(r.id));},clear(){rows=[];render();},input,trigger};
     }
     function submit(form,label,action){const control=el('button',label,'olama-comm-primary');control.type='submit';form.append(control);form.addEventListener('submit',async e=>{e.preventDefault();control.disabled=true;try{await action();}catch(error){if(error.name!=='AbortError')toast(error.message);}finally{control.disabled=false;}});}
     const utcInput=value=>value ? value.replace(' ','T').slice(0,16):'';

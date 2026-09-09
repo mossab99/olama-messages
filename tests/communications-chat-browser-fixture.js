@@ -4,7 +4,11 @@ const personal = new Map(); const messages = new Map(); let seq = 1;
 const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 module.exports = (url, actor, data, method, receipts) => {
     const staff = actor.actor_type === 'employee'; const key = actor.actor_key;
-    if (!messages.has(key)) messages.set(key, [{id: 10, sender_key: staff ? 'employee:fixture-colleague' : 'employee:fixture-teacher', display_name: staff ? 'زميل تجريبي' : 'معلم العلوم', body: staff ? 'محادثة الموظفين التجريبية فقط' : 'مرحباً بالأسرة، هذه متابعة مادة العلوم. <script>alert("نص فقط")</script>', sent_at_utc: now(), reply_to: 0, own: false}]);
+    if (!messages.has(key)) messages.set(key, [
+        {id: 8, sender_key: key, display_name: actor.display_name, body: 'مرحباً، أود متابعة الموضوع معكم.', sent_at_utc: '2026-09-09 08:25:00', reply_to: 0},
+        {id: 9, sender_key: staff ? 'employee:fixture-colleague' : 'employee:fixture-teacher', display_name: staff ? 'زميل تجريبي' : 'معلم العلوم', body: 'أهلاً بكم، بالطبع يمكننا المتابعة هنا.', sent_at_utc: '2026-09-09 08:28:00', reply_to: 8},
+        {id: 10, sender_key: staff ? 'employee:fixture-colleague' : 'employee:fixture-teacher', display_name: staff ? 'زميل تجريبي' : 'معلم العلوم', body: staff ? 'محادثة الموظفين التجريبية فقط' : 'مرحباً بالأسرة، هذه متابعة مادة العلوم. <script>alert("نص فقط")</script>', sent_at_utc: now(), reply_to: 0}
+    ]);
     if (!personal.has(key)) personal.set(key, {archived: 0, muted: 0, pinned: 0, manual_unread: 0, read_cursor: 0, delivered_cursor: 0});
     const rows = messages.get(key), prefs = personal.get(key);
     const path = url.pathname.replace('/api/chat/', '');
@@ -44,7 +48,9 @@ module.exports = (url, actor, data, method, receipts) => {
         {id: 2, kind: 'direct', subject: staff ? 'مراسلة إدارية' : 'أحمد · اللغة العربية', correspondent_name: staff ? 'مدير المدرسة' : 'معلم اللغة العربية', last_message: 'تم اعتماد الطلب وإرساله إلى القسم المختص.', last_message_at: '2026-09-09 08:30:00', last_message_own: true, status: 'open', unread_count: 0, pinned: 0, muted: 0, manual_unread: 0, page_cursor: '0:9:2'},
         {id: 3, kind: 'direct', subject: staff ? 'مراسلة الموظفين' : 'سارة · الرياضيات', correspondent_name: staff ? 'أحمد محمد' : 'معلم الرياضيات', last_message: 'موعد المتابعة غداً في الحصة الأولى.', last_message_at: '2026-09-08 11:10:00', last_message_own: false, status: 'open', unread_count: 0, pinned: 0, muted: 0, manual_unread: 1, page_cursor: '0:8:3'}
     ] : [];
-    if (/^threads\/\d+$/.test(path)) return {thread: {id: 1, subject: title, kind: 'direct', status: 'open', context: staff ? {scope: 'staff'} : {student_name: 'أحمد', subject_name: 'العلوم', study_year: '2026-2027'}}, messages: rows.map(row => ({...row, own: row.sender_key === key, quote_body: rows.find(quote => quote.id === Number(row.reply_to))?.body || null})), personal: prefs, receipts: [{display_name: 'المستلم', read_cursor: 0, delivered_cursor: 0}], send_state: {allowed: true}, member: null, actions: [], next: 0};
+    if (/^threads\/\d+$/.test(path)) return {thread: {id: 1, subject: title, kind: 'direct', status: 'open', context: staff ? {scope: 'staff'} : {student_uid: 'fixture-child', student_name: 'أحمد', subject_name: 'العلوم', study_year: '2026-2027'}}, participant: staff
+        ? {display_name: 'سارة محمود', type_label: 'موظف', role: 'منسقة أكاديمية', identifier: 'fixture-colleague', phones: ['0790000000'], students: [], links: []}
+        : {display_name: 'معلم العلوم', type_label: 'معلم', role: 'معلم العلوم', identifier: 'fixture-teacher', phones: ['0791111111'], students: [{id: 'fixture-child', name: 'أحمد', context: 'الرابع · ب'}], links: []}, messages: rows.map(row => ({...row, own: row.sender_key === key, quote_body: rows.find(quote => quote.id === Number(row.reply_to))?.body || null, attachments: row.attachments || []})), personal: prefs, receipts: [{display_name: 'المستلم', read_cursor: 0, delivered_cursor: 0}], send_state: {allowed: true}, member: null, actions: [], next: 0};
     if (/\/receipt$/.test(path)) { receipts.push({...data, actor: key, chat: true}); prefs[data.kind + '_cursor'] = Math.max(prefs[data.kind + '_cursor'] || 0, data.cursor); return {ok: true}; }
     if (/\/preferences$/.test(path)) { Object.assign(prefs, data); return {ok: true}; }
     if (/^threads\/\d+\/messages$/.test(path)) {

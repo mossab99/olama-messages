@@ -234,75 +234,139 @@
     }
 
     async function conversation(root, id, before = 0) {
-        activateNav(root, 'conversations'); const view = newView(root), content = body(root); content.replaceChildren(button('عودة للمحادثات', () => threads(root)));
-        const header = el('div'), messages = el('div', undefined, 'olama-chat-messages'), controls = el('div'), status = el('p');
-        messages.setAttribute('aria-label', 'رسائل المحادثة'); content.append(header, controls, messages, status);
-        const form = el('form', undefined, 'olama-comm-form olama-chat-compose'); const mode = el('p'); form.append(mode);
-        const input = field(form, 'message', 'رسالتك', draft(id), 'textarea'); input.maxLength = config.messageMaxChars || 5000; input.required = !root._suite?.attachments;
-        const files = root._suite?.attachments ? window.OlamaSuiteClient.picker(form, 'thread', id) : null;
-        let replyTo = 0, editId = 0, retry = null, sending = false, lastDelivered = 0, lastRead = 0;
-        input.addEventListener('input', () => { draft(id, input.value); retry = null; });
-        form.append(button('إلغاء الاقتباس / التعديل', () => { replyTo = 0; editId = 0; retry = null; mode.textContent = ''; }));
-        const send = submit(form, 'إرسال', async () => {
-            sending = true;
-            try {
-                if (editId) await api('chat/messages/' + editId + '/edit', {body: input.value});
-                else {
-                    const attachmentIds = files ? files.ids() : [];
-                    if (retry && JSON.stringify(retry.attachment_ids || []) !== JSON.stringify(attachmentIds)) retry = null;
-                    if (!retry) retry = {body: input.value, reply_to: replyTo, client_message_id: crypto.randomUUID(), ...(attachmentIds.length ? {attachment_ids: attachmentIds} : {})};
-                    await api('chat/threads/' + id + '/messages', retry);
-                }
-                files?.clear(); retry = null; input.value = ''; replyTo = 0; editId = 0; mode.textContent = ''; draft(id, ''); await load();
-            } finally { sending = false; }
-        });
-        content.append(form);
-        const load = async () => {
-            const data = await api('chat/threads/' + id + '?before=' + before);
-            if (root._view !== view) return;
-            const thread = data.thread; header.replaceChildren(el('h3', thread.subject));
-            if (thread.context.student_name) header.append(el('p', thread.context.student_name + ' · ' + thread.context.subject_name + ' · ' + thread.context.study_year));
-            if (root._suite?.actions) header.append(button('إجراءات المحادثة', () => window.OlamaSuiteClient.actions(root, 0, id)));
-            if (thread.kind === 'service') header.append(el('p', thread.status === 'resolved' ? 'تم حل الطلب' : thread.department_responded_at_utc ? 'تم الرد من القسم' : thread.department_viewed_at_utc ? 'استلم القسم الطلب' : 'أُرسل الطلب'));
-            status.textContent = data.send_state.allowed ? 'تُحفظ المسودة مؤقتاً لمدة 15 دقيقة وتُمسح عند تغيير الهوية أو مغادرة الصفحة.' + (data.send_state.office_hours_note ? ' · ' + data.send_state.office_hours_note : '') : data.send_state.reason;
-            input.disabled = !data.send_state.allowed; send.disabled = !data.send_state.allowed || sending;
-            form.dataset.blocked = data.send_state.allowed ? '0' : '1';
-            controls.replaceChildren();
-            ['pinned', 'muted', 'archived', 'manual_unread'].forEach((key, index) => {
-                const active = Number(data.personal?.[key] || 0); const names = [['تثبيت', 'إلغاء التثبيت'], ['كتم', 'إلغاء الكتم'], ['أرشفة', 'إعادة للوارد'], ['تمييز للمتابعة كغير مقروء', 'إلغاء علامة المتابعة']];
-                controls.append(button(names[index][active ? 1 : 0], async () => { await api('chat/threads/' + id + '/preferences', {[key]: !active}); if (key === 'manual_unread' || key === 'archived') await threads(root); else await load(); }));
-            });
-            if (data.member) {
-                controls.append(el('p', thread.assignee_key ? 'المسؤول: ' + thread.assignee_key : 'لم يُعيّن مسؤول بعد'));
-                if (!thread.assignee_key || thread.assignee_key === h.actor().actor_key) controls.append(button('استلام الطلب', async () => { await api('chat/threads/' + id + '/assign', {target: h.actor().actor_key}); await load(); }));
-                if (data.member.manager) {
-                    const assignForm = el('form', undefined, 'olama-comm-form'); const target = field(assignForm, 'target', 'هوية الموظف العضو (فارغ لإلغاء التعيين)', thread.assignee_key || '');
-                    submit(assignForm, 'تعيين المسؤول', async () => { await api('chat/threads/' + id + '/assign', {target: target.value.trim()}); await load(); }); controls.append(assignForm);
-                }
-                if (thread.status === 'open') controls.append(button('بدء العمل', async () => { await api('chat/threads/' + id + '/start', {}); await load(); }));
-                controls.append(button(thread.status === 'resolved' ? 'إعادة فتح' : 'حل الطلب', async () => { await api('chat/threads/' + id + '/' + (thread.status === 'resolved' ? 'reopen' : 'resolve'), {}); await threads(root); }));
-                const history = el('details'); history.append(el('summary', 'سجل التعيين والإجراءات'));
-                data.actions.forEach(item => history.append(el('p', date(item.created_at_utc) + ' · ' + item.action + ' · ' + item.actor_key + ' → ' + (item.target_key || '—')))); controls.append(history);
-            }
+        activateNav(root, 'conversations'); const view = newView(root), content = body(root);
+        root.classList.add('olama-comm-chat-focus'); document.body.classList.add('olama-chat-is-open');
+        const syncHeight = () => root.style.setProperty('--olama-chat-height', Math.max(440, window.innerHeight - root.getBoundingClientRect().top - 12) + 'px');
+        root._chatResize = syncHeight; window.addEventListener('resize', syncHeight);
+        syncHeight(); requestAnimationFrame(syncHeight);
+        const app = el('section', undefined, 'olama-chat-app'), header = el('header', undefined, 'olama-chat-header');
+        const canvas = el('div', undefined, 'olama-chat-canvas'), messages = el('div', undefined, 'olama-chat-messages');
+        messages.setAttribute('aria-label', 'رسائل المحادثة'); messages.setAttribute('role', 'log');
+        const icon = (label, symbol, action, cls = '') => { const control = button(symbol, action, 'olama-chat-icon ' + cls); control.title = label; control.setAttribute('aria-label', label); return control; };
+        const back = icon('عودة للمحادثات', '←', () => threads(root), 'olama-chat-back');
+        const avatar = el('span', 'م', 'olama-chat-avatar'), identity = button('', () => openProfile(), 'olama-chat-identity');
+        const identityCopy = el('span', undefined, 'olama-chat-identity-copy'), participantName = el('strong', 'المحادثة'), participantMeta = el('small', 'جارٍ التحميل…');
+        identityCopy.append(participantName, participantMeta); identity.append(avatar, identityCopy);
+        const headerActions = el('div', undefined, 'olama-chat-header-actions');
+        const searchButton = icon('البحث في المحادثة', '⌕', () => toggleSearch());
+        const pinButton = icon('تثبيت المحادثة', '☆', () => changePreference('pinned'));
+        const moreButton = icon('المزيد من الإجراءات', '⋮', () => toggleMenu());
+        const navButton = icon('أقسام اتصالات المدرسة', '☰', () => toggleNav());
+        headerActions.append(searchButton, pinButton, moreButton, navButton); header.append(back, identity, headerActions);
+        const searchBar = el('div', undefined, 'olama-chat-search'); searchBar.hidden = true;
+        const searchInput = el('input'); searchInput.type = 'search'; searchInput.placeholder = 'ابحث في الرسائل المعروضة'; searchInput.setAttribute('aria-label', 'البحث في الرسائل');
+        const searchCount = el('span'); searchBar.append(searchInput, searchCount, icon('إغلاق البحث', '×', () => { searchInput.value = ''; filterMessages(); searchBar.hidden = true; }));
+        canvas.append(searchBar, messages);
+        const composer = el('form', undefined, 'olama-chat-composer'), replyPreview = el('div', undefined, 'olama-chat-reply-preview'); replyPreview.hidden = true;
+        const replyCopy = el('span'), cancelMode = icon('إلغاء الرد أو التعديل', '×', () => clearMode()); replyPreview.append(replyCopy, cancelMode);
+        const composeRow = el('div', undefined, 'olama-chat-compose-row'), input = el('textarea'); input.name = 'message'; input.placeholder = 'اكتب رسالة…'; input.value = draft(id); input.maxLength = config.messageMaxChars || 5000; input.rows = 1; input.setAttribute('aria-label', 'نص الرسالة');
+        const files = root._suite?.attachments ? window.OlamaSuiteClient.picker(composeRow, 'thread', id, [], {compact: true}) : null;
+        const send = el('button', '➤', 'olama-chat-send'); send.type = 'submit'; send.title = 'إرسال'; send.setAttribute('aria-label', 'إرسال الرسالة');
+        composeRow.append(input, send); const composeStatus = el('small', '', 'olama-chat-compose-status'); composer.append(replyPreview, composeRow, composeStatus);
+        app.append(header, canvas, composer); content.replaceChildren(app);
+        let replyTo = 0, editId = 0, preEditDraft = '', retry = null, sending = false, lastDelivered = 0, lastRead = 0, currentData = null, initialLoad = true;
+
+        function localInstant(value) { return new Date(String(value || '').replace(' ', 'T') + 'Z'); }
+        function dayKey(value) { const d = localInstant(value); try { return d.toLocaleDateString('en-CA', {timeZone: config.timezone || 'Asia/Amman'}); } catch (_) { return d.toISOString().slice(0, 10); } }
+        function dayLabel(value) {
+            const instant = localInstant(value), today = dayKey(new Date().toISOString().replace('T', ' ').slice(0, 19)), yesterday = dayKey(new Date(Date.now() - 86400000).toISOString().replace('T', ' ').slice(0, 19));
+            const key = dayKey(value); if (key === today) return 'اليوم'; if (key === yesterday) return 'أمس';
+            try { return instant.toLocaleDateString('ar-JO', {timeZone: config.timezone || 'Asia/Amman', weekday: 'long', day: 'numeric', month: 'long'}); } catch (_) { return instant.toLocaleDateString('ar-JO'); }
+        }
+        function timeLabel(value) { const instant = localInstant(value); try { return instant.toLocaleTimeString('ar-JO', {timeZone: config.timezone || 'Asia/Amman', hour: '2-digit', minute: '2-digit'}); } catch (_) { return instant.toLocaleTimeString('ar-JO', {hour: '2-digit', minute: '2-digit'}); } }
+        function closeLayers() { root.querySelectorAll('.olama-chat-popover,.olama-chat-drawer,.olama-chat-backdrop').forEach(node => node.remove()); root.classList.remove('is-chat-nav-open'); }
+        function toggleNav() { const open = root.classList.toggle('is-chat-nav-open'); let shade = root.querySelector('.olama-chat-backdrop'); if (open && !shade) { shade = el('button', '', 'olama-chat-backdrop'); shade.type = 'button'; shade.setAttribute('aria-label', 'إغلاق القائمة'); shade.addEventListener('click', closeLayers); root.append(shade); } else if (!open) shade?.remove(); }
+        function toggleSearch() { searchBar.hidden = !searchBar.hidden; if (!searchBar.hidden) searchInput.focus(); }
+        function filterMessages() { const query = searchInput.value.trim().toLocaleLowerCase('ar'); let count = 0; messages.querySelectorAll('[data-message-body]').forEach(node => { const match = !query || node.textContent.toLocaleLowerCase('ar').includes(query); node.closest('.olama-chat-row').hidden = !match; if (match && query) count++; }); messages.querySelectorAll('.olama-chat-date').forEach(node => { node.hidden = Boolean(query); }); searchCount.textContent = query ? count + ' نتيجة' : ''; }
+        searchInput.addEventListener('input', filterMessages);
+        function clearMode() { const wasEditing = Boolean(editId); replyTo = 0; editId = 0; retry = null; replyPreview.hidden = true; replyCopy.textContent = ''; if (wasEditing) { input.value = preEditDraft; preEditDraft = ''; } resizeInput(); input.focus(); }
+        function setReply(message) { replyTo = Number(message.id); editId = 0; retry = null; replyCopy.textContent = 'رد على: ' + message.body.slice(0, 120); replyPreview.hidden = false; input.focus(); }
+        function setEdit(message) { preEditDraft = draft(id); editId = Number(message.id); replyTo = 0; retry = null; input.value = message.body; replyCopy.textContent = 'تعديل الرسالة'; replyPreview.hidden = false; input.focus(); resizeInput(); }
+        function resizeInput() { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 132) + 'px'; }
+        input.addEventListener('input', () => { if (!editId) draft(id, input.value); retry = null; resizeInput(); }); resizeInput();
+        input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); composer.requestSubmit(); } });
+        async function changePreference(key) { if (!currentData) return; const active = Number(currentData.personal?.[key] || 0); await api('chat/threads/' + id + '/preferences', {[key]: !active}); if (key === 'archived' || key === 'manual_unread') await threads(root); else await load(); }
+        function menuItem(parent, label, action, danger = false) { const item = button(label, async () => { closeLayers(); await action(); }, danger ? 'is-danger' : ''); item.setAttribute('role', 'menuitem'); parent.append(item); }
+        function toggleMenu() {
+            const old = root.querySelector('.olama-chat-actions-menu'); if (old) { old.remove(); return; } closeLayers(); if (!currentData) return;
+            const menu = el('div', undefined, 'olama-chat-popover olama-chat-actions-menu'); menu.setAttribute('role', 'menu');
+            const personal = currentData.personal || {};
+            menuItem(menu, Number(personal.manual_unread) ? 'إلغاء علامة المتابعة' : 'تمييز للمتابعة', () => changePreference('manual_unread'));
+            menuItem(menu, Number(personal.pinned) ? 'إلغاء التثبيت' : 'تثبيت المحادثة', () => changePreference('pinned'));
+            menuItem(menu, Number(personal.muted) ? 'إلغاء الكتم' : 'كتم الإشعارات', () => changePreference('muted'));
+            menuItem(menu, Number(personal.archived) ? 'إعادة إلى الوارد' : 'أرشفة المحادثة', () => changePreference('archived'));
+            if (root._suite?.actions) menuItem(menu, 'إجراءات المحادثة', () => window.OlamaSuiteClient.actions(root, 0, id));
+            menuItem(menu, 'الإبلاغ عن رسالة', () => { composeStatus.textContent = 'اختر ⋮ بجانب الرسالة التي تريد الإبلاغ عنها.'; });
+            if (root._me?.can_audit) menuItem(menu, 'سجل المحادثة والتدقيق', () => reasonForm(root, 'سبب فتح سجل المحادثة — يسجل في التدقيق', reason => privileged(root, {thread_id: id, reason})));
+            renderServiceControls(currentData, menu);
+            header.append(menu);
+        }
+        function openProfile() {
+            closeLayers(); if (!currentData?.participant) return; const profile = currentData.participant;
+            const shade = el('button', '', 'olama-chat-backdrop'); shade.type = 'button'; shade.setAttribute('aria-label', 'إغلاق الملف'); shade.addEventListener('click', closeLayers);
+            const drawer = el('aside', undefined, 'olama-chat-drawer'); const drawerHead = el('header'); drawerHead.append(el('span', (profile.display_name || 'م').trim().charAt(0), 'olama-chat-avatar olama-chat-avatar-large'), el('h3', profile.display_name), icon('إغلاق', '×', closeLayers)); drawer.append(drawerHead);
+            const facts = el('dl'); [['الصفة', profile.role], ['النوع', profile.type_label], ['المعرف', profile.identifier], ['الهاتف', (profile.phones || []).join(' · ')]].forEach(([term, value]) => { if (value) facts.append(el('dt', term), el('dd', value)); }); drawer.append(facts);
+            if (profile.students?.length) { drawer.append(el('h4', 'الطلاب')); profile.students.forEach(student => { const card = el('div', undefined, 'olama-chat-profile-student'); card.append(el('strong', student.name), el('small', student.context || '')); drawer.append(card); }); }
+            if (profile.links?.length) { drawer.append(el('h4', 'وصول سريع')); const links = el('div', undefined, 'olama-chat-profile-links'); profile.links.forEach(item => { const link = el('a', item.label); link.href = item.url; links.append(link); }); drawer.append(links); }
+            root.append(shade, drawer);
+        }
+        function messageMenu(row, bubble, message) {
+            const details = el('details', undefined, 'olama-chat-message-menu'), summary = el('summary', '⋮'); summary.setAttribute('aria-label', 'إجراءات الرسالة'); details.append(summary);
+            const list = el('div'); if (!message.redacted_at_utc && currentData.send_state.allowed) list.append(button('رد', () => { details.open = false; setReply(message); }));
+            if (!message.redacted_at_utc && message.own && Date.now() - localInstant(message.sent_at_utc).getTime() < (config.editMinutes ?? 15) * 60000) list.append(button('تعديل', () => { details.open = false; setEdit(message); }));
+            list.append(button('إبلاغ', () => { details.open = false; reasonForm(root, 'الإبلاغ عن رسالة', async reason => { await api('chat/messages/' + message.id + '/report', {reason}); toast('تم تسجيل البلاغ.'); }); }, 'is-danger')); details.append(list); return details;
+        }
+        function renderMessages(data) {
             messages.replaceChildren();
-            if (data.next) messages.append(button('رسائل أقدم', () => conversation(root, id, data.next)));
-            if (before) messages.append(button('أحدث الرسائل', () => conversation(root, id)));
+            const paging = el('div', undefined, 'olama-chat-paging'); if (data.next) paging.append(button('رسائل أقدم', () => conversation(root, id, data.next))); if (before) paging.append(button('أحدث الرسائل', () => conversation(root, id))); if (paging.childElementCount) messages.append(paging);
+            let shownDay = '';
             data.messages.forEach(message => {
-                const bubble = el('article', undefined, 'olama-chat-bubble' + (message.own ? ' olama-chat-own' : '')); bubble.append(el('strong', message.display_name));
-                if (message.reply_to) bubble.append(el('blockquote', message.quote_body || 'اقتباس غير متاح'));
+                const key = dayKey(message.sent_at_utc); if (key !== shownDay) { const separator = el('div', undefined, 'olama-chat-date'); separator.append(el('span', dayLabel(message.sent_at_utc))); messages.append(separator); shownDay = key; }
+                const row = el('div', undefined, 'olama-chat-row ' + (message.own ? 'is-outgoing' : 'is-incoming')); row.dataset.messageId = message.id;
+                const bubble = el('article', undefined, 'olama-chat-bubble' + (message.own ? ' olama-chat-own' : ''));
+                if (data.thread.kind === 'service') bubble.append(el('strong', message.display_name, 'olama-chat-sender'));
+                if (message.reply_to && message.quote_body) bubble.append(el('blockquote', message.quote_body));
                 window.OlamaSuiteClient?.attachments(bubble, message.attachments);
-                bubble.append(el('p', message.body, 'olama-comm-message'), el('small', date(message.sent_at_utc) + (message.edited_at_utc ? ' · معدلة' : '')));
-                if (message.own && thread.kind === 'direct') {
-                    const read = data.receipts.length && data.receipts.every(r => Number(r.read_cursor) >= Number(message.id));
-                    const delivered = data.receipts.length && data.receipts.every(r => Number(r.delivered_cursor) >= Number(message.id));
-                    bubble.append(el('small', read ? ' · مقروءة ✓✓' : delivered ? ' · تم التسليم ✓✓' : ' · أُرسلت ✓'));
-                }
-                if (!message.redacted_at_utc && data.send_state.allowed) {
-                    bubble.append(button('اقتباس', () => { replyTo = Number(message.id); editId = 0; retry = null; mode.textContent = 'رد على: ' + message.body.slice(0, 100); input.focus(); }));
-                    if (message.own && Date.now() - new Date(message.sent_at_utc.replace(' ', 'T') + 'Z').getTime() < (config.editMinutes ?? 15) * 60000) bubble.append(button('تعديل', () => { editId = Number(message.id); replyTo = 0; retry = null; input.value = message.body; mode.textContent = 'تعديل الرسالة'; input.focus(); }));
-                }
-                bubble.append(button('إبلاغ', () => reasonForm(content, 'الإبلاغ عن رسالة', async reason => { await api('chat/messages/' + message.id + '/report', {reason}); toast('تم تسجيل البلاغ.'); }))); messages.append(bubble);
+                const bodyText = el('p', message.body, 'olama-comm-message'); bodyText.dataset.messageBody = ''; bubble.append(bodyText);
+                const meta = el('footer'), stamp = el('time', timeLabel(message.sent_at_utc) + (message.edited_at_utc ? ' · معدّلة' : '')); meta.append(stamp);
+                if (message.own && data.thread.kind === 'direct') { const read = data.receipts.length && data.receipts.every(r => Number(r.read_cursor) >= Number(message.id)); const delivered = data.receipts.length && data.receipts.every(r => Number(r.delivered_cursor) >= Number(message.id)); meta.append(el('span', read ? '✓✓ مقروءة' : delivered ? '✓✓ تم التسليم' : '✓ أُرسلت', 'olama-chat-receipt')); }
+                bubble.append(meta); const tools = el('div', undefined, 'olama-chat-message-tools'); if (!message.redacted_at_utc && data.send_state.allowed) tools.append(icon('رد', '↩', () => setReply(message))); tools.append(messageMenu(row, bubble, message)); row.append(bubble, tools); messages.append(row);
             });
+            filterMessages(); if (initialLoad && !before) { requestAnimationFrame(() => { canvas.scrollTop = canvas.scrollHeight; initialLoad = false; }); }
+        }
+        function renderServiceControls(data, menu) {
+            if (!data.member) return; const thread = data.thread; menu.append(el('hr'));
+            if (!thread.assignee_key || thread.assignee_key === h.actor().actor_key) menuItem(menu, 'استلام الطلب', async () => { await api('chat/threads/' + id + '/assign', {target: h.actor().actor_key}); await load(); });
+            if (data.member.manager) menuItem(menu, 'تعيين مسؤول', () => {
+                const form = el('form', undefined, 'olama-comm-form'); form.append(el('h4', 'تعيين مسؤول الطلب'));
+                const target = field(form, 'target', 'هوية الموظف العضو (فارغ لإلغاء التعيين)', thread.assignee_key || '');
+                submit(form, 'حفظ التعيين', async () => { await api('chat/threads/' + id + '/assign', {target: target.value.trim()}); form.remove(); await load(); }); form.append(button('إلغاء', () => form.remove())); root.append(form); target.focus();
+            });
+            if (thread.status === 'open') menuItem(menu, 'بدء العمل', async () => { await api('chat/threads/' + id + '/start', {}); await load(); });
+            menuItem(menu, thread.status === 'resolved' ? 'إعادة فتح الطلب' : 'حل الطلب', async () => { await api('chat/threads/' + id + '/' + (thread.status === 'resolved' ? 'reopen' : 'resolve'), {}); await threads(root); });
+            if (data.actions?.length) menuItem(menu, 'سجل التعيين والإجراءات', () => {
+                const shade = el('button', '', 'olama-chat-backdrop'); shade.type = 'button'; shade.addEventListener('click', closeLayers);
+                const drawer = el('aside', undefined, 'olama-chat-drawer'); const head = el('header'); head.append(el('h3', 'سجل التعيين والإجراءات'), icon('إغلاق', '×', closeLayers)); drawer.append(head);
+                data.actions.forEach(item => drawer.append(el('p', date(item.created_at_utc) + ' · ' + item.action + ' · ' + item.actor_key + ' → ' + (item.target_key || '—')))); root.append(shade, drawer);
+            });
+        }
+        composer.addEventListener('submit', async event => {
+            event.preventDefault(); if (sending || input.disabled) return; const attachmentIds = files ? files.ids() : []; if (!input.value.trim() && !attachmentIds.length) return;
+            sending = true; send.disabled = true;
+            try {
+                if (editId) { await api('chat/messages/' + editId + '/edit', {body: input.value}); input.value = preEditDraft; preEditDraft = ''; }
+                else { if (retry && JSON.stringify(retry.attachment_ids || []) !== JSON.stringify(attachmentIds)) retry = null; if (!retry) retry = {body: input.value, reply_to: replyTo, client_message_id: crypto.randomUUID(), ...(attachmentIds.length ? {attachment_ids: attachmentIds} : {})}; await api('chat/threads/' + id + '/messages', retry); }
+                files?.clear(); retry = null; if (!editId) { input.value = ''; draft(id, ''); } replyTo = 0; editId = 0; replyPreview.hidden = true; replyCopy.textContent = ''; resizeInput(); await load();
+            } finally { sending = false; send.disabled = !currentData?.send_state.allowed; }
+        });
+        const load = async () => {
+            const data = await api('chat/threads/' + id + '?before=' + before); if (root._view !== view) return; currentData = data; const thread = data.thread, profile = data.participant || {};
+            participantName.textContent = profile.display_name || thread.subject; avatar.textContent = participantName.textContent.trim().charAt(0) || 'م';
+            const context = thread.context?.student_name ? thread.context.student_name + (thread.context.subject_name ? ' · ' + thread.context.subject_name : '') : '';
+            participantMeta.textContent = [profile.type_label || (thread.kind === 'service' ? 'طلب خدمة' : ''), context].filter(Boolean).join(' · ');
+            pinButton.textContent = Number(data.personal?.pinned) ? '★' : '☆'; pinButton.classList.toggle('is-active', Boolean(Number(data.personal?.pinned)));
+            composeStatus.textContent = data.send_state.allowed ? (data.send_state.office_hours_note || '') : data.send_state.reason; input.disabled = !data.send_state.allowed; send.disabled = !data.send_state.allowed || sending; composer.dataset.blocked = data.send_state.allowed ? '0' : '1';
+            renderMessages(data);
             const max = data.messages.reduce((value, message) => Math.max(value, Number(message.id)), 0);
             if (max > lastDelivered) { await api('chat/threads/' + id + '/receipt', {kind: 'delivered', cursor: max}); lastDelivered = max; }
             if (visible(root) && root._view === view && max > lastRead) { await api('chat/threads/' + id + '/receipt', {kind: 'read', cursor: max}); lastRead = max; }
