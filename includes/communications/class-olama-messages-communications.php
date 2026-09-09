@@ -66,7 +66,18 @@ class Olama_Messages_Communications {
 
     public function app() {
         if ( ! is_user_logged_in() ) { return '<p dir="rtl">يرجى تسجيل الدخول إلى حساب OLAMA.</p>'; }
-        if ( ! Olama_Messages_Communication_Policy::enabled() || ! current_user_can( 'olama_messages_use' ) ) { return '<p dir="rtl">خدمة الاتصالات غير مفعلة لهذا الحساب.</p>'; }
+        if ( ! current_user_can( 'olama_messages_use' ) ) { return '<p dir="rtl">لا يملك هذا الحساب صلاحية استخدام OLAMA Communications.</p>'; }
+        $settings = Olama_Messages_Communication_Policy::settings();
+        if ( empty( $settings['enabled'] ) ) {
+            $message = '<section class="notice notice-warning inline" dir="rtl"><h2>الاتصالات غير مفعلة</h2><p>يلزم تفعيل «الاتصالات الداخلية» من إعدادات OLAMA Communications في هذا الموقع.</p>';
+            if ( is_admin() && current_user_can( 'olama_messages_configure' ) ) {
+                $message .= '<p><a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=olama-communications-settings' ) ) . '">فتح إعدادات الاتصالات</a></p>';
+            }
+            return $message . '</section>';
+        }
+        if ( ! empty( $settings['pilot_users'] ) && ! in_array( get_current_user_id(), array_map( 'intval', $settings['pilot_users'] ), true ) ) {
+            return '<p dir="rtl">الاتصالات مفعلة لمجموعة التجربة، وهذا الحساب غير مضاف إليها.</p>';
+        }
         $actors = ( new Olama_Messages_Actor_Resolver() )->available( get_current_user_id(), true );
         if ( ! $actors ) {
             $message = '<section class="notice notice-warning inline" dir="rtl"><h2>يلزم ربط هوية OLAMA</h2><p>الحساب مخول للاتصالات، لكن OLAMA Users لم يعد هوية أسرة أو موظف نشطة وموثقة له.</p>';

@@ -148,6 +148,11 @@ try {
     update_option( 'olama_msg_communications', array( 'enabled' => true, 'pilot_users' => array( $employee_user ) ) );
     comm_assert( 'outside_pilot' === $resolver->reachability( $family['actor_key'] ), 'pilot rollout scopes fanout as well as frontend access' );
     comm_assert( is_wp_error( $controller->permission( $request ) ), 'pilot exclusion denies REST access' );
+    update_option( 'olama_msg_communications', array( 'enabled' => false ) );
+    wp_set_current_user( $employee_user );
+    comm_assert( false !== strpos( ( new Olama_Messages_Communications() )->app(), 'الاتصالات غير مفعلة' ), 'disabled-site UI identifies the global feature flag' );
+    update_option( 'olama_msg_communications', array( 'enabled' => true, 'pilot_users' => array( $family_user ) ) );
+    comm_assert( false !== strpos( ( new Olama_Messages_Communications() )->app(), 'غير مضاف إليها' ), 'pilot-excluded UI identifies the account rollout gate' );
     update_option( 'olama_msg_communications', array( 'enabled' => true ) );
     $unmapped_user = wp_insert_user( array( 'user_login' => 'comm_unmapped', 'user_pass' => wp_generate_password( 30 ), 'role' => 'subscriber' ) );
     get_user_by( 'id', $unmapped_user )->add_cap( 'olama_messages_use' );

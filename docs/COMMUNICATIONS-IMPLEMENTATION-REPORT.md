@@ -18,7 +18,7 @@ Communications schema **4** has 28 dedicated tables. The 4.0.1 upgrade repairs a
 
 ## Verification
 
-**243 Communications integration assertions passed:** A 57, B 93, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
+**245 Communications integration assertions passed:** A 59, B 93, C/D 93, using real WordPress/wpdb/dbDelta/InnoDB and fictional upstream records. Coverage includes private original/thumbnail authorization, scanner failure policy, interrupted staging cleanup, attachment-only retry hashes, removed membership, SLA cycles, child isolation, stale/future revision pairs, minor edits, source outages/removals, cancellation, unknown completion providers, 150-target paged fanout and target pagination.
 
 Existing PHP phone normalization, Google Contacts export, renewal audience (22 cases), SMS segmentation and JavaScript SMS segmentation checks passed. PHP and JavaScript syntax checks passed. Browser fixtures verified Arabic calendar/list/detail, staff controls hidden for family actors, separate sibling acknowledgement/RSVP, action completion/history, School field locking, quiet preferences, literal script text and 390px layout without horizontal overflow. Private preview generation used real GD.
 
@@ -87,7 +87,7 @@ Rollout option `olama_msg_communications` contains `enabled` (internal official 
 
 ## Verification
 
-- **56 integration assertions passed** at the Release A checkpoint using real WordPress database/migration/REST APIs and MariaDB 10.6.23, with fictional Core/Users records in disposable databases. The current integrated A suite has 57 assertions, including the unmapped-identity UI diagnostic.
+- **56 integration assertions passed** at the Release A checkpoint using real WordPress database/migration/REST APIs and MariaDB 10.6.23, with fictional Core/Users records in disposable databases. The current integrated A suite has 59 assertions, including explicit disabled, pilot-excluded and unmapped-identity UI diagnostics.
 - Existing PHP phone normalization, phone-book export, SMS segmentation and renewal-audience suites passed (renewal suite: 22 cases).
 - Existing JavaScript SMS segmentation suite passed.
 - PHP lint passed for all changed/new PHP files; JavaScript syntax check and Git whitespace checks passed.
