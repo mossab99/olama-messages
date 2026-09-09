@@ -34,7 +34,8 @@ class Olama_Messages_Chat_Rest_Controller {
             $data = (array) $request->get_json_params(); $post = 'POST' === $request->get_method(); $before = absint( $request['before'] );
             if ( false !== strpos( $route, '/chat/contacts' ) ) {
                 $provider = new Olama_Messages_Relationship_Provider();
-                $result = 'assigned_families' === $request['directory'] ? $provider->teacher_contacts( $actor, (string) $request['after_student'], absint( $request['after_assignment'] ) ) : $provider->contacts( $actor, (string) $request['student_uid'], absint( $request['after'] ) );
+                $query = mb_substr( sanitize_text_field( (string) $request['query'] ), 0, 100 );
+                $result = 'assigned_families' === $request['directory'] ? $provider->teacher_contacts( $actor, (string) $request['after_student'], absint( $request['after_assignment'] ), $query ) : $provider->contacts( $actor, (string) $request['student_uid'], absint( $request['after'] ), $query );
             }
             elseif ( false !== strpos( $route, '/chat/feed' ) ) { $result = $chat->feed( $actor, absint( $request['after'] ) ); }
             elseif ( false !== strpos( $route, '/chat/inboxes' ) ) { $result = $post ? $inboxes->save( $actor, $data, $id ) : $inboxes->listing( $actor, '1' === $request['admin'], $before ); }

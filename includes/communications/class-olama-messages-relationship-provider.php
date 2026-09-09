@@ -142,9 +142,26 @@ class Olama_Messages_Relationship_Provider {
         } catch ( Throwable $error ) { return $this->result( 'unknown', array( 'provider' => array( 'status' => 'unknown', 'source' => 'core_school', 'checked_at_utc' => gmdate( 'Y-m-d H:i:s' ) ) ) ); }
     }
 
-    public function contacts( array $actor, $student_uid = '', $after = 0 ) {
+    private function contact_query( $query ) {
+        if ( null === $query ) { return null; }
+        $query = trim( wp_strip_all_tags( (string) $query ) );
+        return mb_strlen( $query ) < 2 ? '' : mb_substr( $query, 0, 100 );
+    }
+
+    private function contact_matches( $query, array $values ) {
+        if ( null === $query ) { return true; }
+        if ( '' === $query ) { return false; }
+        foreach ( $values as $value ) {
+            if ( '' !== trim( (string) $value ) && false !== mb_stripos( (string) $value, $query ) ) { return true; }
+        }
+        return false;
+    }
+
+    public function contacts( array $actor, $student_uid = '', $after = 0, $query = null ) {
+        $query = $this->contact_query( $query );
         $items = array(); $children = array(); $cursor = 0;
         if ( 'administrator' === $actor['actor_type'] ) {
+            if ( '' === $query ) { return array( 'children' => array(), 'contacts' => array(), 'next' => 0 ); }
             global $wpdb;
             $resolver = new Olama_Messages_Actor_Resolver();
             $ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->users} WHERE ID>%d ORDER BY ID LIMIT 100", $after ) );
@@ -152,7 +169,10 @@ class Olama_Messages_Relationship_Provider {
                 $cursor = (int) $id;
                 foreach ( $resolver->available( (int) $id ) as $candidate ) {
                     if ( $candidate['actor_key'] === $actor['actor_key'] || 'eligible_account' !== $resolver->reachability( $candidate['actor_key'] ) ) { continue; }
-                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'context' => array( 'scope' => 'administrator' ) );
+                    $candidate_employee = 'employee' === $candidate['actor_type'] ? $this->employee( $candidate['actor_key'] ) : null;
+                    $type = 'family' === $candidate['actor_type'] ? 'أسرة' : ( $candidate_employee && $candidate_employee['teacher'] ? 'معلم' : ( 'employee' === $candidate['actor_type'] ? 'موظف' : 'مدير نظام' ) );
+                    if ( ! $this->contact_matches( $query, array( $candidate['display_name'], $type ) ) ) { continue; }
+                    $items[] = array( 'actor_key' => $candidate['actor_key'], 'name' => $candidate['display_name'], 'context' => array( 'scope' => 'administrator', 'contact_type' => $type ) );
                     if ( 30 === count( $items ) ) { break 2; }
                 }
             }
@@ -162,15 +182,17 @@ class Olama_Messages_Relationship_Provider {
             foreach ( $this->children( $actor['actor_key'] ) as $student ) {
                 $children[] = array( 'student_uid' => $student['student_uid'], 'name' => $student['student_name'] ?? $student['student_uid'], 'class_name' => $student['class_name'] ?? '', 'section_name' => $student['section_name'] ?? '' );
                 if ( (string) $student['student_uid'] !== (string) $student_uid ) { continue; }
+                if ( '' === $query ) { continue; }
                 foreach ( $this->assignments( $student, $academic ) as $assignment ) {
                     $key = 'employee:' . $assignment['teacher_employee_id'];
                     $context = array( 'student_uid' => $student_uid, 'assignment_id' => (int) $assignment['id'] );
                     $relation = $this->relationship( $actor['actor_key'], $key, $context );
                     $employee = $this->employee( $key );
-                    if ( 'valid' === $relation['relationship_status'] && $employee ) { $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => $relation['context'] ); }
+                    if ( 'valid' === $relation['relationship_status'] && $employee && $this->contact_matches( $query, array( $employee['name'], $relation['context']['subject_name'] ?? '', $relation['context']['student_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'معلم' ) ) ) { $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => array_merge( $relation['context'], array( 'contact_type' => 'معلم' ) ) ); }
                 }
             }
         } elseif ( $this->employee( $actor['actor_key'] ) ) {
+            if ( '' === $query ) { return array( 'children' => array(), 'contacts' => array(), 'next' => 0 ); }
             global $wpdb;
             // Keyset scan, bounded; filtered contacts never expose a family directory.
             $ids = $wpdb->get_col( $wpdb->prepare( "SELECT ID FROM {$wpdb->users} WHERE ID>%d ORDER BY ID LIMIT 100", $after ) );
@@ -181,7 +203,9 @@ class Olama_Messages_Relationship_Provider {
                 $key = 'employee:' . $identity['oracle_identifier'];
                 if ( 'valid' !== $this->relationship( $actor['actor_key'], $key )['relationship_status'] ) { continue; }
                 $employee = $this->employee( $key );
-                $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => array( 'scope' => 'staff' ) );
+                $type = $employee['teacher'] ? 'معلم' : 'موظف';
+                if ( ! $this->contact_matches( $query, array( $employee['name'], $type ) ) ) { continue; }
+                $items[] = array( 'actor_key' => $key, 'name' => $employee['name'], 'context' => array( 'scope' => 'staff', 'contact_type' => $type ) );
                 if ( count( $items ) === 30 ) { break; }
             }
             if ( count( $ids ) < 100 && count( $items ) < 30 ) { $cursor = 0; }
@@ -189,10 +213,12 @@ class Olama_Messages_Relationship_Provider {
         return array( 'children' => $children, 'contacts' => $items, 'next' => $cursor );
     }
 
-    public function teacher_contacts( array $actor, $after_student = '', $after_assignment = 0 ) {
+    public function teacher_contacts( array $actor, $after_student = '', $after_assignment = 0, $query = null ) {
         global $wpdb;
+        $query = $this->contact_query( $query );
         $teacher = 'employee' === $actor['actor_type'] ? $this->employee( $actor['actor_key'] ) : null;
         if ( ! $teacher || ! $teacher['teacher'] || 'valid' !== $teacher['source']['status'] ) { throw new RuntimeException( 'دليل الأسر متاح للمعلم المعين فقط.' ); }
+        if ( '' === $query ) { return array( 'contacts' => array(), 'next' => null ); }
         $academic = $this->academic(); $sy = olama_core()->read_models()->table( 'student_years' );
         // Only the teacher's current mapped sections enter this bounded keyset scan.
         $rows = $wpdb->get_results( $wpdb->prepare( "SELECT sy.student_uid,sy.family_uid,a.id AS assignment_id
@@ -210,7 +236,9 @@ class Olama_Messages_Relationship_Provider {
             if ( 'valid' !== $relation['relationship_status'] ) { continue; }
             $family = olama_core()->families()->get_by_uid( $row['family_uid'] );
             if ( ! $family || empty( $family['is_active'] ) ) { continue; }
-            $items[] = array( 'actor_key' => $key, 'name' => $relation['context']['student_name'] . ' · ' . ( $family['sponsor_full_name'] ?? 'الأسرة' ), 'context' => $relation['context'] );
+            $name = $relation['context']['student_name'] . ' · ' . ( $family['sponsor_full_name'] ?? 'الأسرة' );
+            if ( ! $this->contact_matches( $query, array( $name, $relation['context']['subject_name'] ?? '', $relation['context']['class_name'] ?? '', $relation['context']['section_name'] ?? '', 'أسرة' ) ) ) { continue; }
+            $items[] = array( 'actor_key' => $key, 'name' => $name, 'context' => array_merge( $relation['context'], array( 'contact_type' => 'أسرة طالب' ) ) );
         }
         $last = $rows ? end( $rows ) : null;
         return array( 'contacts' => $items, 'next' => count( $rows ) === 30 ? array( 'student_uid' => $last['student_uid'], 'assignment_id' => (int) $last['assignment_id'] ) : null );

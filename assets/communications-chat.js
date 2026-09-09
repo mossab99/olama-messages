@@ -95,22 +95,61 @@
         root._chatRefresh = load; await load();
     }
 
-    async function contacts(root, studentUid = '', after = 0) {
+    function recipientSearch(parent, options) {
+        const search = el('section', undefined, 'olama-comm-recipient-search');
+        const form = el('form');
+        const label = el('label', options.label || 'ابحث باسم المستلم');
+        const input = el('input'); input.type = 'search'; input.placeholder = options.placeholder || 'اكتب حرفين على الأقل'; input.autocomplete = 'off'; input.minLength = 2; input.setAttribute('aria-label', options.label || 'ابحث باسم المستلم');
+        const submit = el('button', 'بحث', 'olama-comm-primary'); submit.type = 'submit'; label.append(input); form.append(label, submit); search.append(form);
+        const status = el('p', 'اكتب حرفين على الأقل للبحث.', 'olama-comm-search-status'); status.setAttribute('aria-live', 'polite');
+        const results = el('div', undefined, 'olama-comm-contact-list'); search.append(status, results); parent.append(search);
+        let timer = 0, request = 0;
+        const detail = contact => [contact.context?.contact_type, contact.context?.student_name, contact.context?.subject_name, contact.context?.class_name, contact.context?.section_name].filter(Boolean).join(' · ') || options.fallback || 'مراسلة مباشرة';
+        const run = async (cursor = null, append = false) => {
+            const query = input.value.trim();
+            if (query.length < 2) { request++; submit.disabled = false; results.replaceChildren(); status.textContent = 'اكتب حرفين على الأقل للبحث.'; return; }
+            const token = ++request; submit.disabled = true; status.textContent = 'جارٍ البحث…'; if (!append) results.replaceChildren();
+            try {
+                const data = await api(options.path(query, cursor));
+                if (token !== request || !search.isConnected) return;
+                if (!append) results.replaceChildren(); else results.querySelector('[data-more-results]')?.remove();
+                data.contacts.forEach(contact => {
+                    const item = button('', () => options.open(contact), 'olama-comm-contact');
+                    const copy = el('span'); copy.append(el('strong', contact.name), el('small', detail(contact)));
+                    item.append(copy, el('b', options.action || 'اختيار')); results.append(item);
+                });
+                const total = results.querySelectorAll('.olama-comm-contact').length;
+                status.textContent = total ? 'تم العثور على ' + total + ' نتيجة متاحة.' : (options.empty || 'لا توجد نتائج مطابقة ضمن الجهات المتاحة لك.');
+                if (data.next) { const more = button('عرض المزيد من النتائج', () => run(data.next, true)); more.dataset.moreResults = ''; results.append(more); }
+            } catch (error) { if (token === request && error.name !== 'AbortError') { status.textContent = 'تعذر إكمال البحث.'; toast(error.message); } }
+            finally { if (token === request) submit.disabled = false; }
+        };
+        form.addEventListener('submit', event => { event.preventDefault(); clearTimeout(timer); run(); });
+        input.addEventListener('input', () => { clearTimeout(timer); if (input.value.trim().length < 2) { run(); return; } timer = setTimeout(() => run(), 320); });
+        input.focus();
+    }
+
+    async function contacts(root, studentUid = '') {
         activateNav(root, 'conversations');
         const view = newView(root);
-        const data = await api('chat/contacts?student_uid=' + encodeURIComponent(studentUid) + '&after=' + after);
+        const data = await api('chat/contacts?student_uid=' + encodeURIComponent(studentUid) + '&query=');
         if (root._view !== view) return;
         const content = body(root), heading = pageHeader('بدء محادثة', 'اختر الجهة المتاحة لك وفق علاقتك الحالية في المدرسة.', 'المحادثات'); heading.actions.append(button('عودة للمحادثات', () => threads(root))); content.replaceChildren(heading.header);
-        if (root._me?.is_teacher) content.append(button('أسر طلابي', () => teacherFamilies(root)));
+        if (root._me?.is_teacher) heading.actions.prepend(button('البحث في أسر طلابي', () => teacherFamilies(root)));
         if (h.actor().actor_type === 'family') {
-            content.append(el('p', 'اختر الابن لعرض معلميه المعينين حالياً.'));
-            data.children.forEach(child => content.append(button(child.name + ' · ' + child.class_name + ' ' + child.section_name, () => contacts(root, child.student_uid))));
+            const picker = el('section', undefined, 'olama-comm-child-picker'); picker.append(el('h4', 'اختر الطالب أولاً'), el('p', 'يعرض البحث المعلمين المعينين لهذا الطالب فقط.'));
+            const choices = el('div');
+            data.children.forEach(child => { const item = button(child.name + ' · ' + child.class_name + ' ' + child.section_name, () => contacts(root, child.student_uid)); if (String(child.student_uid) === String(studentUid)) item.classList.add('is-selected'); choices.append(item); });
+            picker.append(choices); content.append(picker);
+            if (!studentUid) return;
         }
-        data.contacts.forEach(contact => {
-            const card = el('article', undefined, 'olama-comm-card'); card.append(el('h3', contact.name), el('p', contact.context.subject_name || 'مراسلة موظف'));
-            card.append(button('بدء المراسلة', async () => { const result = await api('chat/threads', {kind: 'direct', target: contact.actor_key, context: contact.context}); await conversation(root, result.id); })); content.append(card);
+        recipientSearch(content, {
+            label: h.actor().actor_type === 'family' ? 'ابحث باسم المعلم أو المادة' : 'ابحث باسم المستلم أو نوعه',
+            placeholder: h.actor().actor_type === 'family' ? 'مثال: العلوم أو اسم المعلم' : 'مثال: أحمد أو معلم',
+            path: (query, after) => 'chat/contacts?student_uid=' + encodeURIComponent(studentUid) + '&query=' + encodeURIComponent(query) + '&after=' + Number(after || 0),
+            open: async contact => { const result = await api('chat/threads', {kind: 'direct', target: contact.actor_key, context: contact.context}); await conversation(root, result.id); },
+            action: 'اختيار المستلم'
         });
-        if (data.next) content.append(button('المزيد من جهات الاتصال', () => contacts(root, studentUid, data.next)));
     }
     async function serviceInboxes(root, before = 0) {
         activateNav(root, 'requests');
@@ -132,17 +171,14 @@
         const uuid = crypto.randomUUID();
         submit(form, 'إنشاء الطلب', async () => { const row = await api('chat/threads', {kind: 'service', inbox_id: inbox.id, subject: subject.value, client_thread_id: uuid}); await conversation(root, row.id); }); content.append(form);
     }
-    async function teacherFamilies(root, cursor = null) {
-        const view = newView(root);
-        const data = await api('chat/contacts?directory=assigned_families&after_student=' + encodeURIComponent(cursor?.student_uid || '') + '&after_assignment=' + (cursor?.assignment_id || 0));
-        if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(button('جهات الاتصال', () => contacts(root)), el('h3', 'أسر طلابي'));
-        if (!data.contacts.length) content.append(el('p', 'لا توجد أسر متاحة في هذه الصفحة. يتطلب التواصل تعييناً ومزامنة صالحين.'));
-        data.contacts.forEach(contact => {
-            const card = el('article', undefined, 'olama-comm-card'); card.append(el('h4', contact.name), el('p', contact.context.class_name + ' · ' + contact.context.section_name + ' · ' + contact.context.subject_name));
-            card.append(button('مراسلة الأسرة', async () => { const result = await api('chat/threads', {kind: 'direct', target: contact.actor_key, context: contact.context}); await conversation(root, result.id); })); content.append(card);
+    async function teacherFamilies(root) {
+        activateNav(root, 'conversations'); const view = newView(root), content = body(root), heading = pageHeader('البحث في أسر طلابي', 'تظهر فقط الأسر المرتبطة بتعييناتك الدراسية الحالية.', 'المحادثات'); heading.actions.append(button('عودة لجهات الاتصال', () => contacts(root))); content.replaceChildren(heading.header);
+        recipientSearch(content, {
+            label: 'ابحث باسم الطالب أو الأسرة أو المادة', placeholder: 'مثال: أحمد أو العلوم', fallback: 'أسرة طالب', action: 'اختيار الأسرة',
+            path: (query, cursor) => 'chat/contacts?directory=assigned_families&query=' + encodeURIComponent(query) + '&after_student=' + encodeURIComponent(cursor?.student_uid || '') + '&after_assignment=' + Number(cursor?.assignment_id || 0),
+            empty: 'لا توجد أسرة مطابقة ضمن تعييناتك الحالية.',
+            open: async contact => { const result = await api('chat/threads', {kind: 'direct', target: contact.actor_key, context: contact.context}); await conversation(root, result.id); }
         });
-        if (data.next) content.append(button('المزيد من أسر طلابي', () => teacherFamilies(root, data.next)));
     }
     function submit(form, label, action) {
         const control = el('button', label, 'olama-comm-primary'); control.type = 'submit'; form.append(control);

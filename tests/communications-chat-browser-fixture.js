@@ -10,7 +10,18 @@ module.exports = (url, actor, data, method, receipts) => {
     const path = url.pathname.replace('/api/chat/', '');
     const title = staff ? 'متابعة بين الموظفين' : 'أحمد · العلوم · 2026-2027';
     if (path === 'feed') return {changes: [{id: seq, thread_id: 1, kind: 'message'}], cursor: seq, unread: prefs.read_cursor ? 0 : 1};
-    if (path === 'contacts') return {children: staff ? [] : [{student_uid: 'fixture-child', name: 'أحمد', class_name: 'الرابع', section_name: 'ب'}], contacts: staff || url.searchParams.get('student_uid') ? [{actor_key: 'employee:fixture-teacher', name: 'معلم العلوم', context: {student_uid: 'fixture-child', assignment_id: 1, subject_name: 'العلوم'}}] : [], next: 0};
+    if (path === 'contacts') {
+        const query = (url.searchParams.get('query') || '').trim();
+        const directory = url.searchParams.get('directory');
+        const children = staff ? [] : [{student_uid: 'fixture-child', name: 'أحمد', class_name: 'الرابع', section_name: 'ب'}];
+        let contacts = directory === 'assigned_families'
+            ? [{actor_key: 'family:test-family', name: 'أحمد · أسرة أحمد وسارة', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', class_name: 'الرابع', section_name: 'ب', subject_name: 'العلوم', contact_type: 'أسرة طالب'}}]
+            : staff
+                ? [{actor_key: 'employee:fixture-teacher', name: 'أحمد محمد', context: {scope: 'staff', contact_type: 'معلم'}}, {actor_key: 'employee:fixture-colleague', name: 'سارة محمود', context: {scope: 'staff', contact_type: 'موظف'}}]
+                : url.searchParams.get('student_uid') ? [{actor_key: 'employee:fixture-teacher', name: 'معلم العلوم', context: {student_uid: 'fixture-child', assignment_id: 1, student_name: 'أحمد', subject_name: 'العلوم', contact_type: 'معلم'}}] : [];
+        contacts = query.length < 2 ? [] : contacts.filter(contact => [contact.name, ...Object.values(contact.context)].some(value => String(value).includes(query)));
+        return {children, contacts, next: 0};
+    }
     if (path === 'inboxes') return {items: [{id: 1, name: 'شؤون الطلبة', can_contact: true, active: 1, allow_family: 1, allow_teacher: 1, history_policy: 'active_and_recent', recent_days: 30, members: [{actor_key: 'employee:E-42', active: 1, is_manager: 1}]}], next: 0};
     if (path === 'threads' && method === 'POST') return {id: data.kind === 'service' ? 2 : 1};
     if (path === 'threads') return Number(url.searchParams.get('archived') || 0) === Number(prefs.archived) ? [{id: 1, kind: 'direct', subject: title, status: 'open', unread_count: prefs.read_cursor ? 0 : 1, ...prefs}] : [];

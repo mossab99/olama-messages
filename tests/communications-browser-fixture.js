@@ -28,7 +28,7 @@ http.createServer(async (req, res) => {
     const title = employee ? 'اجتماع الهيئة التدريسية — خاص بالموظفين' : 'اليوم المفتوح لأولياء الأمور';
     const notice = {id: employee ? 1 : 2, rendered_title: title, rendered_body: 'يسر إدارة المدرسة دعوتكم للمشاركة.\nالموعد: الخميس الساعة العاشرة صباحاً.\nملف للاختبار: Schedule-2026.pdf\n<script>window.fixtureInjected=true</script>', purpose: 'acknowledgement', sent_at_utc: '2026-09-08 09:00:00', campaign_status: 'published', acknowledged_at_utc: receipts.some(r => r.kind === 'acknowledge' && r.actor === actor.actor_key) ? '2026-09-08 10:00:00' : null};
     let result = [];
-    if (url.pathname === '/api/me') result = {actor, available_actors: actors, can_manage: employee, chat: true, can_moderate: employee, can_manage_inboxes: employee, can_audit: employee};
+    if (url.pathname === '/api/me') result = {actor, available_actors: actors, can_manage: employee, chat: true, is_teacher: employee, can_moderate: employee, can_manage_inboxes: employee, can_audit: employee};
     else if (url.pathname === '/api/notices') result = [notice];
     else if (url.pathname.startsWith('/api/notices/')) result = notice;
     else if (url.pathname === '/api/notifications') result = Number(url.searchParams.get('after')) > 0 ? [] : [{id: notice.id, delivery_id: notice.id, rendered_title: title, created_at_utc: notice.sent_at_utc}];
