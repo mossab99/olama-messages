@@ -3,7 +3,7 @@
     'use strict';
     const h = window.OlamaChatHost;
     if (!h) return;
-    const {api, el, button, date, field, choice, body, newView, toast, config} = h;
+    const {api, el, button, date, field, choice, body, newView, pageHeader, addNav, activateNav, toast, config} = h;
     const labels = {in_progress: 'قيد التنفيذ', open: 'مفتوح', resolved: 'تم الحل', reviewed: 'تمت المراجعة', actioned: 'تم اتخاذ إجراء', dismissed: 'مغلق دون إجراء'};
     const draftPrefix = 'olama-chat-draft:' + config.userId + ':';
     let cursor = 0, initialized = false;
@@ -38,7 +38,7 @@
             }
         }
     }
-    window.OlamaChatClient = {open: conversation, async poll() {
+    window.OlamaChatClient = {open: conversation, threads, requests: serviceInboxes, async poll() {
         const data = await api('chat/feed?after=' + cursor); cursor = data.cursor;
         const key = h.scope() + ':chat-toast'; let shown = 0;
         try { shown = Number(localStorage.getItem(key) || 0); } catch (_) { /* Optional coordination. */ }
@@ -58,17 +58,25 @@
 
     function attach({root, nav, me}) {
         if (!me.chat || nav.querySelector('[data-chat-nav]')) return;
-        const chat = button('المحادثات', () => threads(root)); chat.dataset.chatNav = ''; nav.append(chat);
-        if (me.can_manage_inboxes) nav.append(button('إدارة صناديق الخدمة', () => manageInboxes(root)));
-        if (me.can_moderate) nav.append(button('البلاغات', () => reports(root)), button('القيود', () => restrictions(root)));
-        if (me.can_audit) nav.append(button('تدقيق محادثة', () => auditForm(root)));
+        addNav(root, nav, 'المحادثات', () => threads(root), {id: 'conversations', chat: true});
+        addNav(root, nav, 'طلبات الخدمة', () => serviceInboxes(root), {id: 'requests'});
+        if (me.can_manage_inboxes) addNav(root, nav, 'صناديق الخدمة', () => manageInboxes(root), {group: 'admin', id: 'inboxes'});
+        if (me.can_moderate) {
+            addNav(root, nav, 'البلاغات', () => reports(root), {group: 'admin', id: 'reports'});
+            addNav(root, nav, 'القيود', () => restrictions(root), {group: 'admin', id: 'restrictions'});
+        }
+        if (me.can_audit) addNav(root, nav, 'تدقيق المحادثات', () => auditForm(root), {group: 'admin', id: 'audit'});
     }
     document.addEventListener('olama-chat-mount', event => attach(event.detail));
     h.roots.forEach(root => { if (root._me) attach({root, nav: root.querySelector('nav'), me: root._me}); });
 
     async function threads(root, before = '', archived = false, inboxId = 0) {
+        activateNav(root, inboxId ? 'requests' : 'conversations');
         const view = newView(root);
-        const content = body(root); content.replaceChildren(el('h3', 'المحادثات'), button('محادثة جديدة', () => contacts(root)), button(archived ? 'الوارد' : 'الأرشيف', () => threads(root, 0, !archived, inboxId)));
+        const content = body(root), heading = pageHeader(inboxId ? 'طلبات الصندوق' : 'المحادثات', inboxId ? 'تابع الطلبات المفتوحة وسجل المعالجة.' : 'المراسلات المباشرة مع الأسر والمعلمين والموظفين.', 'مساحة العمل');
+        if (!inboxId) heading.actions.append(button('محادثة جديدة', () => contacts(root), 'olama-comm-primary'));
+        heading.actions.append(button(archived ? 'الوارد' : 'الأرشيف', () => threads(root, 0, !archived, inboxId)));
+        content.replaceChildren(heading.header);
         const list = el('div'); content.append(list);
         const load = async () => {
             const rows = await api('chat/threads?cursor=' + encodeURIComponent(before || '') + '&archived=' + Number(archived) + '&inbox_id=' + inboxId);
@@ -87,11 +95,12 @@
         root._chatRefresh = load; await load();
     }
 
-    async function contacts(root, studentUid = '', after = 0, inboxBefore = 0) {
+    async function contacts(root, studentUid = '', after = 0) {
+        activateNav(root, 'conversations');
         const view = newView(root);
-        const [data, inboxes] = await Promise.all([api('chat/contacts?student_uid=' + encodeURIComponent(studentUid) + '&after=' + after), api('chat/inboxes?before=' + inboxBefore)]);
+        const data = await api('chat/contacts?student_uid=' + encodeURIComponent(studentUid) + '&after=' + after);
         if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(button('عودة للمحادثات', () => threads(root)), el('h3', 'بدء محادثة'));
+        const content = body(root), heading = pageHeader('بدء محادثة', 'اختر الجهة المتاحة لك وفق علاقتك الحالية في المدرسة.', 'المحادثات'); heading.actions.append(button('عودة للمحادثات', () => threads(root))); content.replaceChildren(heading.header);
         if (root._me?.is_teacher) content.append(button('أسر طلابي', () => teacherFamilies(root)));
         if (h.actor().actor_type === 'family') {
             content.append(el('p', 'اختر الابن لعرض معلميه المعينين حالياً.'));
@@ -101,17 +110,24 @@
             const card = el('article', undefined, 'olama-comm-card'); card.append(el('h3', contact.name), el('p', contact.context.subject_name || 'مراسلة موظف'));
             card.append(button('بدء المراسلة', async () => { const result = await api('chat/threads', {kind: 'direct', target: contact.actor_key, context: contact.context}); await conversation(root, result.id); })); content.append(card);
         });
-        if (data.next) content.append(button('المزيد من جهات الاتصال', () => contacts(root, studentUid, data.next, inboxBefore)));
-        content.append(el('h3', 'صناديق الخدمة'));
+        if (data.next) content.append(button('المزيد من جهات الاتصال', () => contacts(root, studentUid, data.next)));
+    }
+    async function serviceInboxes(root, before = 0) {
+        activateNav(root, 'requests');
+        const view = newView(root), inboxes = await api('chat/inboxes?before=' + before); if (root._view !== view) return;
+        const content = body(root), heading = pageHeader('طلبات الخدمة', 'تواصل مع أقسام المدرسة وتابع حالة طلباتك.', 'مساحة العمل'); content.replaceChildren(heading.header);
+        if (!inboxes.items.length) content.append(el('p', 'لا توجد صناديق خدمة متاحة لهذا الحساب.', 'olama-comm-empty'));
+        const grid = el('div', undefined, 'olama-comm-service-grid'); content.append(grid);
         inboxes.items.forEach(inbox => {
             const card = el('article', undefined, 'olama-comm-card'); card.append(el('h4', inbox.name));
-            if (inbox.can_contact) card.append(button('طلب جديد', () => requestForm(root, inbox)));
-            card.append(button('عرض الطلبات المتاحة', () => threads(root, 0, false, inbox.id))); content.append(card);
+            const actions = el('div', undefined, 'olama-comm-card-actions');
+            if (inbox.can_contact) actions.append(button('طلب جديد', () => requestForm(root, inbox), 'olama-comm-primary'));
+            actions.append(button('عرض الطلبات', () => threads(root, 0, false, inbox.id))); card.append(actions); grid.append(card);
         });
-        if (inboxes.next) content.append(button('صناديق أخرى', () => contacts(root, studentUid, after, inboxes.next)));
+        if (inboxes.next) content.append(button('صناديق أخرى', () => serviceInboxes(root, inboxes.next)));
     }
     function requestForm(root, inbox) {
-        newView(root); const content = body(root); content.replaceChildren(el('h3', 'طلب إلى ' + inbox.name));
+        activateNav(root, 'requests'); newView(root); const content = body(root), heading = pageHeader('طلب إلى ' + inbox.name, 'اكتب عنواناً واضحاً، ثم أضف التفاصيل في المحادثة.', 'طلبات الخدمة'); heading.actions.append(button('عودة للصناديق', () => serviceInboxes(root))); content.replaceChildren(heading.header);
         const form = el('form', undefined, 'olama-comm-form'); const subject = field(form, 'subject', 'عنوان الطلب'); subject.maxLength = 190; subject.required = true;
         const uuid = crypto.randomUUID();
         submit(form, 'إنشاء الطلب', async () => { const row = await api('chat/threads', {kind: 'service', inbox_id: inbox.id, subject: subject.value, client_thread_id: uuid}); await conversation(root, row.id); }); content.append(form);
@@ -138,7 +154,7 @@
     }
 
     async function conversation(root, id, before = 0) {
-        const view = newView(root), content = body(root); content.replaceChildren(button('عودة للمحادثات', () => threads(root)));
+        activateNav(root, 'conversations'); const view = newView(root), content = body(root); content.replaceChildren(button('عودة للمحادثات', () => threads(root)));
         const header = el('div'), messages = el('div', undefined, 'olama-chat-messages'), controls = el('div'), status = el('p');
         messages.setAttribute('aria-label', 'رسائل المحادثة'); content.append(header, controls, messages, status);
         const form = el('form', undefined, 'olama-comm-form olama-chat-compose'); const mode = el('p'); form.append(mode);
@@ -215,7 +231,7 @@
     }
 
     async function manageInboxes(root, before = 0) {
-        const view = newView(root), data = await api('chat/inboxes?admin=1&before=' + before); if (root._view !== view) return;
+        activateNav(root, 'inboxes'); const view = newView(root), data = await api('chat/inboxes?admin=1&before=' + before); if (root._view !== view) return;
         const content = body(root); content.replaceChildren(el('h3', 'صناديق الخدمة'), button('إنشاء صندوق', () => inboxForm(root)));
         data.items.forEach(row => { const card = el('article', undefined, 'olama-comm-card'); card.append(el('h3', row.name), el('p', row.history_policy + ' · ' + row.recent_days + ' يوم'), button('الإعدادات والأعضاء', () => inboxForm(root, row))); content.append(card); });
         if (data.next) content.append(button('المزيد', () => manageInboxes(root, data.next)));
@@ -238,7 +254,7 @@
     }
 
     async function reports(root, before = 0, status = 'open') {
-        const view = newView(root), rows = await api('chat/reports?before=' + before + '&status=' + status); if (root._view !== view) return;
+        activateNav(root, 'reports'); const view = newView(root), rows = await api('chat/reports?before=' + before + '&status=' + status); if (root._view !== view) return;
         const content = body(root); content.replaceChildren(el('h3', 'بلاغات المراسلات'));
         Object.entries(labels).filter(([key]) => key !== 'resolved').forEach(([key, label]) => content.append(button(label, () => reports(root, 0, key))));
         rows.forEach(row => {
@@ -269,7 +285,7 @@
         if (data.next) content.append(button('سياق أقدم', () => privileged(root, {...request, before: data.next})));
     }
     async function restrictions(root, before = 0) {
-        const view = newView(root), rows = await api('chat/restrictions?before=' + before); if (root._view !== view) return;
+        activateNav(root, 'restrictions'); const view = newView(root), rows = await api('chat/restrictions?before=' + before); if (root._view !== view) return;
         const content = body(root); content.replaceChildren(el('h3', 'قيود المراسلات'), button('إضافة قيد', () => restrictionForm(root)));
         rows.forEach(row => {
             const card = el('article', undefined, 'olama-comm-card'); card.append(el('h4', row.actor_key + ' · ' + row.restriction_type), el('p', row.scope_type + ' ' + row.scope_key + ' · ' + row.target_key), el('p', row.private_reason), el('p', date(row.starts_at_utc) + ' — ' + (row.ends_at_utc ? date(row.ends_at_utc) : 'دون نهاية محددة')));

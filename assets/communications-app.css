@@ -1,31 +1,328 @@
-.olama-communications{--comm-ink:#173c39;--comm-accent:#08796d;max-width:1040px;margin:24px auto;color:var(--comm-ink);font:16px/1.8 Tahoma,Arial,sans-serif;text-align:right;background:#f5f8f6;padding:24px;border:1px solid #dce7e1;border-radius:18px;box-sizing:border-box}
-.olama-communications *{box-sizing:border-box}.olama-comm-head{background:#143f39;color:#fff;padding:28px;border-radius:12px;margin-bottom:20px}.olama-comm-head small{letter-spacing:2px;color:#c6e3d7}.olama-comm-head h2{font-size:30px;color:#fff;margin:8px 0}.olama-comm-head p{color:#e0eee7}.olama-comm-head select{max-width:100%}
-.olama-communications button,.olama-comm-toast button,.olama-comm-dialog>button{font:inherit;cursor:pointer;background:#fff;color:#17443d;border:1px solid #b4cfc3;border-radius:8px;padding:9px 16px;min-height:44px;margin:4px}.olama-communications button:hover{background:#e6f1eb}.olama-communications button:disabled{opacity:.55;cursor:wait}.olama-communications .olama-comm-primary{background:#08796d;color:#fff;border-color:#08796d}.olama-communications :focus-visible,.olama-comm-launcher:focus-visible{outline:3px solid #e1a94a;outline-offset:3px}
-.olama-comm-nav{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid #d5e3dc;padding-bottom:15px;margin-bottom:20px}.olama-comm-card{padding:20px;margin:16px 0;border:1px solid #dbe6df;border-radius:12px;background:#fff}.olama-comm-card h3{margin:6px 0}.olama-comm-card small{color:#526960}.olama-comm-message{white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext;background:#fff;padding:24px;border-radius:12px;font-size:18px}.olama-comm-form{display:grid;gap:16px}.olama-comm-form label,.olama-comm-card label{display:grid;gap:6px;font-weight:600}.olama-communications input,.olama-communications textarea,.olama-communications select{font:inherit;border:1px solid #afc6ba;border-radius:8px;padding:10px;background:white;color:#173c39;min-height:44px}.olama-comm-form textarea{min-height:140px;resize:vertical}.olama-comm-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}.olama-comm-metrics p{padding:14px;background:#e4efe8;border-radius:8px;margin:0}.olama-comm-empty{padding:40px;text-align:center}.olama-comm-diagnostics{direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;background:#fff;padding:20px}
-.olama-comm-launcher{position:fixed;bottom:20px;left:20px;z-index:9990;background:#143f39;color:#fff;border:1px solid #b5d6c9;border-radius:28px;padding:13px 20px;font:14px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 5px 24px #173c3926;min-height:44px}.olama-comm-toasts{position:fixed;bottom:85px;left:20px;z-index:100000;max-width:360px;font:15px/1.6 Tahoma,Arial,sans-serif}.olama-comm-toast{background:#fff;border:1px solid #aacabb;border-radius:12px;padding:16px;margin-top:8px;box-shadow:0 8px 35px #143f3926}.olama-comm-toast span{display:block}.olama-comm-dialog{width:min(1000px,94vw);max-height:90vh;overflow:auto;border:1px solid #b5cfc2;border-radius:18px;padding:15px}.olama-comm-dialog::backdrop{background:#102d32b3}.olama-comm-dialog .olama-communications{margin:0}
-@media(max-width:600px){.olama-communications{margin:10px 0;padding:12px;border-radius:10px}.olama-comm-head{padding:18px}.olama-comm-head h2{font-size:24px}.olama-comm-card{padding:14px}.olama-comm-launcher{left:10px;bottom:12px;max-width:94vw}.olama-comm-dialog{padding:8px}.olama-comm-toasts{left:10px;right:10px;max-width:none}}
-.olama-chat-messages { display: flex; flex-direction: column; gap: 12px; margin-block: 20px; }
-.olama-chat-bubble { align-self: flex-start; width: min(85%, 620px); padding: 14px 18px; border: 1px solid #d8e5e0; border-radius: 18px 18px 4px 18px; background: #fff; overflow-wrap: anywhere; }
-.olama-chat-bubble.olama-chat-own { align-self: flex-end; background: #e9f4ed; border-radius: 18px 18px 18px 4px; }
-.olama-chat-bubble blockquote { border-inline-start: 3px solid #609080; margin: 8px 0; padding: 8px; white-space: pre-wrap; color: #425951; }
-.olama-chat-bubble button { font-size: 12px; padding: 5px 9px; margin: 5px 2px 0; }
-.olama-chat-compose { border-top: 1px solid #d8e5e0; padding-block-start: 14px; }
-.olama-chat-compose textarea { min-height: 100px; }
-.olama-chat-bubble .olama-comm-message { background: transparent; padding: 0; }
-[data-olama-communications] { padding-bottom: 84px; }
-.olama-communications .olama-comm-primary:hover { background: #065f56; }
-@media (max-width: 520px) { .olama-chat-bubble { width: 93%; box-sizing: border-box; padding: 12px; } }
-.olama-suite-critical { border:2px solid #a62b25; background:#fff1ed; color:#6a1714; border-radius:12px; padding:16px; margin-block:14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-.olama-suite-critical strong { flex-basis:100%; }
-.olama-suite-picker { border:1px dashed #b6c8c2; border-radius:10px; padding:14px; display:grid; gap:12px; min-width:0; }
-.olama-suite-picker input { max-width:100%; }
-.olama-suite-files { display:grid; gap:8px; }
-.olama-suite-files .olama-comm-card { overflow-wrap:anywhere; }
-.olama-suite-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; margin-block:16px; }
-.olama-suite-calendar > strong { text-align:center; font-size:12px; padding-block:8px; }
-.olama-suite-day { min-height:108px; border:1px solid #dce6e0; border-radius:8px; background:#fff; padding:7px; display:flex; flex-direction:column; align-items:stretch; gap:6px; }
-.olama-suite-day > strong { font-size:12px; color:#53665e; }
-.olama-suite-day .olama-suite-calendar-event { margin:0; padding:5px; font-size:12px; text-align:start; white-space:normal; overflow-wrap:anywhere; border-color:#b7d4c5; background:#eaf5ef; color:#174833; }
-.olama-communications table { border-collapse:collapse; width:100%; margin-block:12px; }
-.olama-communications th,.olama-communications td { padding:9px; border-bottom:1px solid #e1e8e3; text-align:start; overflow-wrap:anywhere; }
-@media(max-width:600px) { .olama-suite-calendar { gap:2px; } .olama-suite-day { padding:3px; min-height:76px; border-radius:4px; } .olama-suite-calendar > strong { font-size:9px; } .olama-suite-day .olama-suite-calendar-event { font-size:10px; padding:2px; } .olama-suite-critical { padding:10px; } }
+.olama-communications {
+    --comm-ink: #18332f;
+    --comm-muted: #667a74;
+    --comm-accent: #08796d;
+    --comm-accent-dark: #06655c;
+    --comm-accent-soft: #e8f4f0;
+    --comm-page: #f4f7f6;
+    --comm-surface: #fff;
+    --comm-line: #dce7e3;
+    --comm-danger: #a62b25;
+    --comm-danger-soft: #fff1ed;
+    max-width: 1240px;
+    min-height: 680px;
+    margin: 20px auto;
+    overflow: hidden;
+    color: var(--comm-ink);
+    background: var(--comm-page);
+    border: 1px solid var(--comm-line);
+    border-radius: 16px;
+    box-shadow: 0 16px 42px rgba(23, 60, 57, .08);
+    font: 15px/1.7 Tahoma, Arial, sans-serif;
+    text-align: right;
+    box-sizing: border-box;
+}
+
+.olama-communications * { box-sizing: border-box; }
+.olama-communications h2,
+.olama-communications h3,
+.olama-communications h4,
+.olama-communications p { margin-top: 0; }
+
+.olama-comm-head {
+    min-height: 76px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 13px 22px;
+    color: var(--comm-ink);
+    background: var(--comm-surface);
+    border-bottom: 1px solid var(--comm-line);
+}
+
+.olama-comm-brand { display: flex; align-items: center; gap: 12px; }
+.olama-comm-brand h2 { margin: 0; color: var(--comm-ink); font-size: 18px; font-weight: 700; }
+.olama-comm-brand small { display: block; color: var(--comm-muted); font-size: 10px; letter-spacing: 1.3px; direction: ltr; text-align: right; }
+.olama-comm-logo {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    color: #fff;
+    background: var(--comm-accent);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.olama-comm-context { display: flex; align-items: center; gap: 9px; color: var(--comm-muted); font-size: 12px; font-weight: 400; }
+.olama-comm-context select { min-width: 220px; }
+
+.olama-comm-shell { display: grid; grid-template-columns: 214px minmax(0, 1fr); min-height: 602px; }
+.olama-comm-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 18px 12px;
+    background: var(--comm-surface);
+    border-left: 1px solid var(--comm-line);
+}
+
+.olama-comm-nav-group > small { display: block; margin: 0 11px 6px; color: var(--comm-muted); font-size: 11px; font-weight: 700; }
+.olama-comm-nav-group > div { display: grid; gap: 4px; }
+.olama-communications .olama-comm-nav-item {
+    width: 100%;
+    min-height: 42px;
+    margin: 0;
+    padding: 8px 12px;
+    color: var(--comm-muted);
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    text-align: right;
+    font-weight: 400;
+}
+
+.olama-communications .olama-comm-nav-item:hover,
+.olama-communications .olama-comm-nav-item.is-active {
+    color: var(--comm-accent-dark);
+    background: var(--comm-accent-soft);
+}
+
+.olama-communications .olama-comm-nav-item.is-active { box-shadow: inset -3px 0 var(--comm-accent); font-weight: 700; }
+.olama-comm-main { min-width: 0; padding: 28px; }
+[data-comm-body] { max-width: 980px; margin: 0 auto; }
+
+.olama-comm-page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.olama-comm-page-head h3 { margin: 2px 0 3px; color: var(--comm-ink); font-size: 25px; line-height: 1.35; }
+.olama-comm-page-head p { margin: 0; color: var(--comm-muted); font-size: 13px; }
+.olama-comm-eyebrow { color: var(--comm-accent); font-size: 11px; font-weight: 700; }
+.olama-comm-page-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+
+.olama-communications button,
+.olama-comm-toast button,
+.olama-comm-dialog > button {
+    min-height: 40px;
+    margin: 3px;
+    padding: 8px 14px;
+    color: var(--comm-ink);
+    background: var(--comm-surface);
+    border: 1px solid #b8cbc4;
+    border-radius: 8px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.olama-communications button:hover { background: var(--comm-accent-soft); border-color: #8eb8ab; }
+.olama-communications button:disabled { opacity: .55; cursor: wait; }
+.olama-communications .olama-comm-primary { color: #fff; background: var(--comm-accent); border-color: var(--comm-accent); }
+.olama-communications .olama-comm-primary:hover { color: #fff; background: var(--comm-accent-dark); border-color: var(--comm-accent-dark); }
+.olama-communications :focus-visible,
+.olama-comm-launcher:focus-visible { outline: 3px solid #e1a94a; outline-offset: 2px; }
+
+.olama-comm-home-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.olama-communications .olama-comm-home-metric {
+    min-height: 116px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    margin: 0;
+    padding: 18px;
+    text-align: right;
+    background: var(--comm-surface);
+    border-color: var(--comm-line);
+    border-radius: 13px;
+}
+
+.olama-comm-home-metric small { color: var(--comm-muted); font-size: 12px; }
+.olama-comm-home-metric strong { color: var(--comm-accent-dark); font-size: 28px; line-height: 1.25; }
+.olama-comm-home-metric span { color: var(--comm-muted); font-size: 11px; }
+.olama-comm-home-section { padding: 20px; background: var(--comm-surface); border: 1px solid var(--comm-line); border-radius: 13px; }
+.olama-comm-home-section h4 { margin-bottom: 2px; font-size: 17px; }
+.olama-comm-home-section > p { margin-bottom: 16px; color: var(--comm-muted); font-size: 12px; }
+.olama-comm-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.olama-communications .olama-comm-shortcut {
+    min-height: 74px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    margin: 0;
+    padding: 12px 15px;
+    text-align: right;
+    border-color: var(--comm-line);
+}
+
+.olama-comm-shortcut strong { font-size: 14px; }
+.olama-comm-shortcut span { color: var(--comm-muted); font-size: 11px; }
+
+.olama-comm-card {
+    padding: 18px;
+    margin: 12px 0;
+    overflow-wrap: anywhere;
+    background: var(--comm-surface);
+    border: 1px solid var(--comm-line);
+    border-radius: 12px;
+}
+
+.olama-comm-card h3,
+.olama-comm-card h4 { margin: 0 0 4px; color: var(--comm-ink); }
+.olama-comm-card p { margin: 5px 0; color: #40554f; }
+.olama-comm-card small { color: var(--comm-muted); }
+.olama-comm-card-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.olama-comm-service-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.olama-comm-service-grid .olama-comm-card { margin: 0; }
+
+.olama-comm-message {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    unicode-bidi: plaintext;
+    padding: 20px;
+    color: var(--comm-ink);
+    background: var(--comm-surface);
+    border: 1px solid var(--comm-line);
+    border-radius: 11px;
+    font-size: 16px;
+}
+
+.olama-comm-form {
+    max-width: 820px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    padding: 20px;
+    background: var(--comm-surface);
+    border: 1px solid var(--comm-line);
+    border-radius: 12px;
+}
+
+.olama-comm-form > h3,
+.olama-comm-form > h4,
+.olama-comm-form > p,
+.olama-comm-form > fieldset,
+.olama-comm-form > label:has(textarea) { grid-column: 1 / -1; }
+.olama-comm-form > button { width: fit-content; }
+.olama-comm-form label,
+.olama-comm-card label { display: grid; align-content: start; gap: 6px; color: #304842; font-weight: 700; }
+
+.olama-communications input,
+.olama-communications textarea,
+.olama-communications select {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 11px;
+    color: var(--comm-ink);
+    background: var(--comm-surface);
+    border: 1px solid #afc6ba;
+    border-radius: 8px;
+    font: inherit;
+}
+
+.olama-comm-form textarea { min-height: 130px; resize: vertical; }
+.olama-comm-empty { padding: 56px 20px; color: var(--comm-muted); text-align: center; background: var(--comm-surface); border: 1px dashed #bfd0ca; border-radius: 12px; }
+.olama-comm-diagnostics { direction: ltr; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; padding: 18px; background: #f8faf9; border: 1px solid var(--comm-line); border-radius: 10px; font-size: 12px; }
+.olama-comm-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.olama-comm-metrics p { margin: 0; padding: 13px; background: var(--comm-accent-soft); border-radius: 8px; }
+.olama-comm-toolbar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; padding: 7px; background: var(--comm-surface); border: 1px solid var(--comm-line); border-radius: 10px; }
+
+.olama-comm-launcher {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9990;
+    min-height: 44px;
+    padding: 11px 18px;
+    color: #fff;
+    background: #143f39;
+    border: 1px solid #b5d6c9;
+    border-radius: 24px;
+    box-shadow: 0 7px 26px rgba(23, 60, 57, .2);
+    font: 14px Tahoma, Arial, sans-serif;
+    cursor: pointer;
+}
+
+.olama-comm-toasts { position: fixed; bottom: 78px; left: 20px; z-index: 100000; max-width: 360px; font: 14px/1.6 Tahoma, Arial, sans-serif; }
+.olama-comm-toast { padding: 15px; margin-top: 8px; color: var(--comm-ink, #18332f); background: #fff; border: 1px solid #aacabb; border-radius: 11px; box-shadow: 0 8px 35px rgba(20, 63, 57, .15); }
+.olama-comm-toast span { display: block; }
+.olama-comm-dialog { width: min(1180px, 95vw); max-height: 92vh; overflow: auto; padding: 10px; border: 1px solid #b5cfc2; border-radius: 16px; }
+.olama-comm-dialog::backdrop { background: rgba(16, 45, 50, .7); }
+.olama-comm-dialog .olama-communications { margin: 5px 0 0; }
+
+.olama-chat-messages { display: flex; flex-direction: column; gap: 10px; margin-block: 18px; padding: 18px; background: #eef3f1; border-radius: 12px; }
+.olama-chat-bubble { align-self: flex-start; width: min(78%, 620px); padding: 12px 15px; overflow-wrap: anywhere; background: var(--comm-surface); border: 1px solid var(--comm-line); border-radius: 16px 16px 4px 16px; }
+.olama-chat-bubble.olama-chat-own { align-self: flex-end; background: var(--comm-accent-soft); border-radius: 16px 16px 16px 4px; }
+.olama-chat-bubble blockquote { margin: 8px 0; padding: 7px 10px; color: #425951; white-space: pre-wrap; border-inline-start: 3px solid #609080; }
+.olama-chat-bubble button { min-height: 32px; padding: 4px 8px; margin: 5px 2px 0; font-size: 11px; }
+.olama-chat-compose { position: sticky; bottom: 0; padding-block-start: 12px; border-top: 1px solid var(--comm-line); }
+.olama-chat-compose textarea { min-height: 96px; }
+.olama-chat-bubble .olama-comm-message { padding: 0; background: transparent; border: 0; font-size: 14px; }
+
+.olama-suite-critical { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding: 13px 18px; color: #6a1714; background: var(--comm-danger-soft); border-bottom: 1px solid #eab4ae; }
+.olama-suite-critical strong { flex-basis: 100%; }
+.olama-suite-picker { min-width: 0; display: grid; gap: 10px; padding: 14px; border: 1px dashed #b6c8c2; border-radius: 10px; }
+.olama-suite-picker input { max-width: 100%; }
+.olama-suite-files { display: grid; gap: 7px; }
+.olama-suite-files .olama-comm-card { margin: 0; }
+.olama-suite-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-block: 14px; }
+.olama-suite-calendar > strong { padding-block: 7px; color: var(--comm-muted); text-align: center; font-size: 11px; }
+.olama-suite-day { min-height: 108px; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 7px; background: var(--comm-surface); border: 1px solid var(--comm-line); border-radius: 8px; }
+.olama-suite-day > strong { color: var(--comm-muted); font-size: 11px; }
+.olama-suite-day .olama-suite-calendar-event { margin: 0; padding: 5px; color: #174833; background: var(--comm-accent-soft); border-color: #b7d4c5; white-space: normal; overflow-wrap: anywhere; text-align: start; font-size: 11px; }
+.olama-communications table { width: 100%; margin-block: 10px; border-collapse: collapse; }
+.olama-communications th,
+.olama-communications td { padding: 9px; text-align: start; overflow-wrap: anywhere; border-bottom: 1px solid #e1e8e3; }
+
+@media (max-width: 920px) {
+    .olama-comm-shell { grid-template-columns: 184px minmax(0, 1fr); }
+    .olama-comm-main { padding: 22px; }
+    .olama-comm-home-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+    .olama-communications { min-height: 0; margin: 10px 0; border-radius: 12px; }
+    .olama-comm-head { align-items: flex-start; flex-direction: column; padding: 13px 16px; }
+    .olama-comm-context { width: 100%; }
+    .olama-comm-context select { min-width: 0; flex: 1; }
+    .olama-comm-shell { display: block; min-height: 0; }
+    .olama-comm-nav { display: flex; flex-direction: row; gap: 8px; overflow-x: auto; padding: 9px; border-left: 0; border-bottom: 1px solid var(--comm-line); }
+    .olama-comm-nav-group { flex: 0 0 auto; }
+    .olama-comm-nav-group > small { display: none; }
+    .olama-comm-nav-group > div { display: flex; gap: 4px; }
+    .olama-communications .olama-comm-nav-item { width: auto; white-space: nowrap; }
+    .olama-communications .olama-comm-nav-item.is-active { box-shadow: inset 0 -3px var(--comm-accent); }
+    .olama-comm-main { padding: 18px; }
+    .olama-comm-page-head { align-items: flex-start; flex-direction: column; }
+    .olama-comm-page-actions { justify-content: flex-start; }
+    .olama-comm-form { grid-template-columns: 1fr; padding: 16px; }
+    .olama-comm-form > * { grid-column: 1; }
+    .olama-comm-shortcuts { grid-template-columns: 1fr; }
+    .olama-suite-calendar { gap: 2px; }
+    .olama-suite-day { min-height: 78px; padding: 3px; border-radius: 4px; }
+    .olama-suite-calendar > strong { padding-inline: 1px; font-size: 9px; }
+    .olama-suite-day .olama-suite-calendar-event { padding: 2px; font-size: 9px; }
+}
+
+@media (max-width: 520px) {
+    .olama-comm-brand h2 { font-size: 16px; }
+    .olama-comm-context > span { display: none; }
+    .olama-comm-main { padding: 14px 11px; }
+    .olama-comm-page-head h3 { font-size: 22px; }
+    .olama-comm-home-metrics { grid-template-columns: 1fr; }
+    .olama-communications .olama-comm-home-metric { min-height: 94px; }
+    .olama-chat-bubble { width: 94%; padding: 11px; }
+    .olama-chat-messages { padding: 10px; }
+    .olama-comm-launcher { left: 10px; bottom: 12px; max-width: calc(100vw - 20px); }
+    .olama-comm-dialog { padding: 6px; }
+    .olama-comm-toasts { right: 10px; left: 10px; max-width: none; }
+    .olama-suite-critical { padding: 10px; }
+}

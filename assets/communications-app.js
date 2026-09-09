@@ -27,6 +27,41 @@
         });
         return node;
     }
+    function pageHeader(title, description, eyebrow) {
+        const header = el('header', undefined, 'olama-comm-page-head');
+        const copy = el('div');
+        if (eyebrow) copy.append(el('small', eyebrow, 'olama-comm-eyebrow'));
+        copy.append(el('h3', title));
+        if (description) copy.append(el('p', description));
+        header.append(copy);
+        const actions = el('div', undefined, 'olama-comm-page-actions');
+        header.append(actions);
+        return {header, actions};
+    }
+    function activateNav(root, id) {
+        root.querySelectorAll('[data-comm-nav-item]').forEach(item => {
+            const active = item.dataset.commNavItem === id;
+            item.classList.toggle('is-active', active);
+            if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
+        });
+    }
+    function addNav(root, nav, label, action, options = {}) {
+        const group = options.group === 'admin' ? 'admin' : 'workspace';
+        const target = nav.querySelector('[data-comm-nav-' + group + ']') || nav;
+        const item = button(label, async () => {
+            activateNav(root, options.id || label);
+            await action();
+        }, 'olama-comm-nav-item');
+        item.dataset.commNavItem = options.id || label;
+        if (options.chat) item.dataset.chatNav = '';
+        target.append(item);
+        if (group === 'admin') target.closest('.olama-comm-nav-group')?.removeAttribute('hidden');
+        return item;
+    }
+    function openNav(root, id) {
+        const item = root.querySelector('[data-comm-nav-item="' + id + '"]');
+        if (item) item.click();
+    }
     function date(value) {
         if (!value) return '—';
         const instant = new Date(value.replace(' ', 'T') + 'Z');
@@ -52,7 +87,7 @@
         item.append(button('إغلاق', () => item.remove())); toasts.append(item);
         setTimeout(() => item.remove(), 12000);
     }
-    const globalButton = button('إعلانات المدرسة', () => openPanel(), 'olama-comm-launcher'); document.body.append(globalButton);
+    const globalButton = button('اتصالات المدرسة', () => openPanel(), 'olama-comm-launcher'); document.body.append(globalButton);
     let dialog, dialogReady;
     async function openPanel(id) {
         if (!dialog) {
@@ -65,7 +100,8 @@
         if (id) await showNotice(dialog.querySelector('.olama-communications'), id);
     }
     function updateBadges() {
-        globalButton.textContent = 'الإعلانات (' + counts.notices + ') · الإشعارات (' + counts.notifications + ')' + (config.chat ? ' · الرسائل (' + (counts.chat || 0) + ')' : '');
+        const total = Number(counts.notices || 0) + Number(counts.notifications || 0) + Number(counts.chat || 0);
+        globalButton.textContent = total ? 'اتصالات المدرسة · ' + total + ' جديد' : 'اتصالات المدرسة';
     }
 
     function contextKey() { return 'olama-communications:' + config.userId + ':' + config.sessionScope + ':' + actor.actor_key; }
@@ -127,26 +163,73 @@
     }
     function body(root) { return root.querySelector('[data-comm-body]'); }
     function newView(root) { window.OlamaSuiteClient?.closePreviews(); root._chatRefresh = null; root._chatRead = null; root._view = (root._view || 0) + 1; return root._view; }
+    async function showHome(root) {
+        activateNav(root, 'home');
+        const view = newView(root), content = body(root);
+        const heading = pageHeader('مساحة الاتصالات', 'ابدأ من العمل الذي يحتاج إلى انتباهك، أو انتقل مباشرة إلى أحد الأقسام.', 'نظرة عامة');
+        content.replaceChildren(heading.header);
+        const loading = el('p', 'جارٍ تحميل الملخص…', 'olama-comm-empty'); content.append(loading);
+        const summary = await api('counts'); if (root._view !== view) return;
+        counts = {...counts, ...summary}; updateBadges(); loading.remove();
+        const metrics = el('div', undefined, 'olama-comm-home-metrics');
+        const metric = (label, value, detail, target) => {
+            const item = button('', () => openNav(root, target), 'olama-comm-home-metric');
+            item.append(el('small', label), el('strong', String(value || 0)), el('span', detail)); metrics.append(item);
+        };
+        metric('إعلانات غير مقروءة', summary.notices, 'الإعلانات الرسمية', 'notices');
+        if (config.chat) metric('محادثات غير مقروءة', counts.chat, 'المراسلات المباشرة', 'conversations');
+        metric('إشعارات جديدة', summary.notifications, 'التنبيهات والمتابعة', 'notifications');
+        content.append(metrics);
+        const shortcuts = el('section', undefined, 'olama-comm-home-section');
+        shortcuts.append(el('h4', 'الوصول السريع'), el('p', 'الوظائف الأكثر استخداماً مجمعة حسب نوع العمل.'));
+        const grid = el('div', undefined, 'olama-comm-shortcuts');
+        [
+            ['المحادثات', 'رسائل الأسر والمعلمين والموظفين', 'conversations'],
+            ['طلبات الخدمة', 'طلبات الأقسام وحالة الاستجابة', 'requests'],
+            ['التقويم', 'الفعاليات والتذكيرات والاستجابات', 'calendar'],
+            ['الإجراءات', 'المهام المطلوبة ومواعيدها', 'actions'],
+            ['مركز النشر', 'إنشاء الإعلانات ومتابعة وصولها', 'campaigns'],
+            ['التقارير', 'مؤشرات التشغيل والمهل', 'dashboard']
+        ].forEach(([title, detail, target]) => {
+            if (!root.querySelector('[data-comm-nav-item="' + target + '"]')) return;
+            const item = button('', () => openNav(root, target), 'olama-comm-shortcut');
+            item.append(el('strong', title), el('span', detail)); grid.append(item);
+        });
+        shortcuts.append(grid); content.append(shortcuts);
+    }
     async function mount(root) {
         roots.add(root); root._suite = null; root.replaceChildren();
-        const head = el('header', undefined, 'olama-comm-head'); head.append(el('small', 'OLAMA COMMUNICATIONS'), el('h2', 'اتصالات المدرسة'), el('p', 'الإعلانات والمراسلات الخاصة لحسابك في مكان واحد.'));
+        const head = el('header', undefined, 'olama-comm-head');
+        const brand = el('div', undefined, 'olama-comm-brand'); brand.append(el('span', 'O', 'olama-comm-logo'));
+        const brandCopy = el('div'); brandCopy.append(el('h2', 'اتصالات المدرسة'), el('small', 'OLAMA Communications')); brand.append(brandCopy); head.append(brand);
+        const context = el('label', undefined, 'olama-comm-context'); context.append(el('span', 'استخدام النظام بصفة'));
         const select = el('select'); select.setAttribute('aria-label', 'استخدام OLAMA كـ');
         config.actors.forEach(item => { const type = item.actor_type === 'family' ? 'حساب الأسرة — ' : item.actor_type === 'administrator' ? 'مدير النظام — ' : 'موظف — '; const option = el('option', type + item.display_name); option.value = item.actor_key; option.selected = item.actor_key === actor.actor_key; select.append(option); });
-        select.addEventListener('change', () => switchActor(select.value)); head.append(select); root.append(head);
+        select.addEventListener('change', () => switchActor(select.value)); context.append(select); head.append(context); root.append(head);
+        const shell = el('div', undefined, 'olama-comm-shell');
         const nav = el('nav', undefined, 'olama-comm-nav'); nav.setAttribute('aria-label', 'أقسام الاتصالات');
-        nav.append(button('الإعلانات', () => showNotices(root)), button('الإشعارات', () => showNotifications(root)));
-        root.append(nav); const content = el('div'); content.dataset.commBody = ''; root.append(content);
+        const workspaceGroup = el('section', undefined, 'olama-comm-nav-group'); workspaceGroup.append(el('small', 'مساحة العمل'));
+        const workspace = el('div'); workspace.dataset.commNavWorkspace = ''; workspaceGroup.append(workspace); nav.append(workspaceGroup);
+        const adminGroup = el('section', undefined, 'olama-comm-nav-group'); adminGroup.hidden = true; adminGroup.append(el('small', 'الإعدادات والإدارة'));
+        const admin = el('div'); admin.dataset.commNavAdmin = ''; adminGroup.append(admin); nav.append(adminGroup);
+        const main = el('main', undefined, 'olama-comm-main'); const content = el('div'); content.dataset.commBody = ''; main.append(content); shell.append(nav, main); root.append(shell);
+        addNav(root, nav, 'الرئيسية', () => showHome(root), {id: 'home'});
+        addNav(root, nav, 'الإعلانات', () => showNotices(root), {id: 'notices'});
+        addNav(root, nav, 'الإشعارات', () => showNotifications(root), {id: 'notifications'});
         try {
             const me = await api('me');
             root._me = me;
-            if (me.can_manage) nav.append(button('إدارة الإعلانات', () => showCampaigns(root)), button('صحة النظام', () => showHealth(root)));
+            if (me.can_manage) {
+                addNav(root, nav, 'مركز النشر', () => showCampaigns(root), {group: 'admin', id: 'campaigns'});
+                addNav(root, nav, 'صحة النظام', () => showHealth(root), {group: 'admin', id: 'health'});
+            }
             document.dispatchEvent(new CustomEvent('olama-chat-mount', {detail: {root, nav, me}}));
-            await showNotices(root);
+            await showHome(root);
         } catch (error) { if (error.name !== 'AbortError') content.replaceChildren(el('p', error.message)); }
     }
     async function showNotices(root, before = 0) {
-        const view = newView(root), rows = await api('notices?before=' + before); if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(el('h3', 'الإعلانات الرسمية'));
+        activateNav(root, 'notices'); const view = newView(root), rows = await api('notices?before=' + before); if (root._view !== view) return;
+        const content = body(root), heading = pageHeader('الإعلانات الرسمية', 'التعاميم والأخبار التي نشرتها إدارة المدرسة.', 'مساحة العمل'); content.replaceChildren(heading.header);
         if (!rows.length) content.append(el('p', 'لا توجد إعلانات متاحة.', 'olama-comm-empty'));
         rows.forEach(row => {
             const card = el('article', undefined, 'olama-comm-card'); card.append(el('small', 'إدارة المدرسة · ' + date(row.sent_at_utc)), el('h3', row.rendered_title));
@@ -159,7 +242,7 @@
         if (rows.length) await api('receipts', {kind: 'delivered', ids: rows.map(row => row.id)});
     }
     async function showNotice(root, id) {
-        const view = newView(root), row = await api('notices/' + Number(id)); if (root._view !== view) return;
+        activateNav(root, 'notices'); const view = newView(root), row = await api('notices/' + Number(id)); if (root._view !== view) return;
         const content = body(root); if (!content) return;
         content.replaceChildren(button('العودة للإعلانات', () => showNotices(root)), el('small', 'إدارة المدرسة · ' + date(row.sent_at_utc)), el('h3', row.rendered_title), el('p', row.rendered_body, 'olama-comm-message'));
         if (row.campaign_status !== 'published') content.append(el('p', statusNames[row.campaign_status] || row.campaign_status));
@@ -175,8 +258,8 @@
         else document.addEventListener('visibilitychange', () => read().catch(() => {}), {once: true});
     }
     async function showNotifications(root, before = 0, unseen = false) {
-        const view = newView(root), rows = await api('notifications?before=' + before + '&unseen=' + (unseen ? 1 : 0)); if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(el('h3', 'مركز الإشعارات'), button(unseen ? 'عرض الكل' : 'غير المشاهدة', () => showNotifications(root, 0, !unseen)));
+        activateNav(root, 'notifications'); const view = newView(root), rows = await api('notifications?before=' + before + '&unseen=' + (unseen ? 1 : 0)); if (root._view !== view) return;
+        const content = body(root), heading = pageHeader('مركز الإشعارات', 'التنبيهات الجديدة وما يحتاج إلى متابعة.', 'مساحة العمل'); heading.actions.append(button(unseen ? 'عرض الكل' : 'غير المشاهدة', () => showNotifications(root, 0, !unseen))); content.replaceChildren(heading.header);
         if (root._suite?.events || root._suite?.actions) content.append(button('تنبيهات الفعاليات والإجراءات والخدمة', () => window.OlamaSuiteClient.activity(root)));
         if (!rows.length) content.append(el('p', 'لا توجد إشعارات.'));
         rows.forEach(row => {
@@ -196,19 +279,27 @@
         Object.entries(values).forEach(([value, title]) => { const option = el('option', title); option.value = value; option.selected = value === selected; input.append(option); }); wrapper.append(input); form.append(wrapper); return input;
     }
     function editCampaign(root, existing) {
-        newView(root); const content = body(root); content.replaceChildren(el('h3', existing ? 'تعديل المسودة' : 'إعلان رسمي جديد'));
+        activateNav(root, 'campaigns'); newView(root); const content = body(root), heading = pageHeader(existing ? 'تعديل المسودة' : 'إعلان رسمي جديد', 'اكتب المحتوى وحدد الجمهور، ثم احفظه للمراجعة قبل النشر.', 'مركز النشر'); heading.actions.append(button('عودة لمركز النشر', () => showCampaigns(root))); content.replaceChildren(heading.header);
         const spec = existing ? JSON.parse(existing.audience_json) : {};
         const form = el('form', undefined, 'olama-comm-form');
-        field(form, 'title', 'عنوان الإعلان', existing ? existing.title : '').maxLength = 190;
-        field(form, 'body', 'نص الإعلان — يمكن استخدام {recipient_name}', existing ? existing.message_body_draft : '', 'textarea').maxLength = 5000;
+        const title = field(form, 'title', 'عنوان الإعلان', existing ? existing.title : ''); title.maxLength = 190; title.required = true;
+        const message = field(form, 'body', 'نص الإعلان — يمكن استخدام {recipient_name}', existing ? existing.message_body_draft : '', 'textarea'); message.maxLength = 5000; message.required = true;
         const purposes = {information: 'للعلم', acknowledgement: 'يتطلب إقراراً بالاطلاع'}; if (root._suite?.actions) purposes.action_required = 'يتطلب إجراء';
         choice(form, 'purpose', 'الغرض', purposes, existing ? existing.purpose : 'information');
-        choice(form, 'type', 'الجمهور', {general: 'الأسر النشطة / صف أو شعبة', employees: 'جميع الموظفين النشطين', selected: 'هويات محددة', collection: 'جمهور المستحقات المالية', transportation: 'جمهور المواصلات', renewal_reminder: 'جمهور تذكير التجديد'}, spec.type || 'general');
-        field(form, 'study_year', 'السنة الدراسية (فارغ للسنة الحالية)', spec.study_year || '');
-        field(form, 'class_id', 'معرف الصف من Core — للجمهور العام فقط', spec.class_id || '');
-        field(form, 'section_id', 'معرف الشعبة من Core — للجمهور العام فقط', spec.section_id || '');
-        field(form, 'family_id', 'معرف الأسرة الخارجي — للجمهور العام فقط', spec.family_id || '');
-        field(form, 'actor_keys', 'هويات محددة: family:UID أو employee:ID، هوية في كل سطر', (spec.actor_keys || []).join('\n'), 'textarea');
+        const audienceType = choice(form, 'type', 'الجمهور', {general: 'الأسر النشطة / صف أو شعبة', employees: 'جميع الموظفين النشطين', selected: 'مستلمون محددون', collection: 'جمهور المستحقات المالية', transportation: 'جمهور المواصلات', renewal_reminder: 'جمهور تذكير التجديد'}, spec.type || 'general');
+        const studyYear = field(form, 'study_year', 'السنة الدراسية (فارغ للسنة الحالية)', spec.study_year || '');
+        const classId = field(form, 'class_id', 'الصف (اختياري)', spec.class_id || '');
+        const sectionId = field(form, 'section_id', 'الشعبة (اختياري)', spec.section_id || '');
+        const familyId = field(form, 'family_id', 'رقم الأسرة (اختياري)', spec.family_id || '');
+        const actorKeys = field(form, 'actor_keys', 'هويات المستلمين المحددين — هوية في كل سطر', (spec.actor_keys || []).join('\n'), 'textarea');
+        const audienceFields = [classId, sectionId, familyId];
+        const syncAudienceFields = () => {
+            const general = audienceType.value === 'general', selected = audienceType.value === 'selected';
+            audienceFields.forEach(input => { input.disabled = !general; input.parentElement.hidden = !general; });
+            actorKeys.disabled = !selected; actorKeys.parentElement.hidden = !selected;
+            studyYear.parentElement.hidden = selected; studyYear.disabled = selected;
+        };
+        audienceType.addEventListener('change', syncAudienceFields); syncAudienceFields();
         if (root._suite?.actions) { field(form, 'action_due_at_utc', 'مهلة الإجراء UTC', existing?.workflow_json ? (JSON.parse(existing.workflow_json).due_at_utc || '').replace(' ', 'T').slice(0,16) : '', 'datetime-local'); }
         const files = root._suite?.attachments ? window.OlamaSuiteClient.picker(form, 'campaign', existing?.id || 0, existing?.attachments || []) : null;
         const submit = el('button', 'حفظ المسودة', 'olama-comm-primary'); submit.type = 'submit'; form.append(submit);
@@ -216,20 +307,20 @@
             event.preventDefault(); submit.disabled = true;
             try {
                 const values = new FormData(form), audience = {type: values.get('type')};
-                ['study_year', 'class_id', 'section_id', 'family_id'].forEach(key => { if (values.get(key).trim()) audience[key] = values.get(key).trim(); });
+                ['study_year', 'class_id', 'section_id', 'family_id'].forEach(key => { const value = values.get(key); if (value && value.trim()) audience[key] = value.trim(); });
                 if (audience.type === 'selected') audience.actor_keys = values.get('actor_keys').split(/[\s,]+/).filter(Boolean);
                 const result = await api('campaigns' + (existing ? '/' + existing.id : ''), {title: values.get('title'), body: values.get('body'), purpose: values.get('purpose'), audience, ...(files ? {attachment_ids: files.ids()} : {}), action_due_at_utc: values.get('action_due_at_utc') ? values.get('action_due_at_utc').replace('T', ' ') + ':00' : null}); await showCampaign(root, result.id);
             } catch (error) { toast(error.message); } finally { submit.disabled = false; }
         }); content.append(form);
     }
     async function showCampaigns(root, before = 0) {
-        const view = newView(root), rows = await api('campaigns?before=' + before); if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(el('h3', 'الإعلانات الداخلية'), button('إعلان جديد', () => editCampaign(root), 'olama-comm-primary'));
+        activateNav(root, 'campaigns'); const view = newView(root), rows = await api('campaigns?before=' + before); if (root._view !== view) return;
+        const content = body(root), heading = pageHeader('مركز النشر', 'أنشئ الإعلان، حضّر جمهوره، ثم تابع النشر والوصول.', 'الإدارة'); heading.actions.append(button('إعلان جديد', () => editCampaign(root), 'olama-comm-primary')); content.replaceChildren(heading.header);
         rows.forEach(row => { const card = el('article', undefined, 'olama-comm-card'); card.append(el('h3', row.title), el('p', statusNames[row.status] || row.status), button('عرض ومتابعة', () => showCampaign(root, row.id))); content.append(card); });
         if (rows.length === 30) content.append(button('الأقدم', () => showCampaigns(root, rows[rows.length - 1].id)));
     }
     async function showCampaign(root, id) {
-        const view = newView(root), result = await api('campaigns/' + id); if (root._view !== view) return;
+        activateNav(root, 'campaigns'); const view = newView(root), result = await api('campaigns/' + id); if (root._view !== view) return;
         const row = result.campaign, stats = result.statistics, content = body(root);
         content.replaceChildren(el('h3', row.title), el('p', statusNames[row.status] || row.status), el('p', row.message_body_draft, 'olama-comm-message'));
         content.append(el('p', 'لقطة الجمهور: ' + (row.resolution_started_at_utc ? date(row.resolution_started_at_utc) + ' — ' + date(row.resolution_completed_at_utc) : 'لم يبدأ التحضير')));
@@ -252,12 +343,12 @@
         content.append(button('تحديث الحالة', () => showCampaign(root, id)));
     }
     async function showHealth(root) {
-        const view = newView(root), health = await api('health'); if (root._view !== view) return;
-        const content = body(root); content.replaceChildren(el('h3', 'صحة النظام'), el('p', 'آخر تشغيل للمعالج: ' + date(health.heartbeat_utc)), el('p', 'الهوية: حساب واحد موثّق؛ اختيار الهويات المتعددة ينتظر API معتمداً من OLAMA Users.'));
+        activateNav(root, 'health'); const view = newView(root), health = await api('health'); if (root._view !== view) return;
+        const content = body(root), heading = pageHeader('صحة النظام', 'حالة المعالجة والتكاملات وأخطاء التسليم.', 'الإدارة'); content.replaceChildren(heading.header, el('p', 'آخر تشغيل للمعالج: ' + date(health.heartbeat_utc)), el('p', 'الهوية: حساب واحد موثّق؛ اختيار الهويات المتعددة ينتظر API معتمداً من OLAMA Users.'));
         health.failed_jobs.forEach(job => { const card = el('article', undefined, 'olama-comm-card'); card.append(el('p', '#' + job.id + ' · ' + job.job_type + ' · ' + job.last_error), button('إعادة المحاولة', async () => { await api('jobs/' + job.id + '/retry', {}); await showHealth(root); })); content.append(card); });
         content.append(el('pre', JSON.stringify(health, null, 2), 'olama-comm-diagnostics'), button('تحديث', () => showHealth(root)));
     }
-    window.OlamaChatHost = {api, el, button, date, field, choice, body, newView, toast, config, roots, actor: () => actor, scope: contextKey, openPanel, panelRoot: () => dialog && dialog.querySelector('.olama-communications')};
+    window.OlamaChatHost = {api, el, button, date, field, choice, body, newView, pageHeader, addNav, activateNav, toast, config, roots, actor: () => actor, scope: contextKey, openPanel, panelRoot: () => dialog && dialog.querySelector('.olama-communications')};
     document.querySelectorAll('[data-olama-communications]').forEach(root => mount(root));
     document.addEventListener('click', event => { const link = event.target.closest('a'); if (link && /action=logout/.test(link.href)) { document.dispatchEvent(new Event('olama-context-cleared')); releaseCoordinator(); safeStore.remove(sessionStorage, actorStorage); } });
     window.addEventListener('pagehide', releaseCoordinator);
