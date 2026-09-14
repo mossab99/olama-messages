@@ -74,6 +74,11 @@ class Olama_Messages_Plugin {
 		}
 		$this->initialized = true;
 
+		// Olama Hub's base Messages card is intentionally static. Contribute
+		// newer Messages actions through its public card filter so they appear
+		// immediately and are also included in Hub registry refreshes.
+		add_filter( 'olama_dashboard_cards', array( $this, 'add_hub_reports_action' ) );
+
 		// Oracle credentials belong only to Olama Oracle Sync. Remove legacy
 		// Messages options after migrating to the Core service layer.
 		foreach ( array( 'olama_msg_oracle_base_url', 'olama_msg_oracle_api_key', 'olama_msg_api_timeout', 'olama_msg_financial_enabled' ) as $legacy_option ) {
@@ -112,6 +117,38 @@ class Olama_Messages_Plugin {
 		if ( ! wp_next_scheduled( 'olama_msg_dispatcher_maintenance' ) ) {
 			wp_schedule_event( time() + 60, 'olama_msg_every_minute', 'olama_msg_dispatcher_maintenance' );
 		}
+	}
+
+	/** Add the Reports action to the Olama Messages card without duplicates. */
+	public function add_hub_reports_action( $cards ) {
+		if ( ! is_array( $cards ) ) {
+			return $cards;
+		}
+
+		foreach ( $cards as $card_index => $card ) {
+			if ( 'olama-messages' !== ( $card['id'] ?? '' ) ) {
+				continue;
+			}
+
+			$cards[ $card_index ]['submenus'] = is_array( $card['submenus'] ?? null ) ? $card['submenus'] : array();
+			foreach ( $cards[ $card_index ]['submenus'] as $submenu ) {
+				if ( 'messages.reports' === ( $submenu['id'] ?? '' ) ) {
+					return $cards;
+				}
+			}
+
+			$cards[ $card_index ]['submenus'][] = array(
+				'id'         => 'messages.reports',
+				'label'      => __( 'Reports', 'olama-messages' ),
+				'icon'       => 'dashicons-chart-bar',
+				'url'        => admin_url( 'admin.php?page=olama-messages-reports' ),
+				'capability' => 'olama_access_messages',
+				'color'      => '#f59e0b',
+			);
+			break;
+		}
+
+		return $cards;
 	}
 
 	public function register_cron_schedules( $schedules ) {
