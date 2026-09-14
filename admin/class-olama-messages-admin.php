@@ -214,6 +214,16 @@ class Olama_Messages_Admin {
 			4
 		);
 
+		add_submenu_page(
+			'olama-messages',
+			__( 'Reports', 'olama-messages' ),
+			__( 'Reports', 'olama-messages' ),
+			'olama_access_messages',
+			'olama-messages-reports',
+			array( $this->modern, 'reports' ),
+			5
+		);
+
 		// Hidden page for Add/Edit Campaign
 		add_submenu_page(
 			null,
@@ -288,10 +298,11 @@ class Olama_Messages_Admin {
 			'olama-messages-campaigns' => 2,
 			'olama-messages-direct'    => 3,
 			'olama-messages-phone-book'=> 4,
-			'olama-messages-templates' => 5,
-			'olama-messages-delivery'  => 6,
-			'olama-messages-tokens'    => 7,
-			'olama-messages-settings'  => 8,
+			'olama-messages-reports'   => 5,
+			'olama-messages-templates' => 6,
+			'olama-messages-delivery'  => 7,
+			'olama-messages-tokens'    => 8,
+			'olama-messages-settings'  => 9,
 		);
 		usort(
 			$submenu['olama-messages'],

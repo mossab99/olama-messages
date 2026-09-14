@@ -81,6 +81,119 @@ class Olama_Messages_Core_Provider {
 	}
 
 	/**
+	 * Return the active grade/section pairs available for the section users report.
+	 *
+	 * Table names come from Olama Core's public, read-only reporting contract;
+	 * Messages never writes to these models.
+	 */
+	public function get_section_report_options( $study_year ) {
+		global $wpdb;
+
+		$tables = $this->get_report_tables();
+		$study_year = sanitize_text_field( (string) $study_year );
+		if ( ! $tables || '' === $study_year ) {
+			return array();
+		}
+
+		$student_years = esc_sql( $tables['student_years'] );
+		$students = esc_sql( $tables['students'] );
+		$families = esc_sql( $tables['families'] );
+		$sql = "SELECT DISTINCT sy.class_id, sy.class_name, sy.section_id, sy.section_name
+			FROM `{$student_years}` sy
+			INNER JOIN `{$students}` s ON s.student_uid = sy.student_uid
+			INNER JOIN `{$families}` f ON f.family_uid = sy.family_uid AND f.is_active = 1
+			WHERE sy.study_year = %s
+			  AND TRIM(COALESCE(sy.class_id, '')) <> ''
+			  AND TRIM(COALESCE(sy.section_id, '')) <> ''
+			  AND {$this->active_student_year_condition( 'sy' )}
+			ORDER BY sy.class_name, sy.section_name, sy.class_id, sy.section_id";
+		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $study_year ), ARRAY_A );
+
+		return array_map(
+			static function ( $row ) {
+				return array(
+					'class_id'     => (string) ( $row['class_id'] ?? '' ),
+					'class_name'   => (string) ( $row['class_name'] ?? '' ),
+					'section_id'   => (string) ( $row['section_id'] ?? '' ),
+					'section_name' => (string) ( $row['section_name'] ?? '' ),
+				);
+			},
+			(array) $rows
+		);
+	}
+
+	/** Return active students and their family contact for one exact section. */
+	public function get_section_users_report( $study_year, $class_id, $section_id ) {
+		global $wpdb;
+
+		$tables = $this->get_report_tables();
+		$study_year = sanitize_text_field( (string) $study_year );
+		$class_id = sanitize_text_field( (string) $class_id );
+		$section_id = sanitize_text_field( (string) $section_id );
+		if ( ! $tables || '' === $study_year || '' === $class_id || '' === $section_id ) {
+			return array();
+		}
+
+		$student_years = esc_sql( $tables['student_years'] );
+		$students = esc_sql( $tables['students'] );
+		$families = esc_sql( $tables['families'] );
+		$sql = "SELECT sy.student_uid, s.student_name, sy.oracle_family_id,
+				COALESCE(NULLIF(TRIM(f.mother_mobile), ''), NULLIF(TRIM(s.mother_mobile), ''), '') AS mother_mobile
+			FROM `{$student_years}` sy
+			INNER JOIN `{$students}` s ON s.student_uid = sy.student_uid
+			INNER JOIN `{$families}` f ON f.family_uid = sy.family_uid AND f.is_active = 1
+			WHERE sy.study_year = %s
+			  AND BINARY sy.class_id = BINARY %s
+			  AND BINARY sy.section_id = BINARY %s
+			  AND {$this->active_student_year_condition( 'sy' )}
+			ORDER BY s.student_name, CAST(sy.oracle_family_id AS UNSIGNED), sy.oracle_family_id, sy.student_uid";
+
+		return (array) $wpdb->get_results(
+			$wpdb->prepare( $sql, $study_year, $class_id, $section_id ),
+			ARRAY_A
+		);
+	}
+
+	/** Resolve only whitelisted Olama Core models required by this report. */
+	private function get_report_tables() {
+		if ( ! $this->is_core_available() || ! method_exists( olama_core(), 'read_models' ) ) {
+			return null;
+		}
+
+		$models = olama_core()->read_models();
+		if ( ! is_object( $models ) || ! method_exists( $models, 'table' ) ) {
+			return null;
+		}
+
+		try {
+			return array(
+				'families'      => $models->table( 'families' ),
+				'students'      => $models->table( 'students' ),
+				'student_years' => $models->table( 'student_years' ),
+			);
+		} catch ( Exception $exception ) {
+			return null;
+		}
+	}
+
+	/** Match Olama Core's active-enrollment semantics for reporting joins. */
+	private function active_student_year_condition( $alias ) {
+		$alias = preg_replace( '/[^a-zA-Z0-9_]/', '', (string) $alias );
+		$alias = $alias ?: 'sy';
+
+		return "(
+			LOWER(TRIM(COALESCE({$alias}.student_status, ''))) IN ('1', 'active', 'enabled', 'current')
+			OR LOWER(TRIM(COALESCE({$alias}.student_status_name, ''))) IN ('active', 'enabled', 'current')
+			OR TRIM(COALESCE({$alias}.student_status_name, '')) IN ('فعال', 'نشط', 'مستمر')
+			OR (
+				TRIM(COALESCE({$alias}.student_status, '')) = ''
+				AND TRIM(COALESCE({$alias}.student_status_name, '')) = ''
+				AND {$alias}.withdraw_date IS NULL
+			)
+		)";
+	}
+
+	/**
 	 * Return target-specific Olama Core synchronization health.
 	 */
 	public function get_sync_health( $target_type = 'general', $study_year = '' ) {

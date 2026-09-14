@@ -13,6 +13,14 @@
 (function ($) {
     'use strict';
 
+    // Reload report options when the study year changes. Grade/section pairs
+    // are year-specific, so carrying a pair from the previous year is unsafe.
+    $(document).on('change', '[data-report-study-year]', function () {
+        var $form = $(this).closest('form');
+        $form.find('[name="grade_section"]').val('');
+        if ($form.length) { $form[0].submit(); }
+    });
+
     // ── SMS Preview modal ──────────────────────────────────────────────────
     var $modal   = $('#olama-msg-sms-modal');
     var $text    = $('#olama-msg-sms-text');

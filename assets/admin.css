@@ -1130,6 +1130,18 @@
 .omsg-phonebook-table a[dir=ltr] { display:inline-block; direction:ltr; white-space:nowrap; font-weight:600; }
 .omsg-phonebook-table .omsg-address { min-width:180px; max-width:320px; white-space:normal; }
 .omsg-phonebook-panel .tablenav { padding:10px 14px; }
+.omsg-report-card .omsg-panel-head p { margin:4px 0 0; color:#667085; }
+.omsg-report-filter { align-items:flex-end; flex-wrap:wrap; margin-bottom:18px; }
+.omsg-report-filter label { display:flex; flex-direction:column; gap:5px; font-weight:600; }
+.omsg-report-filter select { min-width:220px; }
+.omsg-report-summary { display:flex; justify-content:space-between; align-items:center; gap:16px; margin:4px 0 12px; padding:10px 12px; border-radius:7px; background:#f6f7fa; }
+.omsg-report-summary span { color:#667085; }
+.omsg-report-table th:first-child,.omsg-report-table td:first-child { width:80px; text-align:center; }
+.omsg-report-table a[dir=ltr] { display:inline-block; direction:ltr; white-space:nowrap; font-weight:600; }
+@media (max-width:782px) {
+	.omsg-report-filter,.omsg-report-filter label,.omsg-report-filter select,.omsg-report-filter .button { width:100%; }
+	.omsg-report-summary { align-items:flex-start; flex-direction:column; }
+}
 .omsg-wizard-actions { display:flex; justify-content:space-between; border-top:1px solid #e7e9ee; padding-top:18px; }
 .omsg-prepare-form,.omsg-reset-form,.omsg-authorize-form { display:none; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px; }
 .omsg-wizard[data-step="4"] .omsg-prepare-form,.omsg-wizard[data-step="5"] .omsg-authorize-form { display:flex; }

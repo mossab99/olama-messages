@@ -567,4 +567,78 @@ class Olama_Messages_Modern_Admin {
 		</section></div>
 		<?php
 	}
+
+	public function reports() {
+		$years = $this->plugin->provider()->get_phone_book_study_years();
+		$selected_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? ( $years[0] ?? '' ) ) );
+		if ( ! in_array( $selected_year, $years, true ) && $years ) {
+			$selected_year = (string) $years[0];
+		}
+
+		$options = $this->plugin->provider()->get_section_report_options( $selected_year );
+		$option_map = array();
+		foreach ( $options as $option ) {
+			$key = substr( hash( 'sha256', $option['class_id'] . "\0" . $option['section_id'] ), 0, 20 );
+			$option_map[ $key ] = $option;
+		}
+
+		$selection = sanitize_key( wp_unslash( $_GET['grade_section'] ?? '' ) );
+		$selected = $option_map[ $selection ] ?? null;
+		$rows = $selected ? $this->plugin->provider()->get_section_users_report( $selected_year, $selected['class_id'], $selected['section_id'] ) : array();
+
+		$this->header( 'Reports', 'Operational reports built from synchronized Olama Core records.' );
+		?>
+		<?php if ( ! $years ) : ?>
+			<div class="notice notice-error inline"><p><?php esc_html_e( 'Olama Core is unavailable or has no synchronized student-year records.', 'olama-messages' ); ?></p></div>
+		<?php endif; ?>
+		<section class="omsg-panel omsg-report-card">
+			<div class="omsg-panel-head">
+				<div>
+					<h2><?php esc_html_e( 'Sections Users Names', 'olama-messages' ); ?></h2>
+					<p><?php esc_html_e( 'Select a grade and section to list its students and mother contact numbers.', 'olama-messages' ); ?></p>
+				</div>
+			</div>
+			<form class="omsg-filterbar omsg-report-filter" method="get">
+				<input type="hidden" name="page" value="olama-messages-reports">
+				<label><?php esc_html_e( 'Study year', 'olama-messages' ); ?>
+					<select name="study_year" data-report-study-year required>
+						<?php foreach ( $years as $year ) : ?><option value="<?php echo esc_attr( $year ); ?>" <?php selected( $selected_year, $year ); ?>><?php echo esc_html( $year ); ?></option><?php endforeach; ?>
+					</select>
+				</label>
+				<label><?php esc_html_e( 'Grade - section', 'olama-messages' ); ?>
+					<select name="grade_section">
+						<option value=""><?php esc_html_e( 'Select a grade - section', 'olama-messages' ); ?></option>
+						<?php foreach ( $option_map as $key => $option ) : ?>
+							<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $selection, $key ); ?>><?php echo esc_html( ( $option['class_name'] ?: $option['class_id'] ) . ' - ' . ( $option['section_name'] ?: $option['section_id'] ) ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<button class="button button-primary" type="submit" <?php disabled( empty( $option_map ) ); ?>><?php esc_html_e( 'Display report', 'olama-messages' ); ?></button>
+			</form>
+
+			<?php if ( $selection && ! $selected ) : ?>
+				<div class="notice notice-warning inline"><p><?php esc_html_e( 'The selected grade and section are not available for this study year.', 'olama-messages' ); ?></p></div>
+			<?php elseif ( $selected ) : ?>
+				<div class="omsg-report-summary">
+					<strong><?php echo esc_html( ( $selected['class_name'] ?: $selected['class_id'] ) . ' - ' . ( $selected['section_name'] ?: $selected['section_id'] ) ); ?></strong>
+					<span><?php echo esc_html( sprintf( _n( '%s student', '%s students', count( $rows ), 'olama-messages' ), number_format_i18n( count( $rows ) ) ) ); ?></span>
+				</div>
+				<div class="omsg-table-scroll"><table class="widefat striped omsg-table omsg-report-table">
+					<thead><tr><th><?php esc_html_e( 'Sequence', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Student name', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Family ID', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Mother mobile #', 'olama-messages' ); ?></th></tr></thead>
+					<tbody>
+					<?php if ( ! $rows ) : ?><tr><td colspan="4"><?php esc_html_e( 'No active students were found in this section.', 'olama-messages' ); ?></td></tr><?php endif; ?>
+					<?php foreach ( $rows as $index => $row ) : ?>
+						<tr>
+							<td><?php echo esc_html( number_format_i18n( $index + 1 ) ); ?></td>
+							<td dir="auto"><strong><?php echo esc_html( $row['student_name'] ?: '—' ); ?></strong></td>
+							<td dir="ltr"><?php echo esc_html( $row['oracle_family_id'] ?: '—' ); ?></td>
+							<td><?php $mobile = preg_replace( '/[^0-9+]/', '', (string) ( $row['mother_mobile'] ?? '' ) ); ?><?php if ( $mobile ) : ?><a href="tel:<?php echo esc_attr( $mobile ); ?>" dir="ltr"><?php echo esc_html( $row['mother_mobile'] ); ?></a><?php else : ?>—<?php endif; ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table></div>
+			<?php endif; ?>
+		</section></div>
+		<?php
+	}
 }
