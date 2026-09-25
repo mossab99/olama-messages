@@ -131,7 +131,7 @@
 		var totalPages = Math.max(1, Number(data.total_pages || 1));
 		return healthText +
 			lockedText +
-			'<div class="omsg-preview-context"><span><strong>Source</strong> Olama Core tables</span><span><strong>Study year</strong> ' + escapeHtml(campaign.study_year || health.study_year || '—') + '</span><span><strong>Audience</strong> ' + escapeHtml(audienceLabels[campaign.target_type] || campaign.target_type || '—') + '</span><span><strong>Recipient policy</strong> ' + escapeHtml(policyLabels[campaign.recipient_policy] || campaign.recipient_policy || '—') + '</span></div>' +
+			'<div class="omsg-preview-context"><span><strong>Source</strong> Olama Core tables</span><span><strong>Study year</strong> ' + escapeHtml(campaign.study_year || health.study_year || '—') + '</span><span><strong>Audience</strong> ' + escapeHtml(audienceLabels[campaign.target_type] || campaign.target_type || '—') + '</span>' + (campaign.due_month ? '<span><strong>Due through</strong> ' + escapeHtml(campaign.due_month) + '</span>' : '') + '<span><strong>Recipient policy</strong> ' + escapeHtml(policyLabels[campaign.recipient_policy] || campaign.recipient_policy || '—') + '</span></div>' +
 			'<div class="omsg-preview-totals"><strong class="is-positive">' + Number(data.total_families || 0) + ' active families</strong><strong class="is-positive">' + Number(data.total_students || 0) + ' students</strong><strong class="is-positive">' + Number(data.total_included || 0) + ' messages to send</strong><strong class="is-cost">' + Number(data.total_sms_parts || 0) + ' total SMS parts</strong><strong class="is-negative">' + Number(data.total_excluded || 0) + ' excluded</strong><span>' + Number(data.total_candidates || 0) + ' parent message targets</span></div>' +
 			(reasonHtml ? '<div class="omsg-preview-reasons">' + reasonHtml + '</div>' : '') +
 			selectionTools +
@@ -257,6 +257,29 @@
 	function getStudyYear() {
 		return $('[name="study_year"]').val() || '';
 	}
+
+	function updateDueMonths() {
+		var match = getStudyYear().match(/^(\d{4})[\/-](\d{4})$/);
+		var $month = $('[data-due-month]');
+		var previous = $month.val() || $month.attr('selected-data') || '';
+		var html = '<option value="">Select month</option>';
+		if (match) {
+			var start = Number(match[1]);
+			for (var index = 0; index < 11; index++) {
+				var month = (index + 8) % 12 + 1;
+				var year = month >= 9 ? start : start + 1;
+				var value = year + '-' + String(month).padStart(2, '0');
+				var label = new Date(year, month - 1, 1).toLocaleString('en', {month: 'long', year: 'numeric'});
+				html += '<option value="' + value + '">' + label + '</option>';
+			}
+		}
+		$month.html(html).val(previous);
+		if (!$month.val()) $month.val('');
+		$month.removeAttr('selected-data');
+	}
+
+	$('[name="study_year"]').on('change', updateDueMonths);
+	updateDueMonths();
 
 	function loadAcademicSchools() {
 		var $school = $('#omsg-filter-school');
@@ -389,6 +412,11 @@
 		if (body) $('[name="message_body_draft"]').val(body).trigger('input');
 	});
 	$('[data-wizard-next]').on('click', function () {
+		if (step === 2 && $('[name="target_type"]:checked').val() === 'finance_outstanding' && !$('[data-due-month]').val()) {
+			$('[data-due-month]').trigger('focus');
+			$('.omsg-save-state').text('Select a payment due month.');
+			return;
+		}
 		if (step === 4 && campaignStatus === 'draft') {
 			prepareCampaign();
 			return;

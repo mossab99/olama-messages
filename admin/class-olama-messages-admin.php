@@ -338,6 +338,10 @@ class Olama_Messages_Admin {
 		if ( isset( $_POST['filter_store_item_type'] ) ) { $filters['store_item_type'] = sanitize_text_field( wp_unslash( $_POST['filter_store_item_type'] ) ); }
 
 		// Capture finance filters
+		if ( isset( $_POST['filter_due_month'] ) ) {
+			$due_month = sanitize_text_field( wp_unslash( $_POST['filter_due_month'] ) );
+			$filters['due_month'] = preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $due_month ) ? $due_month : '';
+		}
 		if ( isset( $_POST['filter_min_balance'] ) ) {
 			$raw_min = sanitize_text_field( wp_unslash( $_POST['filter_min_balance'] ) );
 			$filters['min_balance'] = '' !== $raw_min ? (float) $raw_min : null;
@@ -3704,6 +3708,7 @@ class Olama_Messages_Admin {
 				$preview['campaign'] = array(
 					'study_year'       => $preview_campaign['study_year'] ?? '',
 					'target_type'      => $preview_campaign['target_type'] ?? '',
+					'due_month'        => $preview_campaign['filters']['due_month'] ?? '',
 					'recipient_policy' => $preview_campaign['recipient_policy'] ?? '',
 				);
 				$preview['sync_health'] = $this->plugin->provider()->get_sync_health(

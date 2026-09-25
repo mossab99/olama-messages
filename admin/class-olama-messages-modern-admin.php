@@ -201,6 +201,10 @@ class Olama_Messages_Modern_Admin {
 						<div class="omsg-filter-box omsg-finance-outstanding-filters <?php echo 'finance_renewal_reminder' === $curr_target ? 'is-hidden' : ''; ?>">
 							<h3>Finance Audience Filters</h3>
 							<p class="description">Target families with unpaid balances or specific financial statuses.</p>
+							<label>Payment due through month
+							<select name="filter_due_month" data-due-month selected-data="<?php echo esc_attr( $saved_filters['due_month'] ?? '' ); ?>"></select>
+							<small>Includes all unpaid installments through the selected month, including August.</small>
+							</label>
 							<div class="omsg-filter-row">
 								<label>Minimum Outstanding Balance (JOD)
 									<input type="number" step="0.001" name="filter_min_balance" value="<?php echo esc_attr( $saved_filters['min_balance'] ?? '' ); ?>" placeholder="0.000">

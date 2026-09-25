@@ -794,7 +794,7 @@ class Olama_Messages_Campaign_Service {
 					? ! empty( $filters['exclude_zero_balances'] )
 					: ! empty( $campaign['exclude_zero_balances'] );
 				$req_finance = $is_finance_audience
-					&& ( ( null !== $min_balance && '' !== $min_balance ) || $exclude_credit || $exclude_zero );
+					&& ( 'finance_outstanding' === $target_type || ( null !== $min_balance && '' !== $min_balance ) || $exclude_credit || $exclude_zero );
 
 				if ( $req_finance && ! $financial_available ) {
 					$included        = false;
@@ -1541,6 +1541,14 @@ class Olama_Messages_Campaign_Service {
 
 			// ── Finance: Outstanding balances ─────────────────────────────────
 			case 'finance_outstanding':
+				$due_month = (string) ( $filters['due_month'] ?? '' );
+				if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $due_month ) ) {
+					throw new InvalidArgumentException( 'Select a payment due month for outstanding balances.' );
+				}
+				$year_start = (int) substr( str_replace( '-', '/', $study_year ), 0, 4 );
+				if ( $year_start < 2000 || $due_month < sprintf( '%04d-09', $year_start ) || $due_month > sprintf( '%04d-07', $year_start + 1 ) ) {
+					throw new InvalidArgumentException( 'The payment due month must be within the campaign study year.' );
+				}
 				// Reuse the existing financial / collection flow via the Core provider.
 				$provider      = $plugin->provider();
 				$all_items     = array();
@@ -1553,21 +1561,14 @@ class Olama_Messages_Campaign_Service {
 					$q = array(
 						'study_year'  => $study_year,
 						'target_type' => 'collection', // maps to financial
+						'due_month'   => $due_month,
 						'limit'       => $chunk_size,
 						'offset'      => $offset,
 					);
 					if ( ! empty( $filters['family_id'] ) ) {
 						$q['family_id'] = $filters['family_id'];
 					}
-					if ( isset( $filters['min_balance'] ) ) {
-						$q['min_balance'] = $filters['min_balance'];
-					}
-					if ( isset( $filters['exclude_credit_balances'] ) ) {
-						$q['exclude_credit_balances'] = $filters['exclude_credit_balances'];
-					}
-					if ( isset( $filters['exclude_zero_balances'] ) ) {
-						$q['exclude_zero_balances'] = $filters['exclude_zero_balances'];
-					}
+					// The Core ledger balance is not the selected-month due.
 					$res = $provider->get_recipients_preview( $q );
 					if ( empty( $res['items'] ) ) {
 						break;
@@ -1577,7 +1578,7 @@ class Olama_Messages_Campaign_Service {
 						break;
 					}
 					$page_sigs[ $sig ] = true;
-					$all_items         = array_merge( $all_items, $res['items'] );
+					$all_items = array_merge( $all_items, $res['items'] );
 					$offset           += count( $res['items'] );
 				}
 				return $all_items;
