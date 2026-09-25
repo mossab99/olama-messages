@@ -581,6 +581,7 @@ class Olama_Messages_Campaign_Service {
 		// types (collection, general, transportation) use the Core provider loop.
 		$new_audience_types = array(
 			'finance_outstanding',
+			'finance_agreements_collection',
 			'finance_renewal_reminder',
 			'renewal_reminder',
 			'transport_no_gps',
@@ -789,7 +790,7 @@ class Olama_Messages_Campaign_Service {
 				// Apply the same safeguards here as a second line of defence after
 				// the Core query, so an outstanding-balance campaign can never turn
 				// into a renewal/general audience if Core returns a broad result.
-				$is_finance_audience = in_array( $target_type, array( 'collection', 'finance_outstanding' ), true );
+				$is_finance_audience = in_array( $target_type, array( 'collection', 'finance_outstanding', 'finance_agreements_collection' ), true );
 				$min_balance = array_key_exists( 'min_balance', $filters )
 					? $filters['min_balance']
 					: ( $campaign['min_balance'] ?? null );
@@ -800,7 +801,7 @@ class Olama_Messages_Campaign_Service {
 					? ! empty( $filters['exclude_zero_balances'] )
 					: ! empty( $campaign['exclude_zero_balances'] );
 				$req_finance = $is_finance_audience
-					&& ( 'finance_outstanding' === $target_type || ( null !== $min_balance && '' !== $min_balance ) || $exclude_credit || $exclude_zero );
+					&& ( in_array( $target_type, array( 'finance_outstanding', 'finance_agreements_collection' ), true ) || ( null !== $min_balance && '' !== $min_balance ) || $exclude_credit || $exclude_zero );
 
 				if ( $req_finance && ! $financial_available ) {
 					$included        = false;
@@ -1544,6 +1545,79 @@ class Olama_Messages_Campaign_Service {
 		$plugin = Olama_Messages_Plugin::instance();
 
 		switch ( $target_type ) {
+			case 'finance_agreements_collection':
+				$due_month = (string) ( $filters['due_month'] ?? '' );
+				$year_start = (int) substr( str_replace( '-', '/', $study_year ), 0, 4 );
+				if ( ! preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/', $due_month ) || $year_start < 2000 || $due_month < sprintf( '%04d-09', $year_start ) || $due_month > sprintf( '%04d-07', $year_start + 1 ) ) {
+					throw new InvalidArgumentException( 'Select a payment due month within the campaign study year.' );
+				}
+				if ( ! class_exists( 'Olama_Reg_Billing_Reports' ) ) {
+					throw new RuntimeException( 'Olama Invoice must be active for Agreements Collection.' );
+				}
+				$report = Olama_Reg_Billing_Reports::get_agreement_monthly_dues_report( array( 'study_year' => $study_year, 'month' => $due_month ) );
+				$dues = array();
+				foreach ( $report['rows'] as $row ) {
+					if ( (float) $row->unpaid_due > 0 ) {
+						$dues[ (string) $row->family_ref ] = $row;
+						$dues[ (string) $row->family_number ] = $row;
+					}
+				}
+				if ( ! $dues ) {
+					return array();
+				}
+				$items = array();
+				$matched = array();
+				$offset = 0;
+				$seen_pages = array();
+				for ( $page = 0; $page < 100; $page++ ) {
+					$result = $plugin->provider()->get_recipients_preview( array( 'study_year' => $study_year, 'target_type' => 'general', 'limit' => 200, 'offset' => $offset ) );
+					$batch = $result['items'] ?? array();
+					if ( ! $batch ) {
+						break;
+					}
+					$signature = md5( wp_json_encode( wp_list_pluck( $batch, 'oracle_family_id' ) ) );
+					if ( isset( $seen_pages[ $signature ] ) ) {
+						break;
+					}
+					$seen_pages[ $signature ] = true;
+					foreach ( $batch as $item ) {
+						$key = (string) ( $item['oracle_family_id'] ?? '' );
+						$row = $dues[ $key ] ?? $dues[ (string) ( $item['core_family_uid'] ?? '' ) ] ?? null;
+						if ( ! $row ) {
+							continue;
+						}
+						$item['balance'] = (float) $row->unpaid_due;
+						$item['monthly_due'] = (float) $row->unpaid_due;
+						$item['monthly_due_source'] = 'agreement_installment';
+						$item['financial_available'] = true;
+						$items[] = $item;
+						$matched[ (string) $row->family_ref ] = true;
+					}
+					$offset += count( $batch );
+				}
+				// Agreements can outlive a family's current-year enrollment.
+				foreach ( $report['rows'] as $row ) {
+					if ( (float) $row->unpaid_due <= 0 || isset( $matched[ (string) $row->family_ref ] ) ) {
+						continue;
+					}
+					$items[] = array(
+						'family_id' => absint( $row->family_number ),
+						'oracle_family_id' => (string) $row->family_number,
+						'core_family_uid' => (string) $row->core_family_uid,
+						'sponsor_name' => (string) $row->family_name,
+						'father_name' => (string) $row->family_name,
+						'father_mobile' => (string) $row->father_mobile,
+						'mother_name' => '',
+						'mother_mobile' => (string) $row->mother_mobile,
+						'students' => array(),
+						'student_rows' => array(),
+						'balance' => (float) $row->unpaid_due,
+						'monthly_due' => (float) $row->unpaid_due,
+						'monthly_due_source' => 'agreement_installment',
+						'financial_available' => true,
+					);
+				}
+				return $items;
 
 			// ── Finance: Outstanding balances ─────────────────────────────────
 			case 'finance_outstanding':

@@ -72,6 +72,7 @@
 			general: 'Active families (Legacy)',
 			transportation: 'Active transportation families (Legacy)',
 			finance_outstanding: 'Finance — Outstanding Balances',
+			finance_agreements_collection: 'Finance — Olama Agreements Collection',
 			finance_renewal_reminder: 'Finance — Renewal Reminder',
 			renewal_reminder: 'Finance — Renewal Reminder',
 			academic: 'Academic — School / Grade / Section',
@@ -247,8 +248,11 @@
 			loadTransportOptions();
 		} else if (val === 'transport_no_gps') {
 			$('.omsg-transport-filters').addClass('is-hidden');
-		} else if (val === 'finance_outstanding') {
+		} else if (val === 'finance_outstanding' || val === 'finance_agreements_collection') {
 			$('.omsg-finance-outstanding-filters').removeClass('is-hidden');
+			$('[data-finance-month-label]').text(val === 'finance_agreements_collection' ? 'Payment due in month' : 'Payment due through month');
+			$('[data-finance-month-help]').text(val === 'finance_agreements_collection' ? 'Includes unpaid agreement installments scheduled in the selected month.' : 'Includes all unpaid installments through the selected month, including August.');
+			$('[data-finance-min-label]').text(val === 'finance_agreements_collection' ? 'Minimum Unpaid Agreement Due (JOD)' : 'Minimum Outstanding Balance (JOD)');
 		} else if (val === 'finance_renewal_reminder' || val === 'renewal_reminder') {
 			$('.omsg-finance-outstanding-filters').addClass('is-hidden');
 		}
@@ -412,7 +416,7 @@
 		if (body) $('[name="message_body_draft"]').val(body).trigger('input');
 	});
 	$('[data-wizard-next]').on('click', function () {
-		if (step === 2 && $('[name="target_type"]:checked').val() === 'finance_outstanding' && !$('[data-due-month]').val()) {
+		if (step === 2 && ['finance_outstanding', 'finance_agreements_collection'].indexOf($('[name="target_type"]:checked').val()) !== -1 && !$('[data-due-month]').val()) {
 			$('[data-due-month]').trigger('focus');
 			$('.omsg-save-state').text('Select a payment due month.');
 			return;

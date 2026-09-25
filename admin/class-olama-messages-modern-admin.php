@@ -160,7 +160,7 @@ class Olama_Messages_Modern_Admin {
 						<button type="button" class="omsg-cat-tab <?php echo 'finance' === $active_cat ? 'is-active' : ''; ?>" data-cat="finance">
 							<span class="dashicons dashicons-money-alt"></span>
 							<strong>Finance</strong>
-							<small>Outstanding balances</small>
+									<small>Outstanding balances</small>
 						</button>
 						<button type="button" class="omsg-cat-tab <?php echo 'academic' === $active_cat ? 'is-active' : ''; ?>" data-cat="academic">
 							<span class="dashicons dashicons-welcome-learn-more"></span>
@@ -190,6 +190,13 @@ class Olama_Messages_Modern_Admin {
 								</div>
 							</label>
 							<label class="omsg-choice">
+								<input type="radio" name="target_type" value="finance_agreements_collection" <?php checked( $curr_target, 'finance_agreements_collection' ); ?>>
+								<div>
+									<strong>Olama Agreements Collection</strong>
+									<small>Families with unpaid agreement installments in the selected month.</small>
+								</div>
+							</label>
+							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="finance_renewal_reminder" <?php checked( $curr_target, 'finance_renewal_reminder' ); ?>>
 								<div>
 									<strong>Renewal Reminder</strong>
@@ -201,12 +208,12 @@ class Olama_Messages_Modern_Admin {
 						<div class="omsg-filter-box omsg-finance-outstanding-filters <?php echo 'finance_renewal_reminder' === $curr_target ? 'is-hidden' : ''; ?>">
 							<h3>Finance Audience Filters</h3>
 							<p class="description">Target families with unpaid balances or specific financial statuses.</p>
-							<label>Payment due through month
+						<label><span data-finance-month-label><?php echo 'finance_agreements_collection' === $curr_target ? 'Payment due in month' : 'Payment due through month'; ?></span>
 							<select name="filter_due_month" data-due-month selected-data="<?php echo esc_attr( $saved_filters['due_month'] ?? '' ); ?>"></select>
-							<small>Includes all unpaid installments through the selected month, including August.</small>
+							<small data-finance-month-help><?php echo 'finance_agreements_collection' === $curr_target ? 'Includes unpaid agreement installments scheduled in the selected month.' : 'Includes all unpaid installments through the selected month, including August.'; ?></small>
 							</label>
 							<div class="omsg-filter-row">
-								<label>Minimum Outstanding Balance (JOD)
+								<label><span data-finance-min-label><?php echo 'finance_agreements_collection' === $curr_target ? 'Minimum Unpaid Agreement Due (JOD)' : 'Minimum Outstanding Balance (JOD)'; ?></span>
 									<input type="number" step="0.001" name="filter_min_balance" value="<?php echo esc_attr( $saved_filters['min_balance'] ?? '' ); ?>" placeholder="0.000">
 								</label>
 								<label class="omsg-checkbox-label">
@@ -339,7 +346,7 @@ class Olama_Messages_Modern_Admin {
 						</label>
 					</div>
 				</section>
-				<section class="omsg-step-panel" data-step="3"><h2>Write the message</h2><label>Start from a message library item<select name="template_id"><option value="">Custom message</option><?php foreach ( $templates as $template ) : ?><option value="<?php echo absint( $template['id'] ); ?>" data-body="<?php echo esc_attr( $template['body'] ); ?>" <?php selected( $campaign['template_id'] ?? 0, $template['id'] ); ?>><?php echo esc_html( $template['name'] ); ?></option><?php endforeach; ?></select></label><label>Message<textarea required name="message_body_draft" rows="9"><?php echo esc_textarea( $body ); ?></textarea></label><div class="omsg-message-meter"><strong data-sms-parts>0 SMS parts</strong><span data-sms-detail>0 characters</span></div><p class="description">Available fields: {sponsor_name}, {family_id}, {students}, {balance}, {monthly_due}, {payment_link}, {study_year}, {school_name}</p><p class="description">For Outstanding Balances, {balance} and {monthly_due} both show the sum of unpaid installment balances through the selected month.</p></section>
+				<section class="omsg-step-panel" data-step="3"><h2>Write the message</h2><label>Start from a message library item<select name="template_id"><option value="">Custom message</option><?php foreach ( $templates as $template ) : ?><option value="<?php echo absint( $template['id'] ); ?>" data-body="<?php echo esc_attr( $template['body'] ); ?>" <?php selected( $campaign['template_id'] ?? 0, $template['id'] ); ?>><?php echo esc_html( $template['name'] ); ?></option><?php endforeach; ?></select></label><label>Message<textarea required name="message_body_draft" rows="9"><?php echo esc_textarea( $body ); ?></textarea></label><div class="omsg-message-meter"><strong data-sms-parts>0 SMS parts</strong><span data-sms-detail>0 characters</span></div><p class="description">Available fields: {sponsor_name}, {family_id}, {students}, {balance}, {monthly_due}, {payment_link}, {study_year}, {school_name}</p><p class="description">For Outstanding Balances, {balance} and {monthly_due} show unpaid installments through the selected month. For Agreements Collection, both show unpaid agreement installments in the selected month.</p></section>
 				<section class="omsg-step-panel" data-step="4"><h2>Review and prepare</h2><div class="omsg-review-summary"><p>Preparation freezes the audience and rendered messages. It does not send anything.</p><button type="button" class="button" data-preview-campaign>Refresh audience preview</button><div data-preview-result aria-live="polite"></div></div></section>
 				<section class="omsg-step-panel" data-step="5"><h2>Authorize sending</h2>
 					<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><p><strong><?php echo absint( $campaign['total_prepared'] ); ?></strong> prepared messages are locked and awaiting authorization.</p><p>Type <code>SEND <?php echo absint( $campaign['total_prepared'] ); ?></code> to start.</p><?php else : ?><p>Prepare the campaign in step 4 before authorization.</p><?php endif; ?>
