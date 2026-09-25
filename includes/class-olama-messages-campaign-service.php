@@ -683,6 +683,12 @@ class Olama_Messages_Campaign_Service {
 			$balance             = isset( $item['balance'] ) && null !== $item['balance'] ? (float) $item['balance'] : null;
 			$monthly_due         = isset( $item['monthly_due'] ) && null !== $item['monthly_due'] ? (float) $item['monthly_due'] : null;
 			$monthly_due_source  = $item['monthly_due_source'] ?? 'unavailable';
+			if ( 'finance_outstanding' === $target_type ) {
+				// Both financial placeholders represent the unpaid installments
+				// through the selected month for this campaign.
+				$monthly_due = $balance;
+				$monthly_due_source = null !== $balance ? 'due_balance_through_month' : 'unavailable';
+			}
 			$financial_available = ! empty( $item['financial_available'] );
 
 			// Resolve targets based on policy.
