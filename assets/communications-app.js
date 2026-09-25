@@ -232,7 +232,14 @@
                 addNav(root, nav, 'صحة النظام', () => showHealth(root), {group: 'admin', id: 'health'});
             }
             document.dispatchEvent(new CustomEvent('olama-chat-mount', {detail: {root, nav, me}}));
-            await showHome(root);
+            if (root.dataset.commInitialView) {
+                if (me.chat && window.OlamaChatClient) {
+                    if (root.dataset.commInitialView === 'compose') await window.OlamaChatClient.contacts(root, root.dataset.commStudentUid || '');
+                    else await window.OlamaChatClient.threads(root);
+                } else {
+                    content.replaceChildren(el('p', 'المراسلات الخاصة غير مفعلة لهذا الحساب. يلزم تفعيلها ومنح صلاحيات الاتصالات للأسرة والمعلم.', 'olama-comm-empty'));
+                }
+            } else await showHome(root);
         } catch (error) { if (error.name !== 'AbortError') content.replaceChildren(el('p', error.message)); }
     }
     async function showNotices(root, before = 0) {

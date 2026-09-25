@@ -18,7 +18,7 @@ class Olama_Messages_Communications {
         add_action( 'wp_enqueue_scripts', array( $this, 'enqueue' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
         add_filter( 'olama_student_gateway_messages_data', array( $this, 'gateway_data' ), 10, 2 );
-        add_action( 'olama_student_gateway_render_messages', array( $this, 'gateway_render' ) );
+        add_action( 'olama_student_gateway_render_messages', array( $this, 'gateway_render' ), 10, 3 );
     }
 
     public function install() {
@@ -98,7 +98,7 @@ class Olama_Messages_Communications {
 
     public function admin_page() { echo '<div class="wrap">' . $this->app() . '</div>'; }
 
-    public function app() {
+    public function app( $options = array() ) {
         if ( ! is_user_logged_in() ) { return '<p dir="rtl">يرجى تسجيل الدخول إلى حساب OLAMA.</p>'; }
         if ( ! Olama_Messages_Communication_Policy::can( 'olama_messages_use' ) ) { return '<p dir="rtl">لا يملك هذا الحساب صلاحية استخدام OLAMA Communications.</p>'; }
         $settings = Olama_Messages_Communication_Policy::settings();
@@ -121,7 +121,10 @@ class Olama_Messages_Communications {
             return $message . '</section>';
         }
         $this->enqueue( true );
-        return '<section class="olama-communications" dir="rtl" data-olama-communications><p role="status">جارٍ تحميل إعلانات المدرسة…</p></section>';
+        $options = is_array( $options ) ? $options : array();
+        $view = in_array( $options['view'] ?? '', array( 'compose', 'inbox' ), true ) ? $options['view'] : '';
+        $student_uid = sanitize_text_field( (string) ( $options['student_uid'] ?? '' ) );
+        return '<section class="olama-communications" dir="rtl" data-olama-communications data-comm-initial-view="' . esc_attr( $view ) . '" data-comm-student-uid="' . esc_attr( $student_uid ) . '"><p role="status">جارٍ تحميل اتصالات المدرسة…</p></section>';
     }
 
     public function enqueue( $force = false ) {
@@ -150,12 +153,22 @@ class Olama_Messages_Communications {
     public function gateway_data( $data, $context ) {
         try {
             $actor = ( new Olama_Messages_Actor_Resolver() )->resolve( 'family:' . ( $context['family_uid'] ?? '' ) );
+            // Keep the portal view visible when Communications needs configuration;
+            // app() then shows the applicable access or activation message.
+            $data = array( 'available' => true );
             Olama_Messages_Communication_Policy::require_use( $actor );
-            return array( 'counts' => ( new Olama_Messages_Notification_Service() )->counts( $actor ), 'available' => true );
+            $data['counts'] = ( new Olama_Messages_Notification_Service() )->counts( $actor );
+            return $data;
         } catch ( Throwable $error ) { return $data; }
     }
 
-    public function gateway_render() { echo $this->app(); }
+    public function gateway_render( $data = array(), $context = array(), $model = array() ) {
+        $student = $context['student'] ?? array();
+        echo $this->app( array(
+            'view' => $model['message_mode'] ?? 'inbox',
+            'student_uid' => is_array( $student ) ? ( $student['student_uid'] ?? '' ) : '',
+        ) );
+    }
 
     public static function health() {
         global $wpdb;

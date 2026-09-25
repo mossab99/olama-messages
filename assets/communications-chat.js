@@ -38,7 +38,7 @@
             }
         }
     }
-    window.OlamaChatClient = {open: conversation, threads, requests: serviceInboxes, async poll() {
+    window.OlamaChatClient = {open: conversation, threads, contacts, requests: serviceInboxes, async poll() {
         const data = await api('chat/feed?after=' + cursor); cursor = data.cursor;
         const key = h.scope() + ':chat-toast'; let shown = 0;
         try { shown = Number(localStorage.getItem(key) || 0); } catch (_) { /* Optional coordination. */ }

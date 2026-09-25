@@ -4,7 +4,11 @@ Read the ecosystem map for actual upstream ownership and supported APIs. No upst
 
 ## Parent shell
 
-Messages provider: `olama_student_gateway_messages_data($data,$context)` returns safe counts only after validating `family_uid` against current actor. `olama_student_gateway_render_messages` embeds the full official notice interface. The gateway already requires its own messages-view capability; grant that separately when appropriate. `[olama_communications]` embeds the same interface on an existing page. No pages are created automatically.
+Messages provider: `olama_student_gateway_messages_data($data,$context)` exposes the panel only after validating `family_uid` against the current actor, and returns safe counts when Communications access is enabled. `olama_student_gateway_render_messages` embeds the Communications interface. The gateway already requires its own messages-view capability; grant that separately when appropriate. `[olama_communications]` embeds the same interface on an existing page. No pages are created automatically.
+
+The gateway's **Send Message** link opens the selected student's current assigned-teacher directory; **Mailbox** opens their conversations. Direct messages use the verified family actor on behalf of the selected student. The server rechecks active enrollment, teacher assignment, Core subject/section mappings, account reachability, and source freshness when creating a thread and sending a message. A teacher removed from the current assignment remains in historical conversations, but new sends are blocked.
+
+To activate this in a site, enable **Internal Communications** and **Chats** under OLAMA Communications settings, then grant `olama_messages_use` and `olama_messages_chat` to the verified family and teacher accounts through OLAMA Users. The family also needs `olama_student_gateway_messages_view` for the portal menu. If a pilot user list is configured, include both sides. Keep the selected student's enrollment, teacher assignment, and Core/Users synchronization current; stale mappings intentionally hide the contact. A missing capability or disabled feature is shown in the portal instead of an empty "nothing published" panel.
 
 The global launcher/polling script loads for logged-in mapped, permitted actors on OLAMA shortcode/admin pages only. Additional trusted portal shells can opt in through `olama_messages_is_portal_page`. Public payment-report pages do not match this default. Standard non-OLAMA pages and anonymous users do not load it.
 
