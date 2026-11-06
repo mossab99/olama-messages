@@ -8,6 +8,7 @@ class Olama_Messages_Dispatcher_Service {
     private $attempts;
     private $devices;
     private $transactional_tables_checked = false;
+    public $retry_after_seconds = 10;
     public function __construct() {
         global $wpdb;
         $this->campaigns = $wpdb->prefix . 'olama_msg_campaigns';
@@ -46,6 +47,7 @@ class Olama_Messages_Dispatcher_Service {
 
     public function reserve_batch( array $agent, int $max_jobs = 1 ) {
         global $wpdb;
+        $this->retry_after_seconds = self::config()['poll_interval_seconds'];
         // The device, not the agent registration, owns the sequential lock and limits.
         if ( empty( $agent['kde_device_id'] ) ) { return array(); }
         $device = hash( 'sha256', $agent['kde_device_id'] );
@@ -65,6 +67,8 @@ class Olama_Messages_Dispatcher_Service {
                 "SELECT COUNT(*) FROM {$this->attempts} WHERE device_key=%s AND status='reserved' AND created_at >= %s", $device, gmdate( 'Y-m-d H:i:s', time() - $cfg['reservation_ttl_seconds'] ) ) );
             if ( $wpdb->last_error ) { throw new RuntimeException( 'Unable to read active SMS attempts.' ); }
             if ( $active || $recent >= $cfg['max_sms_per_hour'] || ( $lock['last_reserved_at'] && strtotime( $lock['last_reserved_at'] . ' UTC' ) > time() - $spacing ) ) {
+                $spacing_wait = $lock['last_reserved_at'] ? max( 1, $spacing - ( time() - strtotime( $lock['last_reserved_at'] . ' UTC' ) ) ) : 1;
+                $this->retry_after_seconds = $active ? 1 : ( $recent >= $cfg['max_sms_per_hour'] ? 10 : $spacing_wait );
                 $this->commit(); return array();
             }
             // Lock the campaign before its queue row. Pause/cancel use this same order.
@@ -242,6 +246,6 @@ class Olama_Messages_Dispatcher_Service {
             if ( $seconds >= 0 && $seconds <= $cfg['reservation_ttl_seconds'] ) { $processing[] = $seconds; }
         }
         $average = $processing ? array_sum( $processing ) / count( $processing ) : 0;
-        return (int) ceil( $pending * ( $baseline + $average ) );
+        return (int) ceil( $pending * max( $baseline, $average ) );
     }
 }

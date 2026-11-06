@@ -335,7 +335,7 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 				'status'             => 'ok',
 				'jobs'               => $jobs,
 				'server_time'        => current_time( 'mysql' ),
-				'poll_after_seconds' => 15,
+				'poll_after_seconds' => $dispatcher->retry_after_seconds,
 			),
 			200
 		);

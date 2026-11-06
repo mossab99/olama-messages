@@ -8,7 +8,7 @@ Pause stops new reservations and preserves the active attempt. A timeout, expire
 
 A successful KDE exit is shown as “Submitted via KDE”; it is not a recipient delivery receipt. Cancellation cannot recall a command already handed to KDE. Cancelled jobs retain their audit identity, and late callbacks do not revive them.
 
-Version 4.0.13 and agent 2.0.1 use a 10-second minimum and 360 attempts per rolling hour. The agent waits 10 seconds after each completed cycle; request and KDE processing time add to that gap. Update both packages to remove the previous one-minute limiter. Conservative rate accounting includes submission intents even if launch later fails. Manual test SMS uses the same local limiter. ETA combines the current pacing limit with recent observed processing time, so old one-minute gaps do not carry into the faster estimate; paused time, review time, competing campaigns and offline periods can extend completion.
+Version 4.0.13 and agent 2.0.1 use a 10-second minimum and 360 attempts per rolling hour. Agent 2.0.3 targets a 10-second start-to-start cycle, subtracting normal processing time from the timer. The local send guard waits only for the remaining portion of the minimum submission interval. Slow operations can still exceed the target; sends never overlap. Update both packages to remove the previous one-minute limiter. Conservative rate accounting includes submission intents even if launch later fails. Manual test SMS uses the same local limiter. ETA uses the slower of the current pacing interval and recent observed processing duration, so old one-minute idle gaps do not carry into the faster estimate; paused time, review time, competing campaigns and offline periods can extend completion.
 
 ## Checks
 
@@ -28,3 +28,8 @@ Settings “Test Connection” now authenticates through a read-only GET to the 
 The server also accepts older partial heartbeats without erasing omitted worker fields or a connected device name. It preserves the actual worker poll timestamp, respects explicit disabled/disconnected values, and discards old device/worker metadata when the selected target changes. Oversized telemetry is rejected rather than replacing the healthy snapshot. Heartbeat responses report the saved operational status instead of always saying online.
 
 `php tests/test-agent-telemetry.php` verifies these cases in the disposable database. The Windows recovery fixture checks that connection testing never publishes a heartbeat or reserves work. The ten-second policy remains in this release.
+
+
+## Cadence correction (plugin 4.0.15 / agent 2.0.3)
+
+The scheduler subtracts processing time from the next timer rather than adding a full ten seconds after processing. Device checks can run during the interval; the final local send gate preserves at least ten seconds between submission intents. A rate-limited server poll supplies the remaining delay rather than forcing another full idle cycle. Failed requests retain a full retry delay to avoid a request storm. This targets roughly ten-second submissions on a healthy device; slow network/KDE operations may extend the interval.

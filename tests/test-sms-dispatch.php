@@ -31,6 +31,7 @@ $svc->update_send_status( $agent, $qid, 'sent_by_kde', 0, '', '', $job['attempt_
 comm_assert( 1 === (int) sms_row( $qid )['attempt_count'], 'repeated success counts once' );
 list( $campaign2, $qid2 ) = sms_fixture();
 comm_assert( array() === $svc->reserve_batch( $agent ), 'minimum spacing enforced on server' );
+comm_assert( $svc->retry_after_seconds > 0 && $svc->retry_after_seconds <= 10, 'rate-limited poll provides remaining delay rather than a second full cycle' );
 $wpdb->query( "UPDATE $devices SET last_reserved_at='" . gmdate( 'Y-m-d H:i:s', time() - 11 ) . "'" );
 $job2 = $svc->reserve_batch( $agent )[0];
 comm_assert( $job2['queue_id'] === $qid2, 'eleven-second-old reservation no longer imposes a one-minute wait' );
@@ -76,7 +77,7 @@ foreach ( array( 180, 120 ) as $age ) {
         'status' => 'sent', 'created_at' => gmdate( 'Y-m-d H:i:s' ),
         'reserved_at' => gmdate( 'Y-m-d H:i:s', time() - $age ), 'sent_at' => gmdate( 'Y-m-d H:i:s', time() - $age + 2 ) ) );
 }
-comm_assert( 120 === $svc->estimate_remaining_seconds( $campaign5, 10 ), 'ETA uses current ten-second pace plus processing, not old one-minute gaps' );
+comm_assert( 100 === $svc->estimate_remaining_seconds( $campaign5, 10 ), 'ETA includes processing inside current ten-second cadence' );
 $rest = new Olama_Messages_Agent_REST_Controller();
 $request = new WP_REST_Request( 'POST' ); $request->set_param( '_authorized_agent', $agent ); $request->set_body( '{}' ); $request->set_header( 'content-type', 'application/json' );
 comm_assert( 426 === $rest->handle_reserve_jobs( $request )->get_status(), 'old agent cannot reserve under new protocol' );
