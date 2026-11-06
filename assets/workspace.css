@@ -6,7 +6,7 @@ body.olama-workspace {
     --omsg-warning:#a77928;
     --omsg-danger:#ae4d4d;
     --omsg-text:#1d3038;
-    --omsg-muted:#73838b;
+    --omsg-muted:#5c7078;
     --omsg-border:#e1e8e8;
     --omsg-bg:#f5f8f7;
     --omsg-surface:#fff;
@@ -31,7 +31,7 @@ body.olama-workspace {
 .omw-shell,.omw-shell * {
     box-sizing:border-box}
 .omw-shell {
-    font-size:14px}
+    font-size:15px}
 .omw-shell a {
     text-decoration:none}
 .omw-shell button,.omw-shell input,.omw-shell select,.omw-shell textarea {
@@ -81,9 +81,9 @@ body.olama-workspace {
     line-height:1.2}
 .omw-brand small {
     display:block;
-    font-size:10px;
+    font-size:12px;
     letter-spacing:1.6px;
-    color:#819197;
+    color:#536b64;
     margin-top:5px}
 .omw-school {
     display:flex;
@@ -95,7 +95,7 @@ body.olama-workspace {
     background:#fcfdfc;
     align-items:center}
 .omw-school>.dashicons {
-    color:#78958a;
+    color:#536b64;
     flex:none;
     font-size:20px}
 .omw-school>div {
@@ -106,16 +106,16 @@ body.olama-workspace {
     overflow:hidden;
     text-overflow:ellipsis;
     max-width:140px;
-    font-size:12px;
+    font-size:14px;
     font-weight:600}
 .omw-school small {
     display:block;
-    font-size:10px;
-    color:#8a9990;
+    font-size:12px;
+    color:#536b64;
     margin-top:5px}
 .omw-nav-group {
-    font-size:9px;
-    color:#92a19c;
+    font-size:11px;
+    color:#536b64;
     letter-spacing:1.3px;
     margin:23px 12px 10px}
 .omw-sidebar nav .omw-nav-group:first-child {
@@ -124,8 +124,8 @@ body.olama-workspace {
     display:flex;
     align-items:center;
     gap:12px;
-    font-size:13px;
-    color:#71827b;
+    font-size:15px;
+    color:#536b64;
     padding:11px 12px;
     border-radius:7px;
     margin-bottom:5px}
@@ -133,7 +133,7 @@ body.olama-workspace {
     width:18px;
     height:18px;
     font-size:18px;
-    color:#8a9b93}
+    color:#536b64}
 .omw-nav-link:hover {
     background:#f4f8f5;
     color:#355e4c}
@@ -158,12 +158,12 @@ body.olama-workspace {
 .omw-agent-connection .omw-dot {
     margin-top:6px}
 .omw-agent-connection strong {
-    font-size:11px;
+    font-size:13px;
     font-weight:600;
     display:block}
 .omw-agent-connection small {
-    font-size:10px;
-    color:#92a198;
+    font-size:12px;
+    color:#536b64;
     display:block;
     margin-top:6px}
 .omw-dot {
@@ -179,8 +179,8 @@ body.olama-workspace {
     display:flex;
     align-items:center;
     gap:7px;
-    font-size:11px;
-    color:#84958c;
+    font-size:13px;
+    color:#536b64;
     margin:18px 8px 0}
 .omw-wp-return .dashicons {
     font-size:15px;
@@ -202,12 +202,12 @@ body.olama-workspace {
     display:flex;
     gap:10px;
     align-items:center;
-    font-size:12px;
-    color:#9ba7a1}
+    font-size:14px;
+    color:#536b64}
 .omw-breadcrumb>a {
-    color:#81938a}
+    color:#536b64}
 .omw-breadcrumb strong {
-    font-size:12px;
+    font-size:14px;
     color:#4b6558;
     font-weight:500}
 .omw-search-button {
@@ -218,8 +218,8 @@ body.olama-workspace {
     background:#f7faf8;
     border-radius:7px;
     padding:8px 10px;
-    color:#92a297;
-    font-size:11px;
+    color:#536b64;
+    font-size:13px;
     min-width:200px;
     cursor:pointer}
 .omw-search-button .dashicons {
@@ -229,7 +229,7 @@ body.olama-workspace {
 .omw-search-button kbd {
     margin-inline-start:auto;
     padding:1px 4px;
-    font-size:9px;
+    font-size:11px;
     background:#fff;
     border:1px solid #e1e8e3;
     border-radius:3px;
@@ -247,8 +247,8 @@ body.olama-workspace {
     border-bottom:1px solid var(--omsg-border);
     padding-bottom:12px}
 .omw-context-nav a {
-    font-size:12px;
-    color:#819287;
+    font-size:14px;
+    color:#536b64;
     padding:7px 12px;
     border-radius:6px}
 .omw-context-nav a.is-current {
@@ -259,8 +259,8 @@ body.olama-workspace {
     display:flex;
     justify-content:space-between;
     gap:16px;
-    font-size:10px;
-    color:#97a49b;
+    font-size:12px;
+    color:#536b64;
     margin-top:35px;
     line-height:1.8}
 .omw-content>.wrap,.omw-content .olama-msg-wrap,.omw-content .olama-msg-app,.omw-content .om-agent {
@@ -271,7 +271,7 @@ body.olama-workspace {
     font-family:inherit}
 .omw-content .om-agent {
     --oa-ink:#1d3038;
-    --oa-muted:#73838b;
+    --oa-muted:#5c7078;
     --oa-line:#e1e8e8}
 .omw-content h1,.omw-content .olama-msg-page-title {
     color:var(--omsg-text)!important;
@@ -289,7 +289,7 @@ body.olama-workspace {
     letter-spacing:-.2px;
     font-weight:600}
 .omw-content h3 {
-    font-size:14px;
+    font-size:15px;
     font-weight:600}
 .omw-content .omsg-page-head {
     display:flex;
@@ -301,12 +301,12 @@ body.olama-workspace {
     margin-bottom:8px!important}
 .omw-content .omsg-page-head p {
     color:var(--omsg-muted);
-    font-size:13px;
+    font-size:15px;
     line-height:1.8;
     max-width:750px;
     margin:0}
 .omw-content .description {
-    font-size:12px;
+    font-size:14px;
     color:var(--omsg-muted);
     line-height:1.8}
 .omw-content .button,.omw-content .button-secondary,.omw-content .page-title-action {
@@ -315,7 +315,7 @@ body.olama-workspace {
     padding:5px 13px;
     min-height:36px;
     height:auto;
-    font-size:12px;
+    font-size:14px;
     font-weight:600;
     line-height:24px;
     color:#4a6556;
@@ -341,7 +341,7 @@ body.olama-workspace {
     background:#06695e!important;
     border-color:#06695e!important}
 .omw-content .button-small {
-    font-size:11px;
+    font-size:13px;
     min-height:29px;
     padding:2px 10px;
     line-height:23px}
@@ -359,7 +359,7 @@ body.olama-workspace {
     min-height:38px;
     padding:7px 11px;
     max-width:100%;
-    font-size:13px;
+    font-size:15px;
     background:#fff;
     color:#3b5849;
     box-shadow:none}
@@ -380,7 +380,7 @@ body.olama-workspace {
     padding:10px 15px;
     margin:15px 0}
 .omw-content .notice p {
-    font-size:13px;
+    font-size:15px;
     line-height:1.8;
     margin:4px 0}
 .omw-content .notice-success {
@@ -423,12 +423,12 @@ body.olama-workspace {
     font-size:16px;
     margin:0}
 .omw-content .omsg-panel-head>a {
-    font-size:12px;
+    font-size:14px;
     font-weight:600}
 .omw-content .olama-msg-card__header {
     background:#fff;
     color:#354e40;
-    font-size:14px;
+    font-size:15px;
     text-transform:none;
     letter-spacing:0;
     padding:18px 22px;
@@ -455,26 +455,26 @@ body.olama-workspace {
     vertical-align:top;
     border-bottom:1px solid #edf1ed}
 .omw-content .form-table th {
-    font-size:13px;
+    font-size:15px;
     font-weight:600;
     width:235px;
     color:#486251}
 .omw-content .form-table td {
-    font-size:13px}
+    font-size:15px}
 .omw-content .form-table tr:last-child>* {
     border-bottom:0}
 .omw-content .widefat,.omw-content .olama-msg-table {
     box-shadow:none;
     border:0;
-    font-size:13px;
+    font-size:15px;
     border-collapse:collapse;
     line-height:1.65;
     min-width:600px}
 .omw-content .widefat th,.omw-content .olama-msg-table th {
-    color:#83968a!important;
+    color:#536b64!important;
     background:#f8faf8!important;
     text-transform:none;
-    font-size:11px;
+    font-size:13px;
     font-weight:500;
     padding:13px 18px;
     border-bottom:1px solid #e5ece6!important;
@@ -483,15 +483,15 @@ body.olama-workspace {
     padding:17px 18px;
     border-bottom:1px solid #edf1ed;
     color:#536e5d;
-    font-size:12px;
+    font-size:14px;
     vertical-align:middle;
     background:#fff!important}
 .omw-content .widefat td strong {
     font-weight:600;
     color:#35513e}
 .omw-content .widefat small {
-    color:#92a197;
-    font-size:11px;
+    color:#536b64;
+    font-size:13px;
     line-height:1.6}
 .omw-content .widefat tbody tr:last-child td {
     border-bottom:0}
@@ -525,8 +525,8 @@ body.olama-workspace {
     background:#fff;
     padding:21px}
 .omw-content .omsg-stat>span {
-    color:#829187;
-    font-size:12px;
+    color:#536b64;
+    font-size:14px;
     font-weight:400}
 .omw-content .omsg-stat>strong {
     display:block;
@@ -537,20 +537,20 @@ body.olama-workspace {
     color:#274834;
     margin:12px 0 6px}
 .omw-content .omsg-stat>small {
-    font-size:11px;
-    color:#92a095;
+    font-size:13px;
+    color:#536b64;
     line-height:1.7}
 .omw-content .omsg-status,.omw-content .olama-msg-badge,.omw-content .olama-msg-pill {
     display:inline-flex;
     align-items:center;
     gap:5px;
-    font-size:11px;
+    font-size:13px;
     font-weight:600;
     line-height:1.6;
     padding:4px 8px;
     border-radius:5px;
     background:#eef2f0;
-    color:#6b8372;
+    color:#536b64;
     white-space:nowrap}
 .omw-content .omsg-status--sending,.omw-content .omsg-status--completed,.omw-content .omsg-status--sent,.omw-content .olama-msg-badge--completed,.omw-content .olama-msg-pill--ok {
     background:#e7f5ec;
@@ -560,7 +560,7 @@ body.olama-workspace {
     color:#5a70a0}
 .omw-content .omsg-status--unknown,.omw-content .omsg-status--retry_wait,.omw-content .omsg-status--paused,.omw-content .olama-msg-pill--warn {
     background:#fff3da;
-    color:#a77a29}
+    color:#536b64}
 .omw-content .omsg-status--failed,.omw-content .olama-msg-pill--err {
     background:#fceee8;
     color:#a75a4e}
@@ -574,8 +574,8 @@ body.olama-workspace {
     margin:0}
 .omw-row-menu {
     position:relative;
-    font-size:11px;
-    color:#8a9b8f}
+    font-size:13px;
+    color:#536b64}
 .omw-row-menu summary {
     cursor:pointer;
     white-space:nowrap}
@@ -587,14 +587,14 @@ body.olama-workspace {
 .omw-row-menu form {
     margin-top:8px!important}
 .omw-eyebrow {
-    font-size:10px;
-    color:#8d9f92;
+    font-size:12px;
+    color:#536b64;
     letter-spacing:1.4px;
     font-weight:600;
     line-height:1.7}
 .omw-caption {
-    font-size:12px;
-    color:#8b9e8f;
+    font-size:14px;
+    color:#536b64;
     line-height:1.8}
 .omw-panel-top {
     display:flex;
@@ -608,11 +608,11 @@ body.olama-workspace {
     gap:16px;
     background:#edf6ef;
     border:1px solid #dce9dd;
-    color:#65866c;
+    color:#536b64;
     border-radius:8px;
     padding:12px 15px;
     margin:0 0 22px;
-    font-size:12px;
+    font-size:14px;
     line-height:1.8}
 .omw-readiness>span {
     display:flex;
@@ -623,10 +623,10 @@ body.olama-workspace {
     font-weight:600;
     color:#39754f}
 .omw-readiness small {
-    font-size:11px}
+    font-size:13px}
 .omw-readiness>a {
     flex:none;
-    font-size:12px;
+    font-size:14px;
     font-weight:600}
 .omw-readiness.needs-attention {
     background:#fff8e9;
@@ -656,11 +656,11 @@ body.olama-workspace {
     letter-spacing:-1px}
 .omw-progress-summary span {
     font-size:16px;
-    color:#92a596}
+    color:#536b64}
 .omw-progress-summary small {
     display:block;
-    color:#8ea091;
-    font-size:11px;
+    color:#536b64;
+    font-size:13px;
     line-height:1.8}
 .omw-progress-summary>div:last-child {
     text-align:end}
@@ -690,9 +690,9 @@ body.olama-workspace {
     margin-top:25px;
     padding-top:19px}
 .omw-active-campaign footer>span {
-    font-size:11px;
+    font-size:13px;
     line-height:1.8;
-    color:#90a093;
+    color:#536b64;
     max-width:300px}
 .omw-content .omw-recent-campaigns {
     margin:0;
@@ -705,11 +705,11 @@ body.olama-workspace {
     align-items:center;
     margin-bottom:22px}
 .omw-device-heading h2 {
-    font-size:14px;
+    font-size:15px;
     margin:0}
 .omw-device-heading p {
-    font-size:11px;
-    color:#8ea093;
+    font-size:13px;
+    color:#536b64;
     margin:6px 0 0}
 .omw-device-icon {
     display:grid;
@@ -719,7 +719,7 @@ body.olama-workspace {
     border:1px solid #e1ece2;
     background:#eef7f0;
     border-radius:10px;
-    color:#4d8870;
+    color:#536b64;
     flex:none}
 .omw-device dl {
     display:grid;
@@ -730,9 +730,9 @@ body.olama-workspace {
     justify-content:space-between;
     align-items:center;
     gap:15px;
-    font-size:11px}
+    font-size:13px}
 .omw-device dt {
-    color:#8a9f90}
+    color:#536b64}
 .omw-device dd {
     margin:0;
     text-align:end;
@@ -743,7 +743,7 @@ body.olama-workspace {
     border-top:1px solid #e5ece5;
     padding-top:17px;
     margin-top:21px;
-    font-size:12px;
+    font-size:14px;
     font-weight:600}
 .omw-attention {
     background:#fffbf2;
@@ -753,8 +753,8 @@ body.olama-workspace {
     line-height:1.5;
     margin:12px 0}
 .omw-attention p {
-    font-size:12px;
-    color:#9d8d6d;
+    font-size:14px;
+    color:#536b64;
     line-height:1.9;
     margin:0 0 20px}
 .omw-empty {
@@ -764,14 +764,14 @@ body.olama-workspace {
     font-size:33px;
     width:33px;
     height:33px;
-    color:#81a08a;
+    color:#536b64;
     margin-bottom:17px}
 .omw-empty h2 {
     font-size:21px;
     margin:0 0 12px}
 .omw-empty p {
-    font-size:13px;
-    color:#91a095;
+    font-size:15px;
+    color:#536b64;
     line-height:1.9;
     margin:0 auto 22px;
     max-width:560px}
@@ -784,7 +784,7 @@ body.olama-workspace {
     font-size:29px;
     font-weight:600}
 .omw-content .olama-msg-progress-stat__label {
-    font-size:11px}
+    font-size:13px}
 .omw-content .olama-msg-progress-controls {
     display:flex;
     flex-wrap:wrap;
@@ -796,7 +796,7 @@ body.olama-workspace {
     border:1px solid #e2ebe4;
     background:#f4f9f5;
     border-radius:7px;
-    font-size:12px}
+    font-size:14px}
 .omw-content .omsg-wizard {
     border:0;
     padding:0;
@@ -815,8 +815,8 @@ body.olama-workspace {
     background:none!important;
     border-radius:0!important;
     box-shadow:none!important;
-    font-size:12px;
-    color:#93a494;
+    font-size:14px;
+    color:#536b64;
     justify-content:flex-start}
 .omw-content .omsg-steps li:before {
     display:none}
@@ -824,8 +824,8 @@ body.olama-workspace {
     width:22px;
     height:22px;
     background:#e9eeea;
-    color:#91a293;
-    font-size:10px;
+    color:#536b64;
+    font-size:12px;
     border-radius:50%;
     margin-inline-end:7px}
 .omw-content .omsg-steps li.is-current {
@@ -836,10 +836,10 @@ body.olama-workspace {
     color:#087f72}
 .omw-content .omsg-steps li.is-done {
     border-top-color:#91b6a0!important;
-    color:#6d947a}
+    color:#536b64}
 .omw-content .omsg-save-state {
-    font-size:11px;
-    color:#91a296;
+    font-size:13px;
+    color:#536b64;
     margin-bottom:13px}
 .omw-wizard-layout {
     display:grid;
@@ -857,7 +857,7 @@ body.olama-workspace {
     margin:0 0 14px}
 .omw-content .omsg-step-panel>label {
     display:block;
-    font-size:13px;
+    font-size:15px;
     color:#647c6a;
     font-weight:600;
     margin:20px 0}
@@ -874,11 +874,11 @@ body.olama-workspace {
     background:#fff;
     border-radius:8px}
 .omw-content .omsg-cat-tab .dashicons {
-    color:#819c87}
+    color:#536b64}
 .omw-content .omsg-cat-tab strong {
-    font-size:13px}
+    font-size:15px}
 .omw-content .omsg-cat-tab small {
-    font-size:10px}
+    font-size:12px}
 .omw-content .omsg-cat-tab.is-active {
     background:#eff7f0;
     border-color:#80ad8d;
@@ -893,8 +893,8 @@ body.olama-workspace {
     border:1px solid #e2ece2;
     border-radius:7px;
     padding:11px 13px;
-    color:#7b9480;
-    font-size:12px}
+    color:#536b64;
+    font-size:14px}
 .omw-content .omsg-wizard-actions {
     display:flex;
     justify-content:space-between;
@@ -910,7 +910,7 @@ body.olama-workspace {
     position:sticky;
     top:45px}
 .omw-wizard-summary h3 {
-    font-size:14px;
+    font-size:15px;
     font-weight:600;
     margin:0 0 20px;
     color:#43674c}
@@ -922,16 +922,16 @@ body.olama-workspace {
     display:flex;
     justify-content:space-between;
     gap:15px;
-    font-size:12px}
+    font-size:14px}
 .omw-wizard-summary dt {
-    color:#859d87}
+    color:#536b64}
 .omw-wizard-summary dd {
     color:#4c7254;
     margin:0;
     text-align:end}
 .omw-wizard-summary>p {
-    font-size:11px;
-    color:#91a492;
+    font-size:13px;
+    color:#536b64;
     line-height:1.9;
     margin:18px 0}
 .omw-draft-phone {
@@ -945,15 +945,15 @@ body.olama-workspace {
     text-align:center;
     padding:7px 0 17px;
     border-bottom:1px solid #e8eee5;
-    font-size:11px;
-    color:#809784}
-.omw-draft-preview {
     font-size:13px;
+    color:#536b64}
+.omw-draft-preview {
+    font-size:15px;
     line-height:1.9;
     background:#eff5ef;
     border-radius:10px 10px 10px 2px;
     padding:13px;
-    color:#67836b;
+    color:#536b64;
     margin:16px 0 7px;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
@@ -966,7 +966,7 @@ body.olama-workspace {
     padding:20px;
     margin-bottom:22px}
 .omw-template-disclosure>summary {
-    font-size:14px;
+    font-size:15px;
     font-weight:600;
     color:#55765a;
     cursor:pointer;
@@ -974,7 +974,7 @@ body.olama-workspace {
 .omw-template-disclosure>summary:after {
     content:' +';
     float:inline-end;
-    color:#8aab8f}
+    color:#536b64}
 .omw-template-disclosure[open]>summary:after {
     content:' −'}
 .omw-content .omw-template-disclosure #col-left {
@@ -1009,9 +1009,9 @@ body.olama-workspace {
     margin:14px 0;
     line-height:1.6}
 .omw-template-body {
-    font-size:13px;
+    font-size:15px;
     line-height:1.9;
-    color:#82998a;
+    color:#536b64;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
     max-height:190px;
@@ -1027,8 +1027,8 @@ body.olama-workspace {
     padding-top:17px;
     margin-top:auto}
 .omw-template-card details {
-    font-size:11px;
-    color:#91a695}
+    font-size:13px;
+    color:#536b64}
 .omw-template-card summary {
     cursor:pointer}
 .omw-template-card details a {
@@ -1060,7 +1060,7 @@ body.olama-workspace {
     min-height:60px;
     outline:none;
     box-shadow:none;
-    font-size:14px}
+    font-size:15px}
 .omw-command-close {
     position:absolute;
     inset-inline-end:15px;
@@ -1068,7 +1068,7 @@ body.olama-workspace {
     border:0;
     background:none;
     font-size:22px;
-    color:#8b9f8e;
+    color:#536b64;
     cursor:pointer}
 .omw-command-results {
     padding:8px;
@@ -1080,7 +1080,7 @@ body.olama-workspace {
     gap:12px;
     padding:13px;
     border-radius:6px;
-    font-size:13px;
+    font-size:15px;
     color:#63806a}
 .omw-command-results a:hover,.omw-command-results a:focus {
     background:#edf5ef}
@@ -1089,15 +1089,15 @@ body.olama-workspace {
     height:17px;
     font-size:17px}
 .omw-command-results p {
-    font-size:12px;
+    font-size:14px;
     padding:15px;
-    color:#92a295}
+    color:#536b64}
 .omw-command>small {
     display:block;
     padding:12px 20px;
     border-top:1px solid #e0e9e1;
-    font-size:10px;
-    color:#96a798}
+    font-size:12px;
+    color:#536b64}
 .omw-shell [hidden] {
     display:none!important}
 
@@ -1182,13 +1182,13 @@ html[dir=rtl] .omw-sidebar {
     display:inline-flex;
     background:none;
     border:0;
-    color:#729080;
+    color:#536b64;
     padding:0}
 .omw-breadcrumb {
     gap:8px;
-    font-size:11px}
+    font-size:13px}
 .omw-breadcrumb strong {
-    font-size:11px}
+    font-size:13px}
 .omw-search-button {
     min-width:0;
     padding:6px;
@@ -1207,22 +1207,22 @@ html[dir=rtl] .omw-sidebar {
     flex-wrap:wrap;
     gap:15px}
 .omw-content .omsg-page-head p {
-    font-size:12px}
+    font-size:14px}
 .omw-context-nav {
     gap:3px;
     margin-bottom:20px}
 .omw-context-nav a {
-    font-size:11px;
+    font-size:13px;
     padding:6px 9px}
 .omw-content .olama-msg-page-title {
     font-size:24px!important;
     flex-wrap:wrap}
 .omw-content .omsg-stat>span {
-    font-size:11px}
+    font-size:13px}
 .omw-content .omsg-stat>strong {
     font-size:27px}
 .omw-content .omsg-stat>small {
-    font-size:10px}
+    font-size:12px}
 .omw-content .omsg-stat {
     padding:17px 14px}
 .omw-panel {
@@ -1232,22 +1232,22 @@ html[dir=rtl] .omw-sidebar {
 .omw-progress-summary strong {
     font-size:29px}
 .omw-progress-summary small {
-    font-size:10px}
+    font-size:12px}
 .omw-progress-summary b {
-    font-size:13px}
+    font-size:15px}
 .omw-active-campaign footer {
     align-items:flex-start}
 .omw-active-campaign footer>span {
-    font-size:10px}
+    font-size:12px}
 .omw-readiness {
     align-items:start;
-    font-size:11px;
+    font-size:13px;
     gap:10px;
     padding:11px 12px}
 .omw-readiness small {
     display:none}
 .omw-readiness>a {
-    font-size:11px}
+    font-size:13px}
 .omw-readiness .omw-dot {
     margin-top:6px}
 .omw-columns>aside.omw-stack {
@@ -1277,7 +1277,7 @@ html[dir=rtl] .omw-sidebar {
 .omw-content .omw-recent-campaigns {
     padding:0}
 .omw-content .omsg-steps li {
-    font-size:10px;
+    font-size:12px;
     padding-inline-end:7px!important}
 .omw-content .omsg-steps li span {
     display:flex;
@@ -1307,7 +1307,7 @@ html[dir=rtl] .omw-sidebar {
 .omw-content .olama-msg-progress-stat {
     padding:17px 11px}
 .omw-content .olama-msg-progress-stat__label {
-    font-size:10px}
+    font-size:12px}
 .omw-content .omsg-phone-book-summary {
     grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -1336,12 +1336,28 @@ html[dir=rtl] .omw-sidebar {
 .omw-content .description,.omw-content .omw-caption,.omw-content .omsg-stat>small,.omw-content .omsg-stat>span,.omw-template-body,.omw-wizard-summary>p,.omw-draft-phone>span,.omw-device dt {
     color:#63797b}
 .omw-content .widefat td small {
-    font-size:11px;
+    font-size:13px;
     color:#65787c}
 .omw-footer {
     color:#6c7f79}
 .omw-sidebar .omw-nav-group {
-    color:#72877b}
+    color:#536b64}
 .omw-content .omw-device dl {
-    font-size:12px}
+    font-size:14px}
 
+
+/* Clear navigation symbols and comfortable reading sizes. */
+.omw-nav-link {font-weight:600;line-height:1.5}
+.omw-nav-link .dashicons {font-size:22px;width:22px;height:22px;color:#506d62;opacity:1;flex-shrink:0}
+.omw-nav-link.is-current .dashicons {color:#076f63}
+.omw-search-button .dashicons,.omw-mobile-toggle .dashicons {font-size:22px;width:22px;height:22px;color:#506d62}
+.omw-wp-return .dashicons {font-size:20px;width:20px;height:20px;color:#506d62}
+.omw-school>.dashicons {color:#506d62}
+.omw-content .widefat th,.omw-content .olama-msg-table th {color:#50665e!important;font-weight:600}
+.omw-content .omw-draft-preview,.omw-template-body {font-size:16px;line-height:1.9;color:#344f46}
+.omw-content .om-agent {--oa-muted:#596d76}
+.omw-content .om-agent-metrics span,.omw-content .om-agent-metrics small,.omw-content .om-agent-activity-table th,.omw-content .om-agent-activity-table td small,.omw-content .om-agent-pagination {font-size:13px}
+.omw-content .om-agent-activity-table td {font-size:14px}
+.omw-content .om-agent-hero p {font-size:14px}
+.omw-content .omsg-status,.omw-content .olama-msg-pill,.omw-content .olama-msg-badge {font-size:12px;font-weight:600}
+.omw-content input::placeholder,.omw-content textarea::placeholder {color:#687b73;opacity:1}
