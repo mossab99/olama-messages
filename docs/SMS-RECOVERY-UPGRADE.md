@@ -8,7 +8,7 @@ Pause stops new reservations and preserves the active attempt. A timeout, expire
 
 A successful KDE exit is shown as “Submitted via KDE”; it is not a recipient delivery receipt. Cancellation cannot recall a command already handed to KDE. Cancelled jobs retain their audit identity, and late callbacks do not revive them.
 
-Both server reservations and the local sender enforce the existing 20-second minimum and 60 attempts/hour. Their combined effective spacing is at least 60 seconds. Conservative rate accounting includes submission intents even if launch later fails. Manual test SMS uses the same local limiter. ETA uses the slower of the configured limit and observed campaign reservation throughput; paused time, review time, competing campaigns and offline periods can extend completion.
+Version 4.0.13 and agent 2.0.1 use a 10-second minimum and 360 attempts per rolling hour. The agent waits 10 seconds after each completed cycle; request and KDE processing time add to that gap. Update both packages to remove the previous one-minute limiter. Conservative rate accounting includes submission intents even if launch later fails. Manual test SMS uses the same local limiter. ETA combines the current pacing limit with recent observed processing time, so old one-minute gaps do not carry into the faster estimate; paused time, review time, competing campaigns and offline periods can extend completion.
 
 ## Checks
 

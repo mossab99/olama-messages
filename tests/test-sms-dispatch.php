@@ -31,7 +31,9 @@ $svc->update_send_status( $agent, $qid, 'sent_by_kde', 0, '', '', $job['attempt_
 comm_assert( 1 === (int) sms_row( $qid )['attempt_count'], 'repeated success counts once' );
 list( $campaign2, $qid2 ) = sms_fixture();
 comm_assert( array() === $svc->reserve_batch( $agent ), 'minimum spacing enforced on server' );
-sms_free_rate(); $job2 = $svc->reserve_batch( $agent )[0];
+$wpdb->query( "UPDATE $devices SET last_reserved_at='" . gmdate( 'Y-m-d H:i:s', time() - 11 ) . "'" );
+$job2 = $svc->reserve_batch( $agent )[0];
+comm_assert( $job2['queue_id'] === $qid2, 'eleven-second-old reservation no longer imposes a one-minute wait' );
 for ( $i=0; $i<3; $i++ ) { $svc->update_send_status( $agent, $qid2, 'failed', -2, '', 'Phone unavailable; not sent', $job2['attempt_id'] ); }
 comm_assert( 'retry_wait' === sms_row( $qid2 )['status'] && 1 === (int) sms_row( $qid2 )['attempt_count'], 'repeated failed report does not consume retries' );
 sms_free_rate(); $job3 = $svc->reserve_batch( $agent )[0];
@@ -65,10 +67,16 @@ Olama_Messages_Plugin::instance()->campaigns()->cancel_campaign( $campaign4 );
 $svc->update_send_status( $agent, $qid4, 'sent_by_kde', 0, '', '', $job6['attempt_id'] );
 comm_assert( 'cancelled' === sms_row( $qid4 )['status'], 'late result does not revive cancelled queue' );
 list( $campaign5, $qid5 ) = sms_fixture(); sms_free_rate();
-for ( $i=0; $i<60; $i++ ) { $wpdb->insert( $attempts, array( 'attempt_id' => wp_generate_uuid4(), 'queue_id' => $qid5, 'agent_id' => 99,
+for ( $i=0; $i<360; $i++ ) { $wpdb->insert( $attempts, array( 'attempt_id' => wp_generate_uuid4(), 'queue_id' => $qid5, 'agent_id' => 99,
     'device_key' => hash( 'sha256', $agent['kde_device_id'] ), 'status' => 'sent', 'created_at' => gmdate( 'Y-m-d H:i:s', time()-120 ), 'updated_at' => gmdate( 'Y-m-d H:i:s' ) ) ); }
 comm_assert( array() === $svc->reserve_batch( $agent ), 'rolling hourly limit enforced even after minimum spacing' );
-comm_assert( $svc->estimate_remaining_seconds( $campaign5, 10 ) >= 600, 'ETA respects the hourly cap' );
+comm_assert( $svc->estimate_remaining_seconds( $campaign5, 10 ) === 100, 'ETA uses ten-second spacing for a fresh campaign' );
+foreach ( array( 180, 120 ) as $age ) {
+    $wpdb->insert( $queue, array( 'campaign_id' => $campaign5, 'campaign_recipient_id' => 1, 'family_id' => 1,
+        'status' => 'sent', 'created_at' => gmdate( 'Y-m-d H:i:s' ),
+        'reserved_at' => gmdate( 'Y-m-d H:i:s', time() - $age ), 'sent_at' => gmdate( 'Y-m-d H:i:s', time() - $age + 2 ) ) );
+}
+comm_assert( 120 === $svc->estimate_remaining_seconds( $campaign5, 10 ), 'ETA uses current ten-second pace plus processing, not old one-minute gaps' );
 $rest = new Olama_Messages_Agent_REST_Controller();
 $request = new WP_REST_Request( 'POST' ); $request->set_param( '_authorized_agent', $agent ); $request->set_body( '{}' ); $request->set_header( 'content-type', 'application/json' );
 comm_assert( 426 === $rest->handle_reserve_jobs( $request )->get_status(), 'old agent cannot reserve under new protocol' );

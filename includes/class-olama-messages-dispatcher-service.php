@@ -16,9 +16,9 @@ class Olama_Messages_Dispatcher_Service {
         $this->devices = $wpdb->prefix . 'olama_msg_dispatch_devices';
     }
     public static function config() {
-        return array( 'dispatch_protocol_version' => 2, 'poll_interval_seconds' => 15,
-            'max_jobs_per_poll' => 1, 'min_seconds_between_sms' => 20,
-            'max_sms_per_hour' => 60, 'reservation_ttl_seconds' => 180 );
+        return array( 'dispatch_protocol_version' => 2, 'poll_interval_seconds' => 10,
+            'max_jobs_per_poll' => 1, 'min_seconds_between_sms' => 10,
+            'max_sms_per_hour' => 360, 'reservation_ttl_seconds' => 180 );
     }
     private function must( $result ) {
         if ( false === $result ) { throw new RuntimeException( 'SMS database operation failed. The result was not acknowledged.' ); }
@@ -231,8 +231,17 @@ class Olama_Messages_Dispatcher_Service {
         if ( $pending < 1 ) { return 0; }
         $cfg = self::config();
         $baseline = max( $cfg['min_seconds_between_sms'], (int) ceil( 3600 / $cfg['max_sms_per_hour'] ) );
-        $times = $wpdb->get_col( $wpdb->prepare( "SELECT reserved_at FROM {$this->queue} WHERE campaign_id=%d AND reserved_at IS NOT NULL ORDER BY reserved_at DESC LIMIT 20", $campaign_id ) );
-        $observed = count( $times ) > 1 ? ( strtotime( $times[0] . ' UTC' ) - strtotime( end( $times ) . ' UTC' ) ) / ( count( $times ) - 1 ) : 0;
-        return (int) ceil( $pending * max( $baseline, $observed ) );
+        // Measure processing time separately from the pacing policy, so changing
+        // the delay does not keep the previous one-minute estimate for 20 sends.
+        $samples = $wpdb->get_results( $wpdb->prepare( "SELECT reserved_at, sent_at FROM {$this->queue}
+            WHERE campaign_id=%d AND status='sent' AND reserved_at IS NOT NULL AND sent_at IS NOT NULL
+            ORDER BY sent_at DESC LIMIT 20", $campaign_id ), ARRAY_A );
+        $processing = array();
+        foreach ( (array) $samples as $sample ) {
+            $seconds = strtotime( $sample['sent_at'] . ' UTC' ) - strtotime( $sample['reserved_at'] . ' UTC' );
+            if ( $seconds >= 0 && $seconds <= $cfg['reservation_ttl_seconds'] ) { $processing[] = $seconds; }
+        }
+        $average = $processing ? array_sum( $processing ) / count( $processing ) : 0;
+        return (int) ceil( $pending * ( $baseline + $average ) );
     }
 }
