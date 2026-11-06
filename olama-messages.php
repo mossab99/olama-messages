@@ -3,7 +3,7 @@
  * Plugin Name: Olama Messages
  * Plugin URI:  https://olama.edu.jo/
  * Description: Tokenized payment report links and SMS template preview for the Olama school ecosystem.
- * Version:     4.0.15
+ * Version:     4.0.16
  * Author:      Olama
  * Text Domain: olama-messages
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'OLAMA_MSG_VERSION',  '4.0.15' );
+define( 'OLAMA_MSG_VERSION',  '4.0.16' );
 define( 'OLAMA_MSG_LEGACY_DB_VERSION', '2.6.0' );
 define( 'OLAMA_MSG_FILE',     __FILE__ );
 define( 'OLAMA_MSG_PATH',     plugin_dir_path( __FILE__ ) );
@@ -38,6 +38,8 @@ require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-token-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-short-link-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-template-renderer.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-service.php';
+require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-dashboard.php';
+require_once OLAMA_MSG_PATH . 'admin/class-olama-messages-agent-page.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-agent-rest-controller.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-dispatcher-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-renewal-diagnostics-command.php';

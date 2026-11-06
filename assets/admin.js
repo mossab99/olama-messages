@@ -965,3 +965,48 @@
     });
 
 }(jQuery));
+
+/* Read-only agent workspace refresh. Does not call device discovery or dispatch endpoints. */
+(function ($) {
+    'use strict';
+    var $workspace = $('#om-agent-workspace, #om-agent-list'), interval = $('#om-agent-list').length ? 15000 : 5000, timer = null, request = null, failures = 0;
+    var currentPage = 0, pageSize = 10;
+    function applyFilter() {
+        var problems = $workspace.find('[data-agent-filter]').val() === 'problems';
+        var $rows = $workspace.find('[data-agent-part="activity"] tbody tr');
+        var $matching = $rows.filter(function () { return !problems || $(this).attr('data-problem') === '1'; });
+        currentPage = Math.min(currentPage, Math.max(0, Math.ceil($matching.length / pageSize) - 1));
+        $rows.prop('hidden', true);
+        $matching.slice(currentPage * pageSize, (currentPage + 1) * pageSize).prop('hidden', false);
+        $workspace.find('.om-agent-filter-empty').prop('hidden', !problems || $matching.length > 0);
+        $workspace.find('[data-agent-pagination]').prop('hidden', $matching.length === 0);
+        $workspace.find('[data-agent-page-label]').text((currentPage * pageSize + 1) + '–' + Math.min((currentPage + 1) * pageSize, $matching.length) + ' of ' + $matching.length + ' attempts');
+        $workspace.find('[data-agent-prev]').prop('disabled', currentPage === 0);
+        $workspace.find('[data-agent-next]').prop('disabled', (currentPage + 1) * pageSize >= $matching.length);
+    }
+    function schedule() { clearTimeout(timer); if (!document.hidden) { timer = setTimeout(refresh, Math.min(30000, interval * Math.max(1, failures))); } }
+    function refresh() {
+        if (!$workspace.length || request || document.hidden) { return; }
+        $workspace.find('[data-agent-refresh]').prop('disabled', true);
+        request = $.post(olamaMsgAdmin.ajaxUrl, { action: 'olama_msg_agent_workspace', nonce: olamaMsgAdmin.nonce, agent_id: $workspace.attr('data-agent-id') });
+        request.done(function (res) {
+            if (!res || !res.success || !res.data.parts) { failed(); return; }
+            failures = 0;
+            $.each(res.data.parts, function (name, html) {
+                var $part = $workspace.find('[data-agent-part="' + name + '"]');
+                // Do not remove keyboard focus or collapse details while an operator reads.
+                if (name === 'activity' && ($part.find('details[open]').length || $part.has(document.activeElement).length)) { return; }
+                $part.html(html);
+            });
+            applyFilter();
+            $workspace.find('.om-agent-sync').removeClass('is-stale');
+            $workspace.find('[data-sync-label]').text('Live · updated just now');
+        }).fail(failed).always(function () { request = null; $workspace.find('[data-agent-refresh]').prop('disabled', false); schedule(); });
+    }
+    function failed() { failures++; $workspace.find('.om-agent-sync').addClass('is-stale'); $workspace.find('[data-sync-label]').text('Refresh interrupted · showing last update'); }
+    $workspace.on('click', '[data-agent-refresh]', refresh).on('change', '[data-agent-filter]', function () { currentPage = 0; applyFilter(); });
+    $workspace.on('click', '[data-agent-prev]', function () { currentPage--; applyFilter(); }).on('click', '[data-agent-next]', function () { currentPage++; applyFilter(); });
+    $(document).on('visibilitychange', function () { clearTimeout(timer); if (!document.hidden && $workspace.length) { refresh(); } });
+    $('[data-agent-add]').on('click', function (event) { event.preventDefault(); var target = document.getElementById('om-agent-register'); if (target) { target.open = true; target.scrollIntoView({ behavior: 'smooth', block: 'center' }); $('#agent_name').trigger('focus'); } });
+    if ($workspace.length) { applyFilter(); schedule(); }
+})(jQuery);
