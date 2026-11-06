@@ -65,6 +65,7 @@ class Olama_Messages_Admin {
 		add_action( 'admin_post_olama_msg_start_campaign',    array( $this, 'handle_start_campaign' ) );
 		add_action( 'admin_post_olama_msg_pause_campaign',    array( $this, 'handle_pause_campaign' ) );
 		add_action( 'admin_post_olama_msg_resume_campaign',   array( $this, 'handle_resume_campaign' ) );
+		add_action( 'admin_post_olama_msg_review_sms', array( $this, 'handle_review_sms' ) );
 
 		// Agent actions (Phase 3)
 		add_action( 'admin_post_olama_msg_save_agent',        array( $this, 'handle_save_agent' ) );
@@ -822,7 +823,8 @@ class Olama_Messages_Admin {
 			'cancelled'              => array( __( 'Cancelled', 'olama-messages' ),         'olama-msg-badge--revoked' ),
 			// Queue-level statuses
 			'reserved'               => array( __( 'Reserved', 'olama-messages' ),          'olama-msg-badge--sending' ),
-			'sent'                   => array( __( 'Sent', 'olama-messages' ),              'olama-msg-badge--completed' ),
+			'unknown'                => array( __( 'Outcome unknown — review needed', 'olama-messages' ), 'olama-msg-badge--failed' ),
+			'sent'                   => array( __( 'Submitted via KDE', 'olama-messages' ),              'olama-msg-badge--completed' ),
 			'failed'                 => array( __( 'Failed', 'olama-messages' ),            'olama-msg-badge--revoked' ),
 			'retry_wait'             => array( __( 'Retry Wait', 'olama-messages' ),        'olama-msg-badge--paused' ),
 		);
@@ -870,7 +872,7 @@ class Olama_Messages_Admin {
 			"SELECT status, COUNT(*) AS cnt FROM {$table_queue} WHERE campaign_id = %d GROUP BY status",
 			$campaign_id
 		), ARRAY_A );
-		$counter = array_fill_keys( array( 'prepared', 'reserved', 'sent', 'failed', 'retry_wait', 'cancelled' ), 0 );
+		$counter = array_fill_keys( array( 'prepared', 'reserved', 'sent', 'failed', 'retry_wait', 'cancelled', 'unknown' ), 0 );
 		$total   = 0;
 		foreach ( $counts as $count ) {
 			$counter[ $count['status'] ] = (int) $count['cnt'];
@@ -919,7 +921,9 @@ class Olama_Messages_Admin {
 				$last_error = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_error'] ?? '' ) );
 				$last_poll  = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_poll_at'] ?? '' ) );
 				$poll_time  = $last_poll ? strtotime( $last_poll . ' UTC' ) : false;
-				if ( '' !== $last_error || 'Error' === ( $heartbeat['dispatcher_state'] ?? '' ) ) {
+				if ( 2 !== (int) ( $heartbeat['dispatch_protocol_version'] ?? 0 ) ) {
+					$dispatch_diagnostic = array( 'level' => 'error', 'message' => __( 'Update and restart the Windows sending agent to use safe SMS recovery.', 'olama-messages' ) );
+				} elseif ( '' !== $last_error || 'Error' === ( $heartbeat['dispatcher_state'] ?? '' ) ) {
 					$dispatch_diagnostic = array(
 						'level'   => 'error',
 						'message' => sprintf( __( 'Sending is waiting: the desktop dispatcher reported an error: %s', 'olama-messages' ), $last_error ?: __( 'Restart or resume the desktop sending agent.', 'olama-messages' ) ),
@@ -936,6 +940,9 @@ class Olama_Messages_Admin {
 				}
 			}
 		}
+		if ( ! empty( $counter['unknown'] ) ) {
+			$dispatch_diagnostic = array( 'level' => 'warning', 'message' => sprintf( __( '%d SMS outcomes need review. Refresh this page, check the phone history, and resolve them before retrying.', 'olama-messages' ), $counter['unknown'] ) );
+		}
 		wp_send_json_success( array(
 			'campaign_status'      => $campaign['status'],
 			'campaign_status_html' => $this->status_badge( $campaign['status'] ),
@@ -946,7 +953,7 @@ class Olama_Messages_Admin {
 				'reserved' => $total ? round( ( $counter['reserved'] / $total ) * 100 ) : 0,
 				'failed'   => $total ? round( ( $counter['failed'] / $total ) * 100 ) : 0,
 			),
-			'eta_seconds' => $pending * 20,
+			'eta_seconds' => $this->plugin->dispatcher()->estimate_remaining_seconds( $campaign_id, $pending ),
 			'dispatch_diagnostic' => $dispatch_diagnostic,
 			'rows'        => $row_data,
 		) );
@@ -1426,6 +1433,7 @@ class Olama_Messages_Admin {
 			'sent'       => 0,
 			'failed'     => 0,
 			'retry_wait' => 0,
+			'unknown' => 0,
 			'cancelled'  => 0,
 		);
 		$total_queue = 0;
@@ -1437,8 +1445,8 @@ class Olama_Messages_Admin {
 		$pending = $counter['prepared'] + $counter['reserved'] + $counter['retry_wait'];
 		$done    = $counter['sent'] + $counter['failed'] + $counter['cancelled'];
 
-		// Estimated time remaining (20s per pending SMS).
-		$est_seconds  = $pending * 20;
+		// Estimate from enforced limits and recent reservation throughput.
+		$est_seconds  = $this->plugin->dispatcher()->estimate_remaining_seconds( $campaign_id, $pending );
 		$est_display  = '';
 		if ( $est_seconds > 0 ) {
 			$est_display = sprintf(
@@ -1518,6 +1526,7 @@ class Olama_Messages_Admin {
 				<?php endif; ?>
 			</div>
 
+			<?php $this->render_unknown_sms_reviews( $campaign_id ); ?>
 			<!-- Progress Stats -->
 			<div class="olama-msg-progress-stats">
 				<div class="olama-msg-progress-stat olama-msg-progress-stat--total">
@@ -1534,7 +1543,7 @@ class Olama_Messages_Admin {
 				</div>
 				<div class="olama-msg-progress-stat olama-msg-progress-stat--sent">
 					<span class="olama-msg-progress-stat__num" data-progress-count="sent"><?php echo esc_html( number_format( $counter['sent'] ) ); ?></span>
-					<span class="olama-msg-progress-stat__label"><?php esc_html_e( 'Sent', 'olama-messages' ); ?></span>
+					<span class="olama-msg-progress-stat__label"><?php esc_html_e( 'Submitted via KDE', 'olama-messages' ); ?></span>
 				</div>
 				<div class="olama-msg-progress-stat olama-msg-progress-stat--failed">
 					<span class="olama-msg-progress-stat__num" data-progress-count="failed"><?php echo esc_html( number_format( $counter['failed'] ) ); ?></span>
@@ -1554,12 +1563,12 @@ class Olama_Messages_Admin {
 			?>
 			<div class="olama-msg-progressbar-wrap">
 				<div class="olama-msg-progressbar">
-					<div class="olama-msg-progressbar__sent" style="width:<?php echo esc_attr( $pct_sent ); ?>%" title="<?php printf( esc_attr__( '%d%% Sent', 'olama-messages' ), $pct_sent ); ?>"></div>
+					<div class="olama-msg-progressbar__sent" style="width:<?php echo esc_attr( $pct_sent ); ?>%" title="<?php printf( esc_attr__( '%d%% Submitted', 'olama-messages' ), $pct_sent ); ?>"></div>
 					<div class="olama-msg-progressbar__reserved" style="width:<?php echo esc_attr( $pct_reserved ); ?>%" title="<?php printf( esc_attr__( '%d%% In Progress', 'olama-messages' ), $pct_reserved ); ?>"></div>
 					<div class="olama-msg-progressbar__failed" style="width:<?php echo esc_attr( $pct_failed ); ?>%" title="<?php printf( esc_attr__( '%d%% Failed', 'olama-messages' ), $pct_failed ); ?>"></div>
 				</div>
 				<div class="olama-msg-progressbar-legend">
-					<span class="olama-msg-progressbar__legend--sent" id="olama-msg-progress-sent-label"><?php printf( esc_html__( '%d%% Sent', 'olama-messages' ), $pct_sent ); ?></span>
+					<span class="olama-msg-progressbar__legend--sent" id="olama-msg-progress-sent-label"><?php printf( esc_html__( '%d%% Submitted', 'olama-messages' ), $pct_sent ); ?></span>
 					<?php if ( $est_display ) : ?>
 					<span class="olama-msg-progressbar__legend--eta" id="olama-msg-progress-eta"><?php printf( esc_html__( 'Est. remaining: %s', 'olama-messages' ), $est_display ); ?></span>
 					<?php endif; ?>
@@ -1591,7 +1600,7 @@ class Olama_Messages_Admin {
 							<th><?php esc_html_e( 'Status', 'olama-messages' ); ?></th>
 							<th><?php esc_html_e( 'Attempts', 'olama-messages' ); ?></th>
 							<th><?php esc_html_e( 'Last Error', 'olama-messages' ); ?></th>
-							<th><?php esc_html_e( 'Sent At', 'olama-messages' ); ?></th>
+							<th><?php esc_html_e( 'Submitted At', 'olama-messages' ); ?></th>
 							<th><?php esc_html_e( 'Updated', 'olama-messages' ); ?></th>
 						</tr>
 					</thead>
@@ -2312,7 +2321,7 @@ class Olama_Messages_Admin {
 						<option value="prepared" <?php selected( $f_status, 'prepared' ); ?>><?php esc_html_e( 'Prepared', 'olama-messages' ); ?></option>
 						<option value="reserved" <?php selected( $f_status, 'reserved' ); ?>><?php esc_html_e( 'Reserved', 'olama-messages' ); ?></option>
 						<option value="retry_wait" <?php selected( $f_status, 'retry_wait' ); ?>><?php esc_html_e( 'Retry Wait', 'olama-messages' ); ?></option>
-						<option value="sent" <?php selected( $f_status, 'sent' ); ?>><?php esc_html_e( 'Sent', 'olama-messages' ); ?></option>
+						<option value="sent" <?php selected( $f_status, 'sent' ); ?>><?php esc_html_e( 'Submitted via KDE', 'olama-messages' ); ?></option>
 						<option value="failed" <?php selected( $f_status, 'failed' ); ?>><?php esc_html_e( 'Failed', 'olama-messages' ); ?></option>
 						<option value="cancelled" <?php selected( $f_status, 'cancelled' ); ?>><?php esc_html_e( 'Cancelled', 'olama-messages' ); ?></option>
 					</select>
@@ -3322,6 +3331,40 @@ class Olama_Messages_Admin {
 	}
 
 	/** Handle Pause Campaign POST. */
+
+    public function handle_review_sms() {
+        if ( ! current_user_can( 'olama_access_messages' ) ) { wp_die( esc_html__( 'Unauthorized', 'olama-messages' ) ); }
+        $queue_id = absint( $_POST['queue_id'] ?? 0 );
+        check_admin_referer( 'olama_msg_review_' . $queue_id );
+        try {
+            if ( empty( $_POST['checked_phone'] ) ) { throw new Exception( 'Check the phone message history before resolving this outcome.' ); }
+            $campaign_id = $this->plugin->dispatcher()->resolve_unknown( $queue_id, sanitize_key( $_POST['resolution'] ?? '' ) );
+            $this->set_flash( __( 'SMS outcome reviewed.', 'olama-messages' ), 'success' );
+        } catch ( Throwable $error ) {
+            $this->set_flash( $error->getMessage(), 'error' );
+            $campaign_id = absint( $_POST['campaign_id'] ?? 0 );
+        }
+        wp_safe_redirect( admin_url( 'admin.php?page=olama-messages-campaign-progress&campaign_id=' . $campaign_id ) );
+        exit;
+    }
+    private function render_unknown_sms_reviews( $campaign_id ) {
+        global $wpdb;
+        $rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, phone_e164 FROM {$wpdb->prefix}olama_msg_queue WHERE campaign_id=%d AND status='unknown' ORDER BY id LIMIT 100", $campaign_id ), ARRAY_A );
+        if ( ! $rows ) { return; }
+        echo '<div class="notice notice-warning"><p>' . esc_html__( 'These SMS outcomes are unknown. Check the phone message history. Retry only if you confirm the message was not submitted; retrying an already submitted message can send a duplicate.', 'olama-messages' ) . '</p>';
+        foreach ( $rows as $row ) {
+            echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin:12px 0">';
+            echo '<input type="hidden" name="action" value="olama_msg_review_sms"><input type="hidden" name="queue_id" value="' . absint( $row['id'] ) . '"><input type="hidden" name="campaign_id" value="' . absint( $campaign_id ) . '">';
+            wp_nonce_field( 'olama_msg_review_' . $row['id'] );
+            echo '<strong>#' . absint( $row['id'] ) . ' <bdi>' . esc_html( $row['phone_e164'] ) . '</bdi></strong> ';
+            echo '<label><input type="checkbox" name="checked_phone" value="1" required> ' . esc_html__( 'I checked the phone history', 'olama-messages' ) . '</label> ';
+            echo '<button class="button" name="resolution" value="submitted">' . esc_html__( 'Mark submitted', 'olama-messages' ) . '</button> ';
+            echo '<button class="button" name="resolution" value="retry">' . esc_html__( 'Confirmed not submitted — retry', 'olama-messages' ) . '</button> ';
+            echo '<button class="button" name="resolution" value="failed">' . esc_html__( 'Mark failed', 'olama-messages' ) . '</button></form>';
+        }
+        echo '</div>';
+    }
+
 	public function handle_pause_campaign() {
 		if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
 			wp_die( esc_html__( 'This action requires POST.', 'olama-messages' ), 405 );
@@ -3339,7 +3382,7 @@ class Olama_Messages_Admin {
 
 		try {
 			$this->plugin->campaigns()->pause_campaign_sending( $campaign_id );
-			$this->set_flash( __( 'Campaign paused. Reserved jobs have been returned to the prepared queue.', 'olama-messages' ), 'success' );
+			$this->set_flash( __( 'Campaign paused. The active SMS may finish; no new messages will be reserved.', 'olama-messages' ), 'success' );
 		} catch ( Exception $e ) {
 			$this->set_flash( $e->getMessage(), 'error' );
 		}

@@ -296,14 +296,17 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 		$agent = $request->get_param( '_authorized_agent' );
 		$params = $request->get_json_params() ?: array();
 
+		if ( 2 !== (int) ( $params['dispatch_protocol_version'] ?? 0 ) ) {
+			return new WP_REST_Response( array( 'message' => 'Update the Windows sending agent to dispatch protocol 2.' ), 426 );
+		}
 		$max_jobs = 1; // Enforce sequential device dispatch server-side.
 
 		// Check KDE readiness from:
 		//  1. Capabilities sent in request body (C# app may send these)
 		//  2. Agent DB record (updated by heartbeat — authoritative fallback)
-		$req_capabilities = $params['capabilities'] ?? array();
-		$kde_cli_found        = ! empty( $req_capabilities['kde_cli_found'] )       || ! empty( $agent['kde_cli_found'] );
-		$kde_device_reachable = ! empty( $req_capabilities['kde_device_reachable'] ) || ! empty( $agent['kde_device_reachable'] );
+		$req_capabilities = is_array( $params['capabilities'] ?? null ) ? $params['capabilities'] : array();
+		$kde_cli_found        = array_key_exists( 'kde_cli_found', $req_capabilities ) ? ! empty( $req_capabilities['kde_cli_found'] ) : ! empty( $agent['kde_cli_found'] );
+		$kde_device_reachable = array_key_exists( 'kde_device_reachable', $req_capabilities ) ? ! empty( $req_capabilities['kde_device_reachable'] ) : ! empty( $agent['kde_device_reachable'] );
 		$kde_ready            = $kde_cli_found && $kde_device_reachable;
 
 		if ( ! $kde_ready ) {
@@ -320,7 +323,12 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 		}
 
 		$dispatcher = Olama_Messages_Plugin::instance()->dispatcher();
-		$jobs = $dispatcher->reserve_batch( $agent, $max_jobs );
+		try {
+			$dispatcher->cleanup_stale_reservations();
+			$jobs = $dispatcher->reserve_batch( $agent, $max_jobs );
+		} catch ( Throwable $error ) {
+			return new WP_REST_Response( array( 'message' => $error->getMessage() ), 503 );
+		}
 
 		return new WP_REST_Response(
 			array(
@@ -362,7 +370,7 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 		$stdout        = isset( $params['stdout'] ) ? (string) $params['stdout'] : '';
 		$stderr        = isset( $params['stderr'] ) ? (string) $params['stderr'] : '';
 
-		if ( $status !== 'sent_by_kde' && $status !== 'failed' ) {
+		if ( $status !== 'sent_by_kde' && $status !== 'failed' && $status !== 'unknown' ) {
 			return new WP_REST_Response(
 				array(
 					'status'  => 'error',
@@ -373,7 +381,11 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 		}
 
 		$dispatcher = Olama_Messages_Plugin::instance()->dispatcher();
-		$response = $dispatcher->update_send_status( $agent, $queue_id, $status, $kde_exit_code, $stdout, $stderr );
+		try {
+			$response = $dispatcher->update_send_status( $agent, $queue_id, $status, $kde_exit_code, $stdout, $stderr, sanitize_text_field( (string) ( $params['attempt_id'] ?? '' ) ) );
+		} catch ( Throwable $error ) {
+			return new WP_REST_Response( array( 'message' => $error->getMessage() ), 503 );
+		}
 
 		if ( false === $response ) {
 			return new WP_REST_Response(
@@ -395,16 +407,6 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 	 * @return WP_REST_Response
 	 */
 	public function handle_get_dispatcher_config( $request ) {
-		return new WP_REST_Response(
-			array(
-				'status'                  => 'ok',
-				'poll_interval_seconds'   => 15,
-				'max_jobs_per_poll'       => 1,
-				'min_seconds_between_sms' => 20,
-				'max_sms_per_hour'        => 60,
-				'reservation_ttl_seconds' => 120,
-			),
-			200
-		);
+		return new WP_REST_Response( array_merge( array( 'status' => 'ok' ), Olama_Messages_Dispatcher_Service::config() ), 200 );
 	}
 }

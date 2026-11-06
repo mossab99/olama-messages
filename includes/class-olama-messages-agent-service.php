@@ -678,6 +678,7 @@ class Olama_Messages_Agent_Service {
 				! empty( $heartbeat['dispatcher_enabled'] ) &&
 				( ! $require_progress || (
 					$poll_time &&
+					2 === (int) ( $heartbeat['dispatch_protocol_version'] ?? 0 ) &&
 					$poll_time >= ( time() - 90 ) &&
 					'Error' !== $state
 				) )

@@ -180,7 +180,7 @@ class Olama_Messages_Activator {
 			KEY idx_channel (channel),
 			KEY idx_study_year (study_year),
 			KEY idx_created_at (created_at)
-		) {$charset_collate};" );
+		) ENGINE=InnoDB {$charset_collate};" );
 
 		// ── Campaign Recipients table ─────────────────────────────────────────
 		dbDelta( "CREATE TABLE {$recipients} (
@@ -236,6 +236,7 @@ class Olama_Messages_Activator {
 			reserved_by_agent_uuid VARCHAR(100) NULL,
 			reserved_at DATETIME NULL,
 			reservation_expires_at DATETIME NULL,
+			dispatch_attempt_id VARCHAR(36) NULL,
 			send_started_at DATETIME NULL,
 			sent_at DATETIME NULL,
 			failed_at DATETIME NULL,
@@ -257,8 +258,29 @@ class Olama_Messages_Activator {
 			KEY idx_status (status),
 			KEY idx_phone_e164 (phone_e164),
 			KEY idx_agent_id (reserved_by_agent_id),
+			KEY idx_dispatch_attempt (dispatch_attempt_id),
 			KEY idx_updated_at (updated_at)
-		) {$charset_collate};" );
+		) ENGINE=InnoDB {$charset_collate};" );
+
+		// One durable identity per physical send attempt. Historical results remain
+		// deduplicated even after a later attempt reserves the same queue record.
+		dbDelta( "CREATE TABLE {$wpdb->prefix}olama_msg_dispatch_attempts (
+			attempt_id VARCHAR(36) NOT NULL,
+			queue_id BIGINT UNSIGNED NOT NULL,
+			agent_id BIGINT UNSIGNED NOT NULL,
+			device_key VARCHAR(64) NOT NULL,
+			status VARCHAR(30) NOT NULL DEFAULT 'reserved',
+			created_at DATETIME NOT NULL,
+			updated_at DATETIME NOT NULL,
+			PRIMARY KEY  (attempt_id),
+			KEY idx_device_time (device_key,created_at),
+			KEY idx_queue (queue_id)
+		) ENGINE=InnoDB {$charset_collate};" );
+		dbDelta( "CREATE TABLE {$wpdb->prefix}olama_msg_dispatch_devices (
+			device_key VARCHAR(64) NOT NULL,
+			last_reserved_at DATETIME NULL,
+			PRIMARY KEY  (device_key)
+		) ENGINE=InnoDB {$charset_collate};" );
 
 		// ── Agents table ─────────────────────────────────────────────────────
 		dbDelta( "CREATE TABLE {$agents} (

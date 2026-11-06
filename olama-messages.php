@@ -3,7 +3,7 @@
  * Plugin Name: Olama Messages
  * Plugin URI:  https://olama.edu.jo/
  * Description: Tokenized payment report links and SMS template preview for the Olama school ecosystem.
- * Version:     4.0.11
+ * Version:     4.0.12
  * Author:      Olama
  * Text Domain: olama-messages
  * Requires at least: 6.0
@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-define( 'OLAMA_MSG_VERSION',  '4.0.11' );
-define( 'OLAMA_MSG_LEGACY_DB_VERSION', '2.5.1' );
+define( 'OLAMA_MSG_VERSION',  '4.0.12' );
+define( 'OLAMA_MSG_LEGACY_DB_VERSION', '2.6.0' );
 define( 'OLAMA_MSG_FILE',     __FILE__ );
 define( 'OLAMA_MSG_PATH',     plugin_dir_path( __FILE__ ) );
 define( 'OLAMA_MSG_URL',      plugin_dir_url( __FILE__ ) );

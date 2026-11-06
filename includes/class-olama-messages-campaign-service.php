@@ -302,6 +302,9 @@ class Olama_Messages_Campaign_Service {
 
 		$wpdb->query( 'START TRANSACTION' );
 		try {
+            $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$this->table_campaigns} WHERE id=%d FOR UPDATE", $campaign_id ) );
+            $active = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$this->table_queue} WHERE campaign_id=%d AND status IN ('reserved','unknown')", $campaign_id ) );
+            if ( $active || $wpdb->last_error ) { throw new Exception( 'Resolve active or unknown SMS outcomes before deleting this campaign.' ); }
 			$wpdb->delete( $this->table_queue, array( 'campaign_id' => $campaign_id ) );
 			$wpdb->delete( $this->table_recipients, array( 'campaign_id' => $campaign_id ) );
 			$wpdb->delete( $this->table_campaigns, array( 'id' => $campaign_id ) );
@@ -1283,8 +1286,7 @@ class Olama_Messages_Campaign_Service {
 	 * Pause a campaign that is currently sending.
 	 *
 	 * Transitions campaign status from 'sending' to 'paused'.
-	 * Reserved queue records are returned to 'prepared' status so the agent
-	 * will not pick them up again until the campaign is resumed.
+	 * Active queue reservations retain ownership until their result arrives or they expire.
 	 *
 	 * @param  int $campaign_id Campaign ID.
 	 * @return bool             True on success.
@@ -1305,20 +1307,7 @@ class Olama_Messages_Campaign_Service {
 		$wpdb->query( 'START TRANSACTION' );
 
 		try {
-			// Return any currently reserved (but not yet sent) records back to prepared.
-			$wpdb->update(
-				$this->table_queue,
-				array(
-					'status'              => 'prepared',
-					'reserved_by_agent_id' => null,
-					'reserved_at'         => null,
-					'updated_at'          => current_time( 'mysql' ),
-				),
-				array(
-					'campaign_id' => $campaign_id,
-					'status'      => 'reserved',
-				)
-			);
+			// Active reservations retain their owner and attempt; their result may arrive while paused.
 
 			$result = $wpdb->update(
 				$this->table_campaigns,
@@ -1326,10 +1315,10 @@ class Olama_Messages_Campaign_Service {
 					'status'     => 'paused',
 					'updated_at' => current_time( 'mysql' ),
 				),
-				array( 'id' => $campaign_id )
+				array( 'id' => $campaign_id, 'status' => 'sending' )
 			);
 
-			if ( false === $result ) {
+			if ( 1 !== $result ) {
 				throw new Exception( 'Failed to update campaign status to paused: ' . $wpdb->last_error );
 			}
 
@@ -1476,9 +1465,11 @@ class Olama_Messages_Campaign_Service {
 		$wpdb->query( 'START TRANSACTION' );
 
 		try {
+			$locked_status = $wpdb->get_var( $wpdb->prepare( "SELECT status FROM {$this->table_campaigns} WHERE id=%d FOR UPDATE", $campaign_id ) );
+			if ( ! in_array( $locked_status, $cancellable, true ) ) { throw new Exception( 'Campaign state changed. Refresh and try again.' ); }
 			$cancelled_time    = current_time( 'mysql' );
 			// Cancel all non-terminal queue records.
-			$non_terminal      = array( 'prepared', 'reserved', 'retry_wait' );
+			$non_terminal      = array( 'prepared', 'reserved', 'retry_wait', 'unknown' );
 			$placeholders      = implode( ',', array_fill( 0, count( $non_terminal ), '%s' ) );
 			$wpdb->query( $wpdb->prepare(
 				"UPDATE {$this->table_queue}
@@ -1523,7 +1514,7 @@ class Olama_Messages_Campaign_Service {
 			$wpdb->prepare( "SELECT id, status FROM {$this->table_queue} WHERE id = %d", $queue_id ),
 			ARRAY_A
 		);
-		if ( ! $row || in_array( $row['status'], array( 'sent', 'failed', 'cancelled' ), true ) ) {
+		if ( ! $row || in_array( $row['status'], array( 'sent', 'failed', 'cancelled', 'reserved', 'unknown' ), true ) ) {
 			return false;
 		}
 		return false !== $wpdb->delete( $this->table_queue, array( 'id' => $queue_id ), array( '%d' ) );

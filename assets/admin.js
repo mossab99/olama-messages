@@ -300,7 +300,7 @@
                 $('.olama-msg-progressbar__sent').css('width', d.percent.sent + '%');
                 $('.olama-msg-progressbar__reserved').css('width', d.percent.reserved + '%');
                 $('.olama-msg-progressbar__failed').css('width', d.percent.failed + '%');
-                $('#olama-msg-progress-sent-label').text(d.percent.sent + '% Sent');
+                $('#olama-msg-progress-sent-label').text(d.percent.sent + '% Submitted');
 
                 var eta = formatEta(d.eta_seconds);
                 $('#olama-msg-progress-eta').text(eta ? 'Est. remaining: ' + eta : '').toggle(!!eta);

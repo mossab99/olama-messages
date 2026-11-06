@@ -23,7 +23,7 @@ class Olama_Messages_Operations_Service {
 
 	public function queue_counts() {
 		global $wpdb;
-		$counts = array_fill_keys( array( 'prepared', 'reserved', 'sent', 'failed', 'retry_wait' ), 0 );
+		$counts = array_fill_keys( array( 'prepared', 'reserved', 'sent', 'failed', 'retry_wait', 'unknown' ), 0 );
 		$rows = $wpdb->get_results( "SELECT status, COUNT(*) AS total FROM {$this->queue} GROUP BY status", ARRAY_A );
 		foreach ( (array) $rows as $row ) {
 			$counts[ $row['status'] ] = (int) $row['total'];
@@ -46,7 +46,7 @@ class Olama_Messages_Operations_Service {
 		global $wpdb;
 		return (array) $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT q.*, c.title AS campaign_title FROM {$this->queue} q LEFT JOIN {$this->campaigns} c ON c.id=q.campaign_id WHERE q.status IN ('failed','retry_wait') ORDER BY q.updated_at DESC LIMIT %d",
+				"SELECT q.*, c.title AS campaign_title FROM {$this->queue} q LEFT JOIN {$this->campaigns} c ON c.id=q.campaign_id WHERE q.status IN ('failed','retry_wait','unknown') ORDER BY q.updated_at DESC LIMIT %d",
 				absint( $limit )
 			),
 			ARRAY_A

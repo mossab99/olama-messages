@@ -20,7 +20,7 @@ function dispatcher_fixture( $id, $age, $state = 'Reserved', $enabled = true, $e
 	return array(
 		'id' => $id, 'kde_cli_found' => 1, 'kde_device_reachable' => 1,
 		'last_heartbeat_json' => json_encode( array(
-			'dispatcher_enabled' => $enabled, 'dispatcher_state' => $state,
+			'dispatch_protocol_version' => 2, 'dispatcher_enabled' => $enabled, 'dispatcher_state' => $state,
 			'dispatcher_last_poll_at' => gmdate( 'Y-m-d H:i:s', time() - $age ),
 			'dispatcher_last_error' => $error,
 		) ),
