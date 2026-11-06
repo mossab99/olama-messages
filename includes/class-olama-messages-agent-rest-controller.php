@@ -174,7 +174,7 @@ class Olama_Messages_Agent_Rest_Controller extends WP_REST_Controller {
 			array(
 				'status'       => 'ok',
 				'server_time'  => gmdate( 'c' ),
-				'agent_status' => 'online',
+				'agent_status' => Olama_Messages_Plugin::instance()->agents()->get_agent_by_uuid( $agent['agent_uuid'] )['status'],
 			),
 			200
 		);

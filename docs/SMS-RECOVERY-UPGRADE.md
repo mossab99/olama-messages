@@ -19,3 +19,12 @@ Version 4.0.13 and agent 2.0.1 use a 10-second minimum and 360 attempts per roll
 In the Windows repository, `tests/run-recovery-tests.ps1` builds a fake CLI and local HTTP fixture. It checks pre-send persisted intent, result identity, acknowledgements, persistent pacing, ambiguous exit/timeout, restart recovery without resending, recovery while the phone is offline, protocol mismatch, corrupt pending data and unwritable intent storage. No real KDE executable or phone is used.
 
 The agent keeps `pending-dispatch-result.json` and `sms-rate-history.json` in its existing settings directory. Do not delete pending outcomes to bypass an error; resolve them through the server review flow. Corrupt local files stop sending for inspection.
+
+
+## Telemetry correction (plugin 4.0.14 / agent 2.0.2)
+
+Settings “Test Connection” now authenticates through a read-only GET to the dispatcher configuration endpoint. It does not post a heartbeat or publish dispatcher state. The regular worker heartbeat remains responsible for current device/dispatcher telemetry.
+
+The server also accepts older partial heartbeats without erasing omitted worker fields or a connected device name. It preserves the actual worker poll timestamp, respects explicit disabled/disconnected values, and discards old device/worker metadata when the selected target changes. Oversized telemetry is rejected rather than replacing the healthy snapshot. Heartbeat responses report the saved operational status instead of always saying online.
+
+`php tests/test-agent-telemetry.php` verifies these cases in the disposable database. The Windows recovery fixture checks that connection testing never publishes a heartbeat or reserves work. The ten-second policy remains in this release.

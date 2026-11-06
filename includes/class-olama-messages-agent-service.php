@@ -217,12 +217,26 @@ class Olama_Messages_Agent_Service {
 		// Prevent WordPress REST request parameter leakage/recursion
 		unset( $payload['_authorized_agent'] );
 
-		// Enforce heartbeat payload limit size (max 16KB for DB safety)
-		$json_payload = wp_json_encode( $payload );
-		if ( strlen( $json_payload ) > 16384 ) {
-			$payload = array( 'error' => 'Heartbeat payload exceeded 16KB limit' );
-			$json_payload = wp_json_encode( $payload );
-		}
+        // Older settings probes sent only transport/device fields. Missing fields
+        // do not mean that the running worker was disabled or lost its device.
+        // Keep the original poll timestamp: a partial heartbeat must not make a
+        // stalled dispatcher look fresh. Explicit false/empty values still apply.
+        $previous = (array) ( $agent['heartbeat'] ?? array() );
+        $same_device = ! array_key_exists( 'kde_device_id', $payload ) ||
+            (string) $payload['kde_device_id'] === (string) ( $agent['kde_device_id'] ?? '' );
+        if ( $same_device && empty( $payload['kde_device_name'] ) && ! empty( $payload['kde_device_reachable'] ) ) {
+            $payload['kde_device_name'] = $agent['kde_device_name'] ?? '';
+        }
+        if ( ! $same_device ) {
+            // Never attach the old worker identity to another selected phone.
+            foreach ( array_keys( $previous ) as $key ) {
+                if ( 0 === strpos( $key, 'dispatcher_' ) || 'dispatch_protocol_version' === $key || 0 === strpos( $key, 'kde_device_' ) ) { unset( $previous[$key] ); }
+            }
+            $payload += array( 'kde_device_name' => '', 'kde_device_reachable' => false );
+        }
+        $payload = array_merge( $previous, $payload );
+        $json_payload = wp_json_encode( $payload );
+        if ( false === $json_payload || strlen( $json_payload ) > 16384 ) { return false; }
 
 		$now = current_time( 'mysql', true );
 		$kde_cli_found        = ! empty( $payload['kde_cli_found'] );
