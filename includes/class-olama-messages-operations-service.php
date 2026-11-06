@@ -53,6 +53,29 @@ class Olama_Messages_Operations_Service {
 		);
 	}
 
+    /** Read-only totals with prepared and authorized work deliberately separated. */
+    public function workspace_summary() {
+        global $wpdb;
+        $start = new DateTimeImmutable( 'today', wp_timezone() );
+        $utc_start = $start->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
+        $submitted = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$this->queue} WHERE status='sent' AND sent_at >= %s", $utc_start ) );
+        $authorized = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->queue} q JOIN {$this->campaigns} c ON c.id=q.campaign_id WHERE c.status IN ('sending','paused') AND q.status IN ('prepared','reserved','retry_wait') AND c.channel='sms'" );
+        $review = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->queue} WHERE status='unknown'" );
+        $prepared = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->campaigns} WHERE status='prepared' AND channel='sms'" );
+        $campaign = $wpdb->get_row( "SELECT * FROM {$this->campaigns} WHERE status IN ('sending','paused') AND channel='sms' ORDER BY FIELD(status,'sending','paused'),id DESC LIMIT 1", ARRAY_A );
+        $counts = array_fill_keys( array( 'prepared','reserved','retry_wait','sent','failed','unknown','cancelled' ), 0 );
+        if ( $campaign ) { foreach ( (array) $wpdb->get_results( $wpdb->prepare( "SELECT status,COUNT(*) AS total FROM {$this->queue} WHERE campaign_id=%d GROUP BY status", $campaign['id'] ), ARRAY_A ) as $row ) { $counts[$row['status']] = (int) $row['total']; } }
+        return array( 'submitted' => $submitted, 'authorized' => $authorized, 'review' => $review, 'prepared' => $prepared, 'campaign' => $campaign, 'counts' => $counts );
+    }
+
+    public function recent_activity( int $limit = 50, string $status = '' ) {
+        global $wpdb;
+        $allowed = array( 'reserved','sent','failed','unknown','retry_wait' );
+        $where = in_array( $status, $allowed, true ) ? $wpdb->prepare( 'q.status=%s', $status ) : "q.status IN ('reserved','sent','failed','unknown','retry_wait')";
+        return (array) $wpdb->get_results( $wpdb->prepare( "SELECT q.id,q.campaign_id,q.phone_e164,q.status,q.last_error_message,q.updated_at,c.title AS campaign_title
+            FROM {$this->queue} q LEFT JOIN {$this->campaigns} c ON c.id=q.campaign_id WHERE {$where} ORDER BY q.updated_at DESC,q.id DESC LIMIT %d", min( 100, max( 1, $limit ) ) ), ARRAY_A );
+    }
+
 	public function readiness() {
 		$agent = Olama_Messages_Plugin::instance()->agents()->get_ready_dispatcher_agent();
 		$health = Olama_Messages_Plugin::instance()->provider()->get_sync_health( 'collection', '' );

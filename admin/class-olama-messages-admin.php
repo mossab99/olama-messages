@@ -34,6 +34,7 @@ class Olama_Messages_Admin {
 
 	public function init() {
 		add_action( 'admin_menu',            array( $this, 'register_menus' ) );
+        add_filter( 'admin_body_class', array( $this, 'workspace_body_class' ) );
 		add_action( 'admin_menu',            array( $this, 'reorder_submenus' ), 99 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
@@ -103,7 +104,7 @@ class Olama_Messages_Admin {
 			__( 'Olama Messages', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages',
-			array( $this->modern, 'overview' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'overview', $this->plugin ),
 			'dashicons-email-alt',
 			56
 		);
@@ -114,7 +115,7 @@ class Olama_Messages_Admin {
 			__( 'Overview', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages',
-			array( $this->modern, 'overview' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'overview', $this->plugin ),
 			1
 		);
 
@@ -124,7 +125,7 @@ class Olama_Messages_Admin {
 			__( 'Campaign Center', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-campaigns',
-			array( $this->modern, 'campaigns' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'campaigns', $this->plugin ),
 			2
 		);
 
@@ -134,7 +135,7 @@ class Olama_Messages_Admin {
 			__( 'Message Library', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-templates',
-			array( $this, 'page_templates' ),
+			Olama_Messages_Workspace::callback( $this, 'page_templates', $this->plugin ),
 			4
 		);
 
@@ -144,7 +145,7 @@ class Olama_Messages_Admin {
 			__( 'Delivery Operations', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-delivery',
-			array( $this->modern, 'delivery' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'delivery', $this->plugin ),
 			5
 		);
 
@@ -154,7 +155,7 @@ class Olama_Messages_Admin {
 			__( 'Recipients Preview', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-recipients',
-			array( $this, 'page_recipients' )
+			Olama_Messages_Workspace::callback( $this, 'page_recipients', $this->plugin )
 		);
 
 		add_submenu_page(
@@ -163,7 +164,7 @@ class Olama_Messages_Admin {
 			__( 'Parent Report Links', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-tokens',
-			array( $this, 'page_tokens' ),
+			Olama_Messages_Workspace::callback( $this, 'page_tokens', $this->plugin ),
 			6
 		);
 
@@ -173,7 +174,7 @@ class Olama_Messages_Admin {
 			__( 'Settings', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-settings',
-			array( $this, 'page_settings' ),
+			Olama_Messages_Workspace::callback( $this, 'page_settings', $this->plugin ),
 			7
 		);
 
@@ -183,7 +184,7 @@ class Olama_Messages_Admin {
 			__( 'Sending Agents', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-agents',
-			array( $this, 'page_agents' )
+			Olama_Messages_Workspace::callback( $this, 'page_agents', $this->plugin )
 		);
 
 		// Legacy queue URL remains valid but delegates to Delivery Operations.
@@ -193,7 +194,7 @@ class Olama_Messages_Admin {
 			__( 'Delivery Operations', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-queue',
-			array( $this->modern, 'delivery' )
+			Olama_Messages_Workspace::callback( $this->modern, 'delivery', $this->plugin )
 		);
 
 		add_submenu_page(
@@ -202,7 +203,7 @@ class Olama_Messages_Admin {
 			__( 'Quick Send', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-direct',
-			array( $this, 'page_direct_message' ),
+			Olama_Messages_Workspace::callback( $this, 'page_direct_message', $this->plugin ),
 			3
 		);
 
@@ -212,7 +213,7 @@ class Olama_Messages_Admin {
 			__( 'Phone Book', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-phone-book',
-			array( $this->modern, 'phone_book' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'phone_book', $this->plugin ),
 			4
 		);
 
@@ -222,7 +223,7 @@ class Olama_Messages_Admin {
 			__( 'Reports', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-reports',
-			array( $this->modern, 'reports' ),
+			Olama_Messages_Workspace::callback( $this->modern, 'reports', $this->plugin ),
 			5
 		);
 
@@ -233,7 +234,7 @@ class Olama_Messages_Admin {
 			__( 'New Campaign', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-new-campaign',
-			array( $this->modern, 'wizard' )
+			Olama_Messages_Workspace::callback( $this->modern, 'wizard', $this->plugin )
 		);
 
 		// Hidden page for Campaign Progress (Phase 4 Run 4B)
@@ -243,12 +244,16 @@ class Olama_Messages_Admin {
 			__( 'Campaign Progress', 'olama-messages' ),
 			'olama_access_messages',
 			'olama-messages-campaign-progress',
-			array( $this, 'page_campaign_progress' )
+			Olama_Messages_Workspace::callback( $this, 'page_campaign_progress', $this->plugin )
 		);
 	}
 
 	// ─── Assets ──────────────────────────────────────────────────────────────
 
+    public function workspace_body_class( $classes ) {
+        if ( 0 === strpos( sanitize_key( $_GET['page'] ?? '' ), 'olama-messages' ) && current_user_can( 'olama_access_messages' ) ) { $classes .= ' olama-workspace'; }
+        return $classes;
+    }
 	public function enqueue_assets( $hook ) {
 		if ( strpos( $hook, 'olama-messages' ) === false ) {
 			return;
@@ -259,6 +264,8 @@ class Olama_Messages_Admin {
 			array(),
 			(string) filemtime( OLAMA_MSG_PATH . 'assets/admin.css' )
 		);
+        wp_enqueue_style( 'olama-messages-workspace', OLAMA_MSG_URL . 'assets/workspace.css', array( 'olama-messages-admin' ), (string) filemtime( OLAMA_MSG_PATH . 'assets/workspace.css' ) );
+        wp_enqueue_script( 'olama-messages-workspace', OLAMA_MSG_URL . 'assets/workspace.js', array( 'jquery', 'olama-messages-sms-segmentation' ), (string) filemtime( OLAMA_MSG_PATH . 'assets/workspace.js' ), true );
 		wp_enqueue_script(
 			'olama-messages-admin',
 			OLAMA_MSG_URL . 'assets/admin.js',
@@ -2066,12 +2073,13 @@ class Olama_Messages_Admin {
 		<div class="wrap olama-msg-wrap">
 			<h1 class="olama-msg-page-title">
 				<span class="dashicons dashicons-email-alt"></span>
-				<?php esc_html_e( 'Reusable SMS Templates', 'olama-messages' ); ?>
+				<?php esc_html_e( 'Message library', 'olama-messages' ); ?>
 			</h1>
 
 			<div id="col-container" class="wp-clearfix">
 
 				<!-- Left Column: Add/Edit Form -->
+                <details class="omw-template-disclosure" <?php echo $is_edit ? 'open' : ''; ?>><summary><?php echo esc_html( $is_edit ? __( 'Edit template', 'olama-messages' ) : __( '+ Create a reusable message', 'olama-messages' ) ); ?></summary>
 				<div id="col-left" style="width:35%;">
 					<div class="col-wrap">
 						<div class="postbox">
@@ -2096,10 +2104,10 @@ class Olama_Messages_Admin {
 
 									<div class="form-field form-required" style="margin-bottom:1rem;">
 										<label for="olama-template-body"><strong><?php esc_html_e( 'Message Body', 'olama-messages' ); ?></strong></label>
-										<textarea id="olama-template-body" name="body" rows="8" required style="width:100%;margin-top:0.25rem;font-family:inherit;" dir="rtl"><?php echo esc_textarea( $edit_tpl['body'] ?? '' ); ?></textarea>
+										<textarea id="olama-template-body" name="body" rows="8" required style="width:100%;margin-top:0.25rem;font-family:inherit;" dir="auto"><?php echo esc_textarea( $edit_tpl['body'] ?? '' ); ?></textarea>
 										
 										<!-- Live Char Counter -->
-										<div style="margin-top:0.25rem;font-size:0.85em;color:#64748b;direction:rtl;">
+										<div style="margin-top:0.25rem;font-size:0.85em;color:#64748b;">
 											<?php esc_html_e( 'Length:', 'olama-messages' ); ?>
 											<span id="olama-template-char-count"><strong><?php echo esc_html( strlen( $edit_tpl['body'] ?? '' ) ); ?></strong></span> <?php esc_html_e( 'characters', 'olama-messages' ); ?>
 											| <span id="olama-template-sms-parts"><strong><?php echo esc_html( ceil( strlen( $edit_tpl['body'] ?? '' ) / 70 ) ); ?></strong></span> <?php esc_html_e( 'SMS parts', 'olama-messages' ); ?>
@@ -2141,76 +2149,16 @@ class Olama_Messages_Admin {
 					</div>
 				</div>
 
-				<!-- Right Column: List Table -->
-				<div id="col-right" style="width:63%;">
-					<div class="col-wrap">
-						<div class="olama-msg-table-wrap">
-							<table class="olama-msg-table widefat striped">
-								<thead>
-									<tr>
-										<th><?php esc_html_e( 'Name', 'olama-messages' ); ?></th>
-										<th><?php esc_html_e( 'Body Excerpt', 'olama-messages' ); ?></th>
-										<th><?php esc_html_e( 'Default', 'olama-messages' ); ?></th>
-										<th><?php esc_html_e( 'Status', 'olama-messages' ); ?></th>
-										<th><?php esc_html_e( 'Actions', 'olama-messages' ); ?></th>
-									</tr>
-								</thead>
-								<tbody>
-									<?php if ( empty( $templates ) ) : ?>
-										<tr><td colspan="5" style="text-align:center;"><?php esc_html_e( 'No templates created yet.', 'olama-messages' ); ?></td></tr>
-									<?php else : ?>
-										<?php foreach ( $templates as $t ) :
-											$del_url = wp_nonce_url(
-												admin_url( 'admin-post.php?action=olama_msg_delete_template&template_id=' . $t['id'] ),
-												'olama_msg_del_tpl_' . $t['id']
-											);
-										?>
-										<tr>
-											<td>
-												<strong>
-													<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-templates&action=edit&template_id=' . $t['id'] ) ); ?>">
-														<?php echo esc_html( $t['name'] ); ?>
-													</a>
-												</strong>
-											</td>
-											<td dir="rtl" style="text-align:right;font-family:Tahoma, Arial, sans-serif;font-size:0.9em;max-width:20rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-												<?php echo esc_html( $t['body'] ); ?>
-											</td>
-											<td>
-												<?php if ( $t['is_default'] ) : ?>
-													<span class="olama-msg-badge olama-msg-badge--active"><?php esc_html_e( 'Default', 'olama-messages' ); ?></span>
-												<?php else : ?>
-													<span class="olama-msg-muted">—</span>
-												<?php endif; ?>
-											</td>
-											<td>
-												<?php echo $t['is_active'] 
-													? '<span class="olama-msg-pill olama-msg-pill--ok">✓ Active</span>'
-													: '<span class="olama-msg-pill olama-msg-pill--err">✗ Inactive</span>'; ?>
-											</td>
-											<td class="olama-msg-actions">
-												<a href="<?php echo esc_url( admin_url( 'admin.php?page=olama-messages-templates&action=edit&template_id=' . $t['id'] ) ); ?>" class="button button-small">
-													<?php esc_html_e( 'Edit', 'olama-messages' ); ?>
-												</a>
-												<?php if ( ! $t['is_default'] ) : ?>
-													<a href="<?php echo esc_url( $del_url ); ?>" class="button button-small button-link-delete" onclick="return confirm('<?php esc_attr_e( 'Delete this template permanently?', 'olama-messages' ); ?>');">
-														<?php esc_html_e( 'Delete', 'olama-messages' ); ?>
-													</a>
-												<?php endif; ?>
-											</td>
-										</tr>
-										<?php endforeach; ?>
-									<?php endif; ?>
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</div>
-
-			</div>
-		</div>
-		<?php
-	}
+                </details>
+                <div class="omw-template-grid">
+                <?php if ( ! $templates ) : ?><section class="omw-panel omw-empty"><h2><?php esc_html_e( 'Start your message library.', 'olama-messages' ); ?></h2><p><?php esc_html_e( 'Create reusable wording for school updates, reminders and invitations.', 'olama-messages' ); ?></p></section><?php endif; ?>
+                <?php foreach ( $templates as $t ) : ?>
+                    <article class="omw-template-card"><div class="omw-panel-top"><span class="olama-msg-pill <?php echo $t['is_active'] ? 'olama-msg-pill--ok' : ''; ?>"><?php echo esc_html( $t['is_active'] ? __( 'Available for campaigns', 'olama-messages' ) : __( 'Inactive', 'olama-messages' ) ); ?></span><?php if ( $t['is_default'] ) : ?><span class="olama-msg-badge"><?php esc_html_e( 'Default', 'olama-messages' ); ?></span><?php endif; ?></div><h2><?php echo esc_html( $t['name'] ); ?></h2><div class="omw-template-body" dir="auto"><?php echo esc_html( $t['body'] ); ?></div><footer><a href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-templates', array( 'action' => 'edit', 'template_id' => $t['id'] ) ) ); ?>"><?php esc_html_e( 'Edit message', 'olama-messages' ); ?></a><?php if ( $t['is_active'] ) : ?><a class="button button-small" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign', array( 'template_id' => $t['id'] ) ) ); ?>"><?php esc_html_e( 'Use message', 'olama-messages' ); ?> →</a><?php endif; ?></footer><?php if ( ! $t['is_default'] ) : ?><details><summary><?php esc_html_e( 'More options', 'olama-messages' ); ?></summary><a class="button button-small button-link-delete" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=olama_msg_delete_template&template_id=' . $t['id'] ), 'olama_msg_del_tpl_' . $t['id'] ) ); ?>" onclick="return confirm('<?php esc_attr_e( 'Delete this template permanently?', 'olama-messages' ); ?>');"><?php esc_html_e( 'Delete template', 'olama-messages' ); ?></a></details><?php endif; ?></article>
+                <?php endforeach; ?></div>
+            </div>
+        </div>
+        <?php
+    }
 
 	// ─── Page: SMS Dispatch Queue (Phase 2) ──────────────────────────────────────
 
