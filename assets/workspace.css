@@ -16,18 +16,6 @@ body.olama-workspace {
     color:var(--omsg-text);
     font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
 
-.olama-workspace #adminmenumain {
-    display:none}
-.olama-workspace #wpcontent,.olama-workspace #wpfooter {
-    margin-inline-start:0!important;
-    margin-left:0!important;
-    margin-right:0!important;
-    padding:0}
-.olama-workspace #wpbody-content {
-    padding-bottom:0;
-    float:none}
-.olama-workspace #wpfooter {
-    display:none}
 .omw-shell,.omw-shell * {
     box-sizing:border-box}
 .omw-shell {
@@ -1482,3 +1470,29 @@ body.olama-workspace {--omw-navy:#111a35;--omw-navy-secondary:#1c294b;--omw-indi
 .omw-content .omsg-preview-selection-actions {min-width:0}
 @media(max-width:782px) {.omw-content .omsg-preview-context {grid-template-columns:1fr}.omw-content .omsg-preview-selection-actions {justify-content:flex-start}.omw-content .omsg-preview-totals {font-size:12px}.omw-content .omsg-preview-selection-actions .button {font-size:12px}}
 @media(min-width:783px) {.omw-content .olama-msg-progress-stats {grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+/* Keep the workspace inside WordPress content, with its native menu intact. */
+.olama-workspace .omw-shell {min-width:0;max-width:100%;margin-top:16px}
+.olama-workspace .omw-sidebar,
+.olama-workspace.admin-bar .omw-sidebar,
+html[dir=rtl] .olama-workspace .omw-sidebar {
+    position:static;inset:auto;transform:none;width:auto;z-index:auto;
+    padding:12px 16px;border-radius:12px 12px 0 0;overflow:visible;
+}
+.olama-workspace .omw-sidebar .omw-brand,
+.olama-workspace .omw-sidebar .omw-school,
+.olama-workspace .omw-sidebar .omw-nav-group,
+.olama-workspace .omw-sidebar-bottom,
+.olama-workspace .omw-mobile-toggle,
+.olama-workspace .omw-bottom-nav,
+.olama-workspace .omw-shade {display:none!important}
+.olama-workspace .omw-sidebar nav {display:flex;flex-wrap:wrap;gap:6px}
+.olama-workspace .omw-nav-link {margin:0;padding:9px 12px;font-size:13px}
+.olama-workspace .omw-app {margin-inline-start:0;min-width:0;max-width:100%}
+.olama-workspace .omw-content {padding:24px 20px;min-width:0}
+.olama-workspace .omw-topbar {padding-inline:20px}
+@media(max-width:782px) {
+    .olama-workspace .omw-content {padding:20px 12px}
+    .olama-workspace .omw-sidebar {padding:10px}
+    .olama-workspace .omw-nav-link {padding:8px;font-size:12px}
+}

@@ -41,6 +41,13 @@ comm_assert( strpos( $html, '619.122' ) !== false && strpos( $html, '101.492' ) 
 comm_assert( strpos( $html, '<script>alert(1)</script>' ) === false && strpos( $html, '&lt;script&gt;' ) !== false, 'Family names and administrative notes are escaped' );
 comm_assert( substr_count( $html, 'name="collection_operation" value="review"' ) === 2 && strpos( $html, 'name="_wpnonce"' ) !== false, 'Each review form is protected by a WordPress nonce' );
 comm_assert( strpos( $html, 'name="collection_operation" value="policy"' ) === false, 'Financial staff can preview but cannot save global policy' );
+$document = new DOMDocument();
+@$document->loadHTML( '<?xml encoding="utf-8" ?>' . $html );
+$xpath = new DOMXPath( $document );
+comm_assert( $xpath->query( '//dialog[contains(@class,"omcr-details")]' )->length === 2, 'Each family has a separate accessible details dialog' );
+comm_assert( $xpath->query( '//table[contains(@class,"omcr-table")]//dialog' )->length === 0, 'Details forms are outside the scrolling table so opening them cannot expand or clip its columns' );
+comm_assert( $xpath->query( '//dialog//form[contains(@class,"omcr-review")]' )->length === 2, 'Both administrative forms stay inside their family dialog' );
+comm_assert( $xpath->query( '//button[@data-collection-dialog and @aria-controls and @aria-haspopup="dialog"]' )->length === 2, 'Details triggers explicitly target the corresponding family dialog' );
 $_GET['family_id'] = '459'; ob_start(); Olama_Messages_Collection_Report_Page::render(); $filtered = ob_get_clean();
 comm_assert( strpos( $filtered, '619.122' ) !== false && strpos( $filtered, '101.492' ) === false, 'Family filter scopes displayed debt and totals' );
 $_GET['family_id'] = ''; $_GET['collection_action'] = 'candidate'; ob_start(); Olama_Messages_Collection_Report_Page::render(); $filtered = ob_get_clean();

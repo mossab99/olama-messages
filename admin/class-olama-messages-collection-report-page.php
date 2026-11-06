@@ -11,6 +11,7 @@ class Olama_Messages_Collection_Report_Page {
     public static function assets() {
         if ( self::input( 'page' ) === 'olama-messages-reports' ) {
             wp_enqueue_style( 'olama-msg-collection', OLAMA_MSG_URL . 'assets/collection-report.css', array(), filemtime( OLAMA_MSG_PATH . 'assets/collection-report.css' ) );
+            wp_enqueue_script( 'olama-msg-collection', OLAMA_MSG_URL . 'assets/collection-report.js', array(), filemtime( OLAMA_MSG_PATH . 'assets/collection-report.js' ), true );
         }
     }
 
@@ -164,19 +165,21 @@ class Olama_Messages_Collection_Report_Page {
         <?php foreach ( array_slice( $rows, ( $page - 1 ) * 50, 50 ) as $row ) : ?>
             <tr><td><strong><?php echo esc_html( $row['oracle_family_id'] ); ?></strong><br><?php echo esc_html( $row['sponsor_full_name'] ?: $row['father_name'] ); ?></td>
             <?php foreach ( array( 'due', 'covered', 'overdue' ) as $key ) : ?><td class="omcr-number"><?php echo esc_html( self::amount( $row[$key] ) ); ?></td><?php endforeach; ?>
-            <td><?php echo esc_html( $row['coverage'] === null ? 'لا مستحقات' : number_format( $row['coverage'], 2 ) . '%' ); ?></td><td><?php echo (int) $row['outstanding']; ?><small>كامل: <?php echo (int) $row['unpaid']; ?> / جزئي: <?php echo (int) $row['partial']; ?></small></td><td><?php echo esc_html( $row['equivalent'] === null ? 'غير محدد' : number_format( $row['equivalent'], 2 ) ); ?></td><td><?php echo (int) $row['oldest']; ?> يومًا</td><td><?php echo $row['financial_match'] ? 'متحققة' : 'غير متحققة'; ?></td><td><?php echo count( $row['transport'] ); ?></td><td><span class="omcr-badge omcr-<?php echo esc_attr( $row['action'] ); ?>"><?php echo esc_html( $labels[$row['action']] ); ?></span><?php self::details( $row, $year, $today ); ?></td></tr>
+            <td><?php echo esc_html( $row['coverage'] === null ? 'لا مستحقات' : number_format( $row['coverage'], 2 ) . '%' ); ?></td><td><?php echo (int) $row['outstanding']; ?><small>كامل: <?php echo (int) $row['unpaid']; ?> / جزئي: <?php echo (int) $row['partial']; ?></small></td><td><?php echo esc_html( $row['equivalent'] === null ? 'غير محدد' : number_format( $row['equivalent'], 2 ) ); ?></td><td><?php echo (int) $row['oldest']; ?> يومًا</td><td><?php echo $row['financial_match'] ? 'متحققة' : 'غير متحققة'; ?></td><td><?php echo count( $row['transport'] ); ?></td><td><span class="omcr-badge omcr-<?php echo esc_attr( $row['action'] ); ?>"><?php echo esc_html( $labels[$row['action']] ); ?></span><button type="button" class="button omcr-open-details" data-collection-dialog="omcr-family-<?php echo esc_attr( $row['oracle_family_id'] ); ?>" aria-haspopup="dialog" aria-controls="omcr-family-<?php echo esc_attr( $row['oracle_family_id'] ); ?>">الحساب والتحقق الإداري</button></td></tr>
         <?php endforeach; ?></tbody></table></div>
+        <?php foreach ( array_slice( $rows, ( $page - 1 ) * 50, 50 ) as $row ) { self::details( $row, $year, $today ); } ?>
         <div class="omcr-toolbar"><?php if ( $page > 1 ) : ?><a class="button" href="<?php echo esc_url( self::url( array_merge( $base, array( 'paged' => $page - 1 ) ) ) ); ?>">السابق</a><?php endif; ?><span>صفحة <?php echo $page; ?> من <?php echo max( 1, (int) ceil( count( $rows ) / 50 ) ); ?></span><?php if ( $page * 50 < count( $rows ) ) : ?><a class="button" href="<?php echo esc_url( self::url( array_merge( $base, array( 'paged' => $page + 1 ) ) ) ); ?>">التالي</a><?php endif; ?></div>
         </div><?php
     }
 
     private static function details( array $row, $year, $today ) {
         $review = $row['review'];
-        ?><details class="omcr-details"><summary>الحساب والتحقق الإداري</summary><div>
+        ?><dialog class="omcr-details" id="omcr-family-<?php echo esc_attr( $row['oracle_family_id'] ); ?>" aria-labelledby="omcr-title-<?php echo esc_attr( $row['oracle_family_id'] ); ?>" dir="rtl">
+        <header class="omcr-dialog-header"><h2 id="omcr-title-<?php echo esc_attr( $row['oracle_family_id'] ); ?>">الحساب والتحقق الإداري — العائلة <?php echo esc_html( $row['oracle_family_id'] ); ?></h2><form method="dialog"><button type="submit" class="button" autofocus aria-label="إغلاق تفاصيل العائلة">إغلاق ×</button></form></header><div class="omcr-dialog-body">
         <p>القسط المعتاد الصافي: <strong><?php echo esc_html( self::amount( $row['typical'] ) ); ?></strong> دينار. <?php echo ! empty( $review['typical_override'] ) ? 'قيمة محددة يدويًا.' : 'وسيط قيم الأقساط الصافية الموجبة؛ يمكن تصحيحه أدناه عند وجود أقساط استثنائية.'; ?></p>
         <p>آخر مزامنة مستخدمة: <b dir="ltr"><?php echo esc_html( $row['source_synced_at'] ?: 'غير معروف' ); ?></b>. الرصيد السنوي المتبقي: <?php echo esc_html( self::amount( $row['annual_balance'] ) ); ?> دينار؛ يشمل المستقبلي.</p>
         <?php foreach ( $row['warnings'] as $warning ) : ?><p class="omcr-warning"><?php echo esc_html( $warning ); ?></p><?php endforeach; ?>
-        <table class="widefat"><thead><tr><th>الاستحقاق</th><th>قبل الخصم</th><th>الخصومات</th><th>الصافي</th><th>المغطى</th><th>الرصيد</th><th>التأخر</th></tr></thead><tbody><?php foreach ( $row['schedule'] as $item ) : ?><tr><td><?php echo esc_html( $item['date'] ); ?></td><?php foreach ( array( 'gross', 'discount', 'net', 'covered', 'balance' ) as $key ) : ?><td><?php echo esc_html( self::amount( $item[$key] ) ); ?></td><?php endforeach; ?><td><?php echo $item['is_due'] ? (int) $item['age'] . ' يومًا' : 'مستقبلي'; ?></td></tr><?php endforeach; ?></tbody></table>
+        <div class="omcr-schedule-scroll"><table class="widefat"><thead><tr><th>الاستحقاق</th><th>قبل الخصم</th><th>الخصومات</th><th>الصافي</th><th>المغطى</th><th>الرصيد</th><th>التأخر</th></tr></thead><tbody><?php foreach ( $row['schedule'] as $item ) : ?><tr><td><?php echo esc_html( $item['date'] ); ?></td><?php foreach ( array( 'gross', 'discount', 'net', 'covered', 'balance' ) as $key ) : ?><td><?php echo esc_html( self::amount( $item[$key] ) ); ?></td><?php endforeach; ?><td><?php echo $item['is_due'] ? (int) $item['age'] . ' يومًا' : 'مستقبلي'; ?></td></tr><?php endforeach; ?></tbody></table></div>
         <p>طلاب النقل الفعّالون: <?php echo esc_html( implode( '، ', array_column( $row['transport'], 'student_name' ) ) ?: 'لا يوجد اشتراك فعّال مؤكد' ); ?></p>
         <?php if ( $review ) : ?><p>آخر تحقق: <?php echo esc_html( $review['updated_at'] ?? '' ); ?> — صالح حتى <?php echo esc_html( $review['until'] ?? '' ); ?><br><?php echo esc_html( $review['note'] ?? '' ); ?></p><?php endif; ?>
         <form method="post" class="omcr-review"><?php wp_nonce_field( 'olama_msg_collection_write' ); ?><input type="hidden" name="collection_operation" value="review"><input type="hidden" name="study_year" value="<?php echo esc_attr( $year ); ?>"><input type="hidden" name="family_id" value="<?php echo esc_attr( $row['oracle_family_id'] ); ?>">
@@ -184,6 +187,6 @@ class Olama_Messages_Collection_Report_Page {
         <label>صالح حتى<input type="date" name="review_until" min="<?php echo esc_attr( $today ); ?>" value="<?php echo esc_attr( ( $review['until'] ?? '' ) >= $today ? $review['until'] : $today ); ?>" required></label>
         <label>القسط المعتاد يدويًا — صفر للحساب التلقائي<input type="number" name="typical_override" min="0" max="1000000" step="0.001" value="<?php echo esc_attr( $review['typical_override'] ?? 0 ); ?>"></label>
         <label>سبب التحقق / مرجع الاعتماد<textarea name="review_note" maxlength="2000" required><?php echo esc_textarea( $review['note'] ?? '' ); ?></textarea></label><button class="button">حفظ التحقق</button></form>
-        </div></details><?php
+        </div></dialog><?php
     }
 }
