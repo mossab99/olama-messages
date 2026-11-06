@@ -222,6 +222,11 @@ class Olama_Messages_Template_Service {
 			$where_clauses[] = 'is_active = %d';
 			$where_values[]  = ! empty( $args['is_active'] ) ? 1 : 0;
 		}
+        if ( ! empty( $args['search'] ) ) {
+            $term = '%' . $wpdb->esc_like( sanitize_text_field( $args['search'] ) ) . '%';
+            $where_clauses[] = '(name LIKE %s OR body LIKE %s)';
+            $where_values[] = $term; $where_values[] = $term;
+        }
 
 		$where_sql = $where_clauses ? 'WHERE ' . implode( ' AND ', $where_clauses ) : '';
 

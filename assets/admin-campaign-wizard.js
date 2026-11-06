@@ -1,5 +1,6 @@
 (function ($) {
 	'use strict';
+    function tr(value) { return (olamaMsgAdmin.i18n || {})[value] || value; }
 	var $wizard = $('.omsg-wizard');
 	if (!$wizard.length) return;
 	var $form = $('#omsg-campaign-wizard-form');
@@ -11,20 +12,23 @@
 	var previewItems = {};
 	var previewModalTrigger = null;
 	var timer;
+    $form.on('submit', function (event) { event.preventDefault(); $('[data-wizard-next]:visible').trigger('click'); });
 
 	function draw() {
 		$wizard.attr('data-step', step);
-		$('.omsg-step-panel').hide().filter('[data-step="' + step + '"]').show();
+		var stage = step <= 2 ? 1 : (step === 3 ? 2 : 3);
+		$('.omsg-step-panel').hide().filter(step <= 2 ? '[data-step="1"],[data-step="2"]' : '[data-step="' + step + '"]').show();
 		$('.omsg-steps li').each(function (index) {
-			$(this).toggleClass('is-current', index + 1 === step).toggleClass('is-done', index + 1 < step);
+			$(this).toggleClass('is-current', index + 1 === stage).toggleClass('is-done', index + 1 < stage);
+			if (index + 1 === stage) { $(this).attr('aria-current', 'step'); } else { $(this).removeAttr('aria-current'); }
 		});
 		$('[name="ui_step"]').val(step);
-		$('[data-wizard-back]').prop('disabled', step === 1);
+		$('[data-wizard-back]').prop('disabled', step <= 2);
 		$('[data-wizard-next]')
 			.toggle(step <= 4 && (campaignStatus === 'draft' || campaignStatus === 'prepared'))
 			.text(campaignStatus === 'prepared'
-				? (step === 4 ? 'Continue to authorize' : 'Continue')
-				: (step === 4 ? 'Prepare & continue' : 'Save & continue'));
+				? (step === 4 ? tr('Continue to authorize') : tr('Continue'))
+				: (step === 4 ? tr('Prepare & continue') : tr('Save & continue')));
 	}
 
 	function meter() {
@@ -81,8 +85,8 @@
 			store_missing: 'Store — Families Pending Books / Uniforms'
 		};
 		var policyLabels = {
-			father_first: 'Father first, mother fallback',
-			mother_first: 'Mother first, father fallback',
+			father_first: tr('Father first, mother fallback'),
+			mother_first: tr('Mother first, father fallback'),
 			both: 'Both parents',
 			both_parents: 'Both parents',
 			father_only: 'Father only',
@@ -93,12 +97,12 @@
 			credit_balance: 'Credit balance',
 			zero_balance: 'Zero balance',
 			below_min_balance: 'Below minimum balance',
-			missing_phone: 'Missing mobile',
-			invalid_phone: 'Invalid mobile',
-			international_phone: 'International number',
-			landline_rejected: 'Landline',
-			duplicate_phone: 'Duplicate mobile',
-			manually_excluded: 'Removed manually'
+			missing_phone: tr('Missing mobile'),
+			invalid_phone: tr('Invalid mobile'),
+			international_phone: tr('International number'),
+			landline_rejected: tr('Landline'),
+			duplicate_phone: tr('Duplicate mobile'),
+			manually_excluded: tr('Removed manually')
 		};
 		var reasonHtml = Object.keys(reasons).map(function (key) {
 			return '<span class="omsg-preview-reason">' + escapeHtml(reasonLabels[key] || key.replace(/_/g, ' ')) + ': <strong>' + Number(reasons[key]) + '</strong></span>';
@@ -113,10 +117,10 @@
 				(Number(item.included) === 1 ? ' checked' : '') + (selectable ? '' : ' disabled') +
 				' aria-label="' + escapeHtml((Number(item.included) === 1 ? 'Unselect ' : 'Select ') + (item.recipient_name || 'recipient')) + '">';
 			var state = Number(item.included) === 1
-				? '<span class="omsg-status omsg-status--completed">Included</span>'
-				: '<span class="omsg-status omsg-status--failed">Excluded</span>';
+				? '<span class="omsg-status omsg-status--completed">' + tr('Included') + '</span>'
+				: '<span class="omsg-status omsg-status--failed">' + tr('Excluded') + '</span>';
 			var reason = item.excluded_reason ? (reasonLabels[item.excluded_reason] || item.excluded_reason.replace(/_/g, ' ')) : '';
-			var previewButton = '<button type="button" class="button button-small" data-open-sms-preview="' + escapeHtml(overrideKey) + '">Preview SMS</button>';
+			var previewButton = '<button type="button" class="button button-small" data-open-sms-preview="' + escapeHtml(overrideKey) + '">' + tr('Preview SMS') + '</button>';
 			return '<tr><th class="check-column">' + checkbox + '</th><td><strong>' + escapeHtml(item.recipient_name || 'Unnamed parent') + '</strong><small>Family ' + escapeHtml(item.oracle_family_id) + '</small></td>' +
 				'<td>' + escapeHtml(item.recipient_type || '') + '</td><td dir="ltr">' + escapeHtml(item.phone_raw || item.phone_e164 || '—') + '</td>' +
 				'<td>' + state + (reason ? '<small>' + escapeHtml(reason) + '</small>' : '') + '</td>' +
@@ -126,17 +130,17 @@
 		var healthText = health.ready === false ? '<div class="notice notice-warning inline"><p>' + escapeHtml(health.message || 'Olama Core synchronization needs attention.') + '</p></div>' : '';
 		var lockedText = editable ? '' : '<div class="notice notice-info inline"><p>This campaign is prepared and locked. Recipient choices are read-only.</p></div>';
 		var selectionTools = editable
-			? '<div class="omsg-preview-selection"><strong>' + Number(data.total_included || 0) + ' messages selected for sending</strong><div class="omsg-preview-selection-actions"><button type="button" class="button" data-select-preview-page>Select page</button><button type="button" class="button" data-clear-preview-page>Unselect page</button><button type="button" class="button button-primary" data-select-all-recipients>Select all families</button><button type="button" class="button" data-clear-all-recipients>Unselect all families</button></div></div>'
+			? '<div class="omsg-preview-selection"><strong>' + Number(data.total_included || 0) + ' ' + tr('messages selected for sending') + '</strong><div class="omsg-preview-selection-actions"><button type="button" class="button" data-select-preview-page>' + tr('Select page') + '</button><button type="button" class="button" data-clear-preview-page>' + tr('Unselect page') + '</button><button type="button" class="button button-primary" data-select-all-recipients>' + tr('Select all families') + '</button><button type="button" class="button" data-clear-all-recipients>' + tr('Unselect all families') + '</button></div></div>'
 			: '';
 		var page = Number(data.page || 1);
 		var totalPages = Math.max(1, Number(data.total_pages || 1));
 		return healthText +
 			lockedText +
-			'<div class="omsg-preview-context"><span><strong>Source</strong> Olama Core tables</span><span><strong>Study year</strong> ' + escapeHtml(campaign.study_year || health.study_year || '—') + '</span><span><strong>Audience</strong> ' + escapeHtml(audienceLabels[campaign.target_type] || campaign.target_type || '—') + '</span>' + (campaign.due_month ? '<span><strong>Due through</strong> ' + escapeHtml(campaign.due_month) + '</span>' : '') + '<span><strong>Recipient policy</strong> ' + escapeHtml(policyLabels[campaign.recipient_policy] || campaign.recipient_policy || '—') + '</span></div>' +
-			'<div class="omsg-preview-totals"><strong class="is-positive">' + Number(data.total_families || 0) + ' active families</strong><strong class="is-positive">' + Number(data.total_students || 0) + ' students</strong><strong class="is-positive">' + Number(data.total_included || 0) + ' messages to send</strong><strong class="is-cost">' + Number(data.total_sms_parts || 0) + ' total SMS parts</strong><strong class="is-negative">' + Number(data.total_excluded || 0) + ' excluded</strong><span>' + Number(data.total_candidates || 0) + ' parent message targets</span></div>' +
+			'<div class="omsg-preview-context"><span><strong>' + tr('Source') + '</strong> Olama Core tables</span><span><strong>' + tr('Study year') + '</strong> ' + escapeHtml(campaign.study_year || health.study_year || '—') + '</span><span><strong>' + tr('Audience') + '</strong> ' + escapeHtml(audienceLabels[campaign.target_type] || campaign.target_type || '—') + '</span>' + (campaign.due_month ? '<span><strong>' + tr('Due through') + '</strong> ' + escapeHtml(campaign.due_month) + '</span>' : '') + '<span><strong>' + tr('Recipient policy') + '</strong> ' + escapeHtml(policyLabels[campaign.recipient_policy] || campaign.recipient_policy || '—') + '</span></div>' +
+			'<div class="omsg-preview-totals"><strong class="is-positive">' + Number(data.total_families || 0) + ' ' + tr('active families') + '</strong><strong class="is-positive">' + Number(data.total_students || 0) + ' ' + tr('students') + '</strong><strong class="is-positive">' + Number(data.total_included || 0) + ' ' + tr('messages to send') + '</strong><strong class="is-cost">' + Number(data.total_sms_parts || 0) + ' ' + tr('total SMS parts') + '</strong><strong class="is-negative">' + Number(data.total_excluded || 0) + ' ' + tr('excluded') + '</strong><span>' + Number(data.total_candidates || 0) + ' ' + tr('parent message targets') + '</span></div>' +
 			(reasonHtml ? '<div class="omsg-preview-reasons">' + reasonHtml + '</div>' : '') +
 			selectionTools +
-			'<div class="omsg-table-scroll"><table class="widefat striped omsg-preview-table"><thead><tr><td class="check-column"></td><th>Recipient</th><th>Parent</th><th>Mobile</th><th>Eligibility</th><th>SMS parts</th><th>Message</th></tr></thead><tbody>' +
+			'<div class="omsg-table-scroll"><table class="widefat striped omsg-preview-table"><thead><tr><td class="check-column"></td><th>' + tr('Recipient') + '</th><th>' + tr('Parent') + '</th><th>' + tr('Mobile') + '</th><th>' + tr('Eligibility') + '</th><th>' + tr('SMS parts') + '</th><th>' + tr('Message') + '</th></tr></thead><tbody>' +
 			(rows || '<tr><td colspan="7">No recipients match this audience. Review the study year and audience filters.</td></tr>') +
 			'</tbody></table></div>' + paginationHtml(page, totalPages);
 	}
@@ -169,13 +173,13 @@
 			if (done) done();
 			return;
 		}
-		$('.omsg-save-state').text('Saving…');
+		$('.omsg-save-state').text(tr('Saving…'));
 		var data = $form.serializeArray();
 		data.push({name: 'action', value: 'olama_msg_save_campaign_draft'});
 		data.push({name: 'security', value: olamaMsgAdmin.nonce});
 		$.post(olamaMsgAdmin.ajaxUrl, data).done(function (response) {
 			if (!response.success) {
-				$('.omsg-save-state').text(response.data.message || 'Draft could not be saved');
+				$('.omsg-save-state').text(response.data.message || tr('Draft could not be saved'));
 				return;
 			}
 			$('[name="campaign_id"]').val(response.data.campaign_id);
@@ -183,7 +187,7 @@
 			history.replaceState({}, '', response.data.url + '&step=' + step);
 			$('.omsg-save-state').text('Saved at ' + response.data.saved_at);
 			if (done) done(response.data);
-		}).fail(function () { $('.omsg-save-state').text('Draft could not be saved'); });
+		}).fail(function () { $('.omsg-save-state').text(tr('Draft could not be saved')); });
 	}
 
 	function prepareCampaign() {
@@ -193,8 +197,8 @@
 			return;
 		}
 		var $button = $('[data-wizard-next]');
-		$button.prop('disabled', true).text('Preparing…');
-		$('.omsg-save-state').text('Preparing recipient messages…');
+		$button.prop('disabled', true).text(tr('Preparing…'));
+		$('.omsg-save-state').text(tr('Preparing recipient messages…'));
 		$.post(olamaMsgAdmin.ajaxUrl, {
 			action: 'olama_msg_prepare_campaign_ajax',
 			security: olamaMsgAdmin.nonce,
@@ -204,11 +208,11 @@
 				window.location.href = response.data.url;
 				return;
 			}
-			$('.omsg-save-state').text((response.data || {}).message || 'Campaign could not be prepared');
-			$button.prop('disabled', false).text('Prepare & continue');
+			$('.omsg-save-state').text((response.data || {}).message || tr('Campaign could not be prepared'));
+			$button.prop('disabled', false).text(tr('Prepare & continue'));
 		}).fail(function () {
-			$('.omsg-save-state').text('Campaign could not be prepared');
-			$button.prop('disabled', false).text('Prepare & continue');
+			$('.omsg-save-state').text(tr('Campaign could not be prepared'));
+			$button.prop('disabled', false).text(tr('Prepare & continue'));
 		});
 	}
 
@@ -250,9 +254,9 @@
 			$('.omsg-transport-filters').addClass('is-hidden');
 		} else if (val === 'finance_outstanding' || val === 'finance_agreements_collection') {
 			$('.omsg-finance-outstanding-filters').removeClass('is-hidden');
-			$('[data-finance-month-label]').text(val === 'finance_agreements_collection' ? 'Payment due in month' : 'Payment due through month');
+			$('[data-finance-month-label]').text(val === 'finance_agreements_collection' ? tr('Payment due in month') : tr('Payment due through month'));
 			$('[data-finance-month-help]').text(val === 'finance_agreements_collection' ? 'Includes unpaid agreement installments scheduled in the selected month.' : 'Includes all unpaid installments through the selected month, including August.');
-			$('[data-finance-min-label]').text(val === 'finance_agreements_collection' ? 'Minimum Unpaid Agreement Due (JOD)' : 'Minimum Outstanding Balance (JOD)');
+			$('[data-finance-min-label]').text(val === 'finance_agreements_collection' ? tr('Minimum Unpaid Agreement Due (JOD)') : tr('Minimum Outstanding Balance (JOD)'));
 		} else if (val === 'finance_renewal_reminder' || val === 'renewal_reminder') {
 			$('.omsg-finance-outstanding-filters').addClass('is-hidden');
 		}
@@ -395,7 +399,7 @@
 	}
 
 	// Auto-load options if starting on step 2
-	if (step === 2) {
+	if (step <= 2) {
 		var currentActiveCat = $('.omsg-cat-tab.is-active').data('cat');
 		if (currentActiveCat === 'academic') loadAcademicSchools();
 		if (currentActiveCat === 'transportation') loadTransportOptions();
@@ -416,9 +420,10 @@
 		if (body) $('[name="message_body_draft"]').val(body).trigger('input');
 	});
 	$('[data-wizard-next]').on('click', function () {
-		if (step === 2 && ['finance_outstanding', 'finance_agreements_collection'].indexOf($('[name="target_type"]:checked').val()) !== -1 && !$('[data-due-month]').val()) {
+        clearTimeout(timer);
+		if (step <= 2 && ['finance_outstanding', 'finance_agreements_collection'].indexOf($('[name="target_type"]:checked').val()) !== -1 && !$('[data-due-month]').val()) {
 			$('[data-due-month]').trigger('focus');
-			$('.omsg-save-state').text('Select a payment due month.');
+			$('.omsg-save-state').text(tr('Select a payment due month.'));
 			return;
 		}
 		if (step === 4 && campaignStatus === 'draft') {
@@ -426,7 +431,7 @@
 			return;
 		}
 		var valid = true;
-		$('.omsg-step-panel[data-step="' + step + '"]').find('[required]').each(function () {
+		$('.omsg-step-panel').filter(step <= 2 ? '[data-step="1"],[data-step="2"]' : '[data-step="' + step + '"]').find('[required]:visible').each(function () {
 			if (!this.checkValidity()) {
 				this.reportValidity();
 				valid = false;
@@ -434,7 +439,7 @@
 			}
 		});
 		if (!valid) return;
-		var nextStep = Math.min(5, step + 1);
+		var nextStep = step <= 2 ? 3 : Math.min(5, step + 1);
 		// Keep the current step until the autosave succeeds. Otherwise a transient
 		// save error leaves the UI on one panel but advances the internal step.
 		save(function () {
@@ -457,7 +462,7 @@
 		var id = Number($('[name="campaign_id"]').val());
 		if (!id) return save(loadPreview);
 		previewLoading = true;
-		$('[data-preview-result]').text('Loading preview…');
+		$('[data-preview-result]').text(tr('Loading preview…'));
 		$.post(olamaMsgAdmin.ajaxUrl, {
 			action: 'olama_msg_preview_campaign_ajax',
 			nonce: olamaMsgAdmin.nonce,
@@ -471,10 +476,10 @@
 				previewPage = Number(d.page || previewPage);
 				$('[data-preview-result]').html(renderPreview(d));
 			} else {
-				$('[data-preview-result]').text(typeof d === 'string' ? d : (d.message || 'Preview failed'));
+				$('[data-preview-result]').text(typeof d === 'string' ? d : (d.message || tr('Preview failed')));
 			}
 		}).fail(function () {
-			$('[data-preview-result]').text('The recipient preview could not be loaded.');
+			$('[data-preview-result]').text(tr('The recipient preview could not be loaded.'));
 		}).always(function () {
 			previewLoading = false;
 		});
@@ -530,7 +535,7 @@
 	}
 
 	$('[data-wizard-back]').on('click', function () {
-		step = Math.max(1, step - 1);
+		step = step === 3 ? 1 : Math.max(1, step - 1);
 		if (campaignStatus === 'draft') {
 			// draw() FIRST so the target step panel is visible when save() serializes the form.
 			// Without this, navigating back from step 4 would serialize with step 3's textarea
@@ -604,7 +609,7 @@
 	draw();
 	meter();
 	if (campaignStatus !== 'draft') {
-		$('.omsg-save-state').text('Prepared campaign is locked');
+		$('.omsg-save-state').text(tr('Prepared campaign is locked'));
 		$form.find('input:not([type="hidden"]),select,textarea').prop('disabled', true);
 	}
 	if (step === 4) {

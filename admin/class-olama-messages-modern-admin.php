@@ -21,8 +21,7 @@ class Olama_Messages_Modern_Admin {
 	}
 
 	private function status( $status ) {
-		$labels = array( 'prepared' => __( 'Ready to authorize', 'olama-messages' ), 'sent' => __( 'Submitted via KDE', 'olama-messages' ), 'unknown' => __( 'Review needed', 'olama-messages' ), 'retry_wait' => __( 'Retry scheduled', 'olama-messages' ), 'reserved' => __( 'In progress', 'olama-messages' ) );
-        return '<span class="omsg-status omsg-status--' . esc_attr( sanitize_html_class( $status ) ) . '">' . esc_html( $labels[$status] ?? ucwords( str_replace( '_', ' ', $status ) ) ) . '</span>';
+        return '<span class="omsg-status omsg-status--' . esc_attr(sanitize_html_class($status)) . '">' . esc_html($this->status_label($status)) . '</span>';
 	}
 
 	private function print_flash() {
@@ -57,54 +56,130 @@ class Olama_Messages_Modern_Admin {
         $agent = $this->plugin->agents()->get_ready_dispatcher_agent();
         if ( ! $agent ) { foreach ( $this->plugin->agents()->list_agents( array( 'orderby' => 'last_seen_at', 'order' => 'DESC', 'limit' => 5 ) ) as $candidate ) { if ( 'revoked' !== $candidate['status'] ) { $agent = $candidate; break; } } }
         $href = Olama_Messages_Workspace::url( 'olama-messages-agents', $agent ? array( 'action' => 'view', 'agent_id' => $agent['id'] ) : array() );
-        ?><section class="omw-panel omw-device"><div class="omw-device-heading"><span class="omw-device-icon dashicons dashicons-desktop"></span><div><h2><?php echo esc_html( $agent['agent_name'] ?? __( 'Sending agent', 'olama-messages' ) ); ?></h2><p><?php echo esc_html( $agent['machine_name'] ?? __( 'Connect a Windows sending computer', 'olama-messages' ) ); ?></p></div></div><dl><div><dt><?php esc_html_e( 'Phone', 'olama-messages' ); ?></dt><dd><?php echo esc_html( $agent['kde_device_name'] ?? '—' ); ?></dd></div><div><dt><?php esc_html_e( 'Last reported connection', 'olama-messages' ); ?></dt><dd><?php echo esc_html( ! empty( $agent['kde_device_reachable'] ) ? __( 'Reachable', 'olama-messages' ) : __( 'Not connected', 'olama-messages' ) ); ?></dd></div><div><dt><?php esc_html_e( 'Target cadence', 'olama-messages' ); ?></dt><dd><?php echo (int) Olama_Messages_Dispatcher_Service::config()['min_seconds_between_sms']; ?> <?php esc_html_e( 'seconds', 'olama-messages' ); ?></dd></div><div><dt><?php esc_html_e( 'Last heartbeat', 'olama-messages' ); ?></dt><dd><?php echo esc_html( Olama_Messages_Agent_Dashboard::age_label( Olama_Messages_Agent_Dashboard::utc_timestamp( $agent['last_seen_at'] ?? '' ) ) ); ?></dd></div></dl><a class="omw-link" href="<?php echo esc_url( $href ); ?>"><?php esc_html_e( 'Open agent workspace', 'olama-messages' ); ?> ↗</a></section><?php
+        ?><section class="omw-panel omw-device"><div class="omw-device-heading"><span class="omw-device-icon dashicons dashicons-desktop"></span><div><h2><?php echo esc_html( $agent['agent_name'] ?? __( 'Sending agent', 'olama-messages' ) ); ?></h2><p><?php echo esc_html( $agent['machine_name'] ?? __( 'Connect a Windows sending computer', 'olama-messages' ) ); ?></p></div></div><dl><div><dt><?php esc_html_e( 'Phone', 'olama-messages' ); ?></dt><dd><?php echo esc_html( $agent['kde_device_name'] ?? '—' ); ?></dd></div><div><dt><?php esc_html_e( 'Last reported connection', 'olama-messages' ); ?></dt><dd><?php echo esc_html( ! empty( $agent['kde_device_reachable'] ) ? __( 'Reachable', 'olama-messages' ) : ( $agent ? __( 'Not connected', 'olama-messages' ) : Olama_Messages_Workspace::text('Not reported','غير مبلغ عنه') ) ); ?></dd></div><div><dt><?php esc_html_e( 'Target cadence', 'olama-messages' ); ?></dt><dd><?php echo (int) Olama_Messages_Dispatcher_Service::config()['min_seconds_between_sms']; ?> <?php esc_html_e( 'seconds', 'olama-messages' ); ?></dd></div><div><dt><?php esc_html_e( 'Last heartbeat', 'olama-messages' ); ?></dt><dd><?php echo esc_html( Olama_Messages_Agent_Dashboard::age_label( Olama_Messages_Agent_Dashboard::utc_timestamp( $agent['last_seen_at'] ?? '' ) ) ); ?></dd></div></dl><p class="omw-caption"><?php echo esc_html(Olama_Messages_Workspace::text('Readiness is assessed from the latest heartbeat and worker telemetry.','تقيّم الجاهزية وفق آخر اتصال وبيانات تشغيل الوكيل.')); ?></p><a class="omw-link" href="<?php echo esc_url( $href ); ?>"><?php esc_html_e( 'Open agent workspace', 'olama-messages' ); ?> ↗</a></section><?php
     }
     public function overview() {
         $ops = $this->plugin->operations(); $data = $ops->workspace_summary(); $ready = $ops->readiness();
-        $recent = $this->plugin->campaigns()->list_campaigns( array( 'limit' => 5 ) );
-        $this->header( __( 'Your messages, in motion.', 'olama-messages' ), __( 'Today’s sending activity, clear next steps, and the outcomes that need attention.', 'olama-messages' ), '<a class="button button-primary" href="' . esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign' ) ) . '">+ ' . esc_html__( 'Create campaign', 'olama-messages' ) . '</a>' );
-        $this->print_flash(); ?>
-        <div class="omw-readiness <?php echo $ready['agent_ready'] && $ready['core_ready'] ? '' : 'needs-attention'; ?>"><span><i class="omw-dot"></i><strong><?php echo esc_html( $ready['agent_ready'] && $ready['core_ready'] ? __( 'Ready for sending', 'olama-messages' ) : __( 'Check readiness before sending', 'olama-messages' ) ); ?></strong><small> · <?php echo esc_html( $ready['core_ready'] ? __( 'School data ready', 'olama-messages' ) : __( 'School data needs synchronization', 'olama-messages' ) ); ?> · <?php echo esc_html( $ready['agent_ready'] ? __( 'Worker available', 'olama-messages' ) : __( 'Worker not ready', 'olama-messages' ) ); ?></small></span><a href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-delivery' ) ); ?>"><?php esc_html_e( 'View health', 'olama-messages' ); ?> →</a></div>
+        $year = (string) $this->plugin->provider()->get_current_study_year();
+        $available_years = $this->plugin->provider()->get_available_study_years();
+        $requested_year = sanitize_text_field(wp_unslash($_GET['study_year'] ?? ''));
+        if(in_array($requested_year,$available_years,true)) { $year=$requested_year; }
+        $dashboard = $ops->command_center( $year );
+        $recent = $this->plugin->campaigns()->list_campaigns( array( 'limit' => 7, 'study_year' => $year ) );
+        $campaign = $data['campaign'] ?: ( $recent[0] ?? null );
+        $t = array( 'Olama_Messages_Workspace', 'text' );
+        $this->header( $t('Communicate with everyone, clearly.','التواصل مع الجميع، بكل وضوح.'), $t('A clear view of school communication, with the next action always in reach.','ملخص عملي يساعدك على متابعة الرسائل واتخاذ القرار في ثوانٍ.'), '<a class="button button-primary" href="' . esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign' ) ) . '">+ ' . esc_html($t('Create campaign','إنشاء حملة جديدة')) . '</a>' );
+        $this->print_flash();
+        $healthy = $ready['agent_ready'] && $ready['core_ready'];
+        $detail_url = Olama_Messages_Workspace::url( $campaign ? 'olama-messages-campaign-progress' : 'olama-messages-new-campaign', $campaign ? array('campaign_id'=>$campaign['id']) : array() );
+        $sent = 0; $total = 0;
+        if ( $campaign ) { global $wpdb; $totals = $wpdb->get_row( $wpdb->prepare("SELECT COUNT(*) AS total,SUM(status='sent') AS submitted FROM {$wpdb->prefix}olama_msg_queue WHERE campaign_id=%d", $campaign['id']), ARRAY_A ); $sent = (int)$totals['submitted']; $total = (int)$totals['total']; }
+        $pct = $total ? round($sent / $total * 100) : 0;
+        ?>
+        <form class="omw-year-filter" method="get"><input type="hidden" name="page" value="olama-messages"><label for="omw-year"><?php echo esc_html($t('Academic year','العام الدراسي')); ?></label><select id="omw-year" name="study_year"><?php foreach($available_years as $item) : ?><option <?php selected($year,$item); ?>><?php echo esc_html($item); ?></option><?php endforeach; ?></select><button class="button"><?php echo esc_html($t('Apply','تطبيق')); ?></button></form>
+        <section class="omw-hero" aria-labelledby="omw-hero-title">
+            <div class="omw-hero-copy"><a class="omw-health-chip" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-agents')); ?>"><i class="omw-dot <?php echo $healthy ? '' : 'is-warning'; ?>"></i><?php echo esc_html($healthy ? $t('Systems ready','أنظمة الإرسال جاهزة') : $t('Readiness needs review','جاهزية الإرسال تحتاج مراجعة')); ?></a>
+            <h2 id="omw-hero-title"><?php echo esc_html($campaign ? $t('Your latest campaign.','رسالتك الأخيرة.') : $t('Your next school update.','رسالتك القادمة.')); ?><br><span><?php echo esc_html($campaign ? $campaign['title'] : $t('Start with a clear message.','تبدأ برسالة واضحة.')); ?></span></h2>
+            <p><?php echo esc_html($campaign ? sprintf($t('%s messages submitted to KDE. Recipient delivery confirmation is unavailable.','تم تقديم %s رسالة إلى KDE. تأكيد وصول الرسالة إلى المستلم غير متاح.'),number_format_i18n($sent)) : $t('Choose your audience, write your message, then review before authorizing.','اختر الجمهور، واكتب رسالتك، ثم راجعها قبل اعتماد الإرسال.')); ?></p>
+            <a class="button" href="<?php echo esc_url($detail_url); ?>"><?php echo esc_html($campaign ? $t('View campaign results','استعراض نتائج الحملة') : $t('Create campaign','إنشاء حملة جديدة')); ?> ↗</a></div>
+            <div class="omw-hero-snapshot"><div class="omw-panel-top"><span class="omw-eyebrow"><?php echo esc_html($t('LATEST CAMPAIGN','آخر حملة')); ?></span><bdi>#<?php echo $campaign ? (int)$campaign['id'] : '—'; ?></bdi></div><h3><?php echo esc_html($campaign ? $campaign['title'] : $t('No campaigns yet','لا توجد حملات بعد')); ?></h3>
+            <ol class="omw-pipeline"><li><span class="dashicons dashicons-clipboard"></span><?php echo esc_html($t('Preparation','التجهيز')); ?><small><?php echo esc_html($campaign ? $this->pipeline_label($campaign) : '—'); ?></small></li><li><span class="dashicons dashicons-cloud"></span>KDE<small><bdi><?php echo number_format_i18n($sent); ?> / <?php echo number_format_i18n($total); ?></bdi></small></li><li class="is-unavailable"><span class="dashicons dashicons-smartphone"></span><?php echo esc_html($t('Recipient delivery','هاتف المستلم')); ?><small><?php echo esc_html($t('Unconfirmed','غير مؤكد')); ?></small></li></ol>
+            <div class="omw-progress" role="progressbar" aria-label="<?php echo esc_attr($t('KDE submissions','التقديم إلى KDE')); ?>" aria-valuenow="<?php echo (int)$pct; ?>" aria-valuemin="0" aria-valuemax="100"><span style="width:<?php echo (int)$pct; ?>%"></span></div><p><?php echo (int)$pct; ?>% <?php echo esc_html($t('submitted to KDE','مقدمة إلى KDE')); ?></p></div>
+        </section>
         <div class="omsg-stat-grid omw-metrics">
-        <?php foreach ( array( array( __( 'Submitted today', 'olama-messages' ), $data['submitted'], __( 'Command completed via KDE', 'olama-messages' ) ), array( __( 'Authorized queue', 'olama-messages' ), $data['authorized'], __( 'Sending and paused campaigns', 'olama-messages' ) ), array( __( 'Awaiting authorization', 'olama-messages' ), $data['prepared'], __( 'Prepared campaigns · not sending', 'olama-messages' ) ), array( __( 'Need review', 'olama-messages' ), $data['review'], __( 'Uncertain SMS outcomes held safely', 'olama-messages' ) ) ) as $metric ) : ?><div class="omsg-stat"><span><?php echo esc_html( $metric[0] ); ?></span><strong><?php echo number_format_i18n( $metric[1] ); ?></strong><small><?php echo esc_html( $metric[2] ); ?></small></div><?php endforeach; ?>
-        </div><div class="omw-columns"><div class="omw-stack">
-        <?php if ( $data['campaign'] ) : $campaign = $data['campaign']; $counts = $data['counts']; $total = array_sum( $counts ); $pct = $total ? round( $counts['sent'] / $total * 100 ) : 0; $pending = $counts['prepared'] + $counts['reserved'] + $counts['retry_wait']; ?>
-            <section class="omw-panel omw-active-campaign"><div class="omw-panel-top"><span class="omw-eyebrow"><?php esc_html_e( 'CAMPAIGN IN PROGRESS', 'olama-messages' ); ?></span><?php echo $this->status( $campaign['status'] ); ?></div><h2><?php echo esc_html( $campaign['title'] ); ?></h2><p class="omw-caption"><?php echo esc_html( $campaign['study_year'] ); ?> · #<?php echo (int) $campaign['id']; ?></p><div class="omw-progress-summary"><div><strong><?php echo number_format_i18n( $counts['sent'] ); ?></strong><span> / <?php echo number_format_i18n( $total ); ?></span><small><?php esc_html_e( 'messages submitted via KDE', 'olama-messages' ); ?></small></div><div><small><?php esc_html_e( 'Estimated sending time remaining', 'olama-messages' ); ?></small><b><?php echo 'paused' === $campaign['status'] ? esc_html__( 'Paused', 'olama-messages' ) : sprintf( esc_html__( 'About %d min', 'olama-messages' ), (int) ceil( $this->plugin->dispatcher()->estimate_remaining_seconds( (int) $campaign['id'], $pending ) / 60 ) ); ?></b></div></div><div class="omw-progress" role="progressbar" aria-label="<?php esc_attr_e( 'Campaign submissions', 'olama-messages' ); ?>" aria-valuenow="<?php echo (int) $pct; ?>" aria-valuemin="0" aria-valuemax="100"><span style="width:<?php echo (int) $pct; ?>%"></span></div><div class="omw-panel-top omw-caption"><span><?php echo number_format_i18n( $pending ); ?> <?php esc_html_e( 'queued or in progress', 'olama-messages' ); ?> · <?php echo number_format_i18n( $counts['unknown'] ); ?> <?php esc_html_e( 'held for review', 'olama-messages' ); ?></span><span><?php echo (int) $pct; ?>%</span></div><footer><span><?php esc_html_e( 'One message at a time. Recipient delivery is not confirmed.', 'olama-messages' ); ?></span><a class="button" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-campaign-progress', array( 'campaign_id' => $campaign['id'] ) ) ); ?>"><?php esc_html_e( 'View delivery', 'olama-messages' ); ?> →</a></footer></section>
-        <?php else : ?><section class="omw-panel omw-empty"><span class="dashicons dashicons-email-alt"></span><h2><?php esc_html_e( 'Ready for your next campaign.', 'olama-messages' ); ?></h2><p><?php esc_html_e( 'Choose an audience, prepare the message, and authorize sending when you are ready.', 'olama-messages' ); ?></p><a class="button button-primary" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign' ) ); ?>"><?php esc_html_e( 'Create campaign', 'olama-messages' ); ?></a></section><?php endif; ?>
-        <section class="omsg-panel omw-recent-campaigns"><div class="omsg-panel-head"><h2><?php esc_html_e( 'Recent campaigns', 'olama-messages' ); ?></h2><a href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-campaigns' ) ); ?>"><?php esc_html_e( 'View all', 'olama-messages' ); ?> →</a></div><?php $this->campaign_table( $recent, true ); ?></section></div>
-        <aside class="omw-stack"><?php $this->agent_card(); ?><section class="omw-panel omw-attention"><span class="omw-eyebrow"><?php esc_html_e( 'NEXT ACTION', 'olama-messages' ); ?></span><h2><?php echo esc_html( $data['review'] ? sprintf( __( '%d outcomes need review', 'olama-messages' ), $data['review'] ) : ( $data['prepared'] ? __( 'Your prepared campaigns are ready.', 'olama-messages' ) : __( 'All outcomes accounted for.', 'olama-messages' ) ) ); ?></h2><p><?php echo esc_html( $data['review'] ? __( 'The phone may have submitted these messages. Check its history before choosing whether to retry.', 'olama-messages' ) : ( $data['prepared'] ? __( 'Review the frozen audience and message before authorizing sending.', 'olama-messages' ) : __( 'Continue monitoring delivery or prepare your next school update.', 'olama-messages' ) ) ); ?></p><a class="button" href="<?php echo esc_url( Olama_Messages_Workspace::url( $data['review'] ? 'olama-messages-delivery' : 'olama-messages-campaigns' ) ); ?>"><?php echo esc_html( $data['review'] ? __( 'Review outcomes', 'olama-messages' ) : __( 'Open campaigns', 'olama-messages' ) ); ?> →</a></section></aside></div></div><?php
+        <?php foreach (array(
+            array($t('Submitted to KDE today','المقدمة إلى KDE اليوم'),$dashboard['submitted'],$t('Unique messages · school timezone','رسائل فريدة · توقيت المدرسة'),'email-alt','olama-messages-delivery','sent'),
+            array($t('Dispatch attempts today','محاولات الإرسال اليوم'),$dashboard['today_attempts'],$t('Recorded dispatch attempts, including retries','محاولات مسجلة، تشمل إعادة المحاولة'),'update','olama-messages-delivery',''),
+            array($t('Messages requiring attention','رسائل تحتاج تدخلاً'),$data['review']+$dashboard['failed'],$t('Failed or uncertain outcomes · all years','نتائج فاشلة أو غير مؤكدة · جميع الأعوام'),'warning','olama-messages-delivery',''),
+            array($t('Campaigns this academic year','الحملات خلال العام'),$dashboard['campaigns'],$year ?: $t('All academic years','جميع الأعوام'),'portfolio','olama-messages-campaigns','')
+        ) as $metric) : ?><a class="omsg-stat" href="<?php echo esc_url(Olama_Messages_Workspace::url($metric[4],array('status'=>$metric[5],'study_year'=>$metric[4]==='olama-messages-campaigns' ? $year : ''))); ?>"><span class="omw-metric-icon dashicons dashicons-<?php echo esc_attr($metric[3]); ?>"></span><span><?php echo esc_html($metric[0]); ?></span><strong><?php echo number_format_i18n($metric[1]); ?></strong><small><?php echo esc_html($metric[2]); ?></small></a><?php endforeach; ?>
+        </div>
+        <div class="omw-columns"><div class="omw-stack">
+        <section class="omw-panel"><div class="omw-panel-top"><div><span class="omw-eyebrow">PERFORMANCE</span><h2><?php echo esc_html($t('Campaign activity','نشاط الحملات')); ?></h2></div><span class="omw-caption"><?php echo esc_html($t('Latest 7 prepared campaigns','آخر ٧ حملات مجهزة')); ?></span></div><p class="omw-caption"><?php echo esc_html($t('Current KDE submissions for each campaign.','عدد الرسائل المقدمة إلى KDE لكل حملة.')); ?></p>
+        <div class="omw-chart" aria-label="<?php echo esc_attr($t('KDE submissions by campaign','التقديم إلى KDE حسب الحملة')); ?>">
+        <?php $max = max(array_merge(array(1),array_map('intval',array_column($dashboard['trend'],'submitted')))); foreach($dashboard['trend'] as $point) : ?><a class="omw-chart-column" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaign-progress',array('campaign_id'=>$point['id']))); ?>" title="<?php echo esc_attr($point['title'].' · '.number_format_i18n($point['submitted'])); ?>"><strong><?php echo number_format_i18n($point['submitted']); ?></strong><span class="omw-chart-track"><i style="height:<?php echo round((int)$point['submitted']/$max*100); ?>%"></i></span><small><?php echo esc_html(wp_date('d/m',strtotime($point['created_at'].' UTC'))); ?></small><span class="screen-reader-text"><?php echo esc_html($point['title']); ?></span></a><?php endforeach; ?>
+        <?php if(!$dashboard['trend']) : ?><p class="omw-caption"><?php echo esc_html($t('Activity will appear when you create a campaign.','سيظهر النشاط عند إنشاء حملة.')); ?></p><?php endif; ?></div><a class="omw-link" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaigns')); ?>"><?php echo esc_html($t('All campaigns','كل الحملات')); ?> ↗</a></section>
+        <section class="omsg-panel omw-recent-campaigns"><div class="omsg-panel-head"><h2><?php echo esc_html($t('Recent campaigns','أحدث الحملات')); ?></h2><a href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaigns')); ?>"><?php echo esc_html($t('View all','عرض الكل')); ?> ↗</a></div><div class="omw-recent-list"><?php foreach(array_slice($recent,0,4) as $item) : $href=Olama_Messages_Workspace::url($item['status']==='draft' || $item['status']==='prepared' ? 'olama-messages-new-campaign' : 'olama-messages-campaign-progress',array('campaign_id'=>$item['id'],'step'=>$item['status']==='prepared' ? 5 : 1)); ?><a href="<?php echo esc_url($href); ?>"><span class="omw-metric-icon dashicons dashicons-<?php echo $item['status']==='draft' ? 'edit' : 'calendar-alt'; ?>"></span><span class="omw-recent-title"><strong><?php echo esc_html($item['title']); ?></strong><small><?php echo esc_html($this->audience_label($item['target_type'])); ?> · <bdi>#<?php echo (int)$item['id']; ?></bdi> · <?php echo esc_html(wp_date('d/m/Y',strtotime($item['created_at'].' UTC'))); ?></small></span><span class="omw-recent-state"><?php echo $this->status($item['status']); ?><small><?php echo number_format_i18n($item['total_included']); ?> <?php echo esc_html($t('included','مضمن')); ?> · <?php echo number_format_i18n($item['total_excluded']); ?> <?php echo esc_html($t('excluded','مستبعد')); ?></small></span><span aria-hidden="true">↗</span></a><?php endforeach; ?><?php if(!$recent) : ?><p class="omw-caption"><?php echo esc_html($t('No campaigns yet. Create your first campaign to get started.','لا توجد حملات بعد. أنشئ حملتك الأولى للبدء.')); ?></p><?php endif; ?></div></section></div>
+        <aside class="omw-stack"><section class="omw-panel omw-attention"><span class="omw-attention-icon dashicons dashicons-<?php echo $data['review']+$dashboard['failed'] ? 'warning' : 'yes-alt'; ?>"></span><h2><?php echo esc_html($t('What needs your attention?','ما الذي يحتاج اهتمامك؟')); ?></h2>
+        <ul class="omw-attention-list"><li><a href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-delivery',array('status'=>'unknown'))); ?>"><?php echo esc_html($t('Uncertain outcomes','نتائج تحتاج مراجعة')); ?><strong><?php echo number_format_i18n($data['review']); ?></strong></a></li><li><a href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-delivery',array('status'=>'failed'))); ?>"><?php echo esc_html($t('Failed submissions','محاولات فاشلة')); ?><strong><?php echo number_format_i18n($dashboard['failed']); ?></strong></a></li><li><a href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaigns',array('status'=>'prepared'))); ?>"><?php echo esc_html($t('Awaiting authorization','بانتظار الاعتماد')); ?><strong><?php echo number_format_i18n($data['prepared']); ?></strong></a></li></ul>
+        <?php if(!$healthy) : ?><p class="omw-caption"><?php echo esc_html($t('Check agent and school-data readiness before sending.','راجع جاهزية الوكيل وبيانات المدرسة قبل الإرسال.')); ?></p><?php endif; ?>
+        <?php if($campaign && (int)$campaign['total_excluded']) : ?><a class="omw-exclusion-note" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-recipients',array('campaign_id'=>$campaign['id'],'show_excluded'=>1))); ?>"><?php echo number_format_i18n($campaign['total_excluded']); ?> <?php echo esc_html($t('excluded recipients · review reasons','مستلماً مستبعداً · مراجعة الأسباب')); ?> ↗</a><?php endif; ?></section><?php $this->agent_card(); ?></aside></div></div><?php
     }
 
-	public function campaigns() {
-		$status = sanitize_key( $_GET['status'] ?? '' );
-		$search = sanitize_text_field( wp_unslash( $_GET['s'] ?? '' ) );
-		$rows = $this->plugin->campaigns()->list_campaigns( array( 'status' => $status, 'search' => $search, 'limit' => 100 ) );
-		$action = '<a class="button button-primary" href="' . esc_url( admin_url( 'admin.php?page=olama-messages-new-campaign' ) ) . '">Create campaign</a>';
-		$this->header( 'Campaigns', 'Every message has a next step. Continue a draft, authorize a prepared campaign, or monitor delivery.', $action );
-		$this->print_flash();
-		?>
-		<form class="omsg-filterbar" method="get"><input type="hidden" name="page" value="olama-messages-campaigns">
-			<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="Search campaign title">
-			<select name="status"><option value="">Active &amp; recent</option><?php foreach ( array( 'draft','prepared','sending','paused','completed','cancelled','archived' ) as $item ) : ?><option value="<?php echo esc_attr( $item ); ?>" <?php selected( $status, $item ); ?>><?php echo esc_html( ucwords( str_replace( '_', ' ', $item ) ) ); ?></option><?php endforeach; ?></select>
-			<button class="button">Filter</button>
-		</form>
-		<section class="omsg-panel"><?php $this->campaign_table( $rows, true ); ?></section></div>
-		<?php
-	}
+    private function pipeline_label( array $campaign ) {
+        return !empty($campaign['prepared_at']) || !empty($campaign['total_prepared']) ? Olama_Messages_Workspace::text('Prepared','مجهزة') : $this->status_label($campaign['status']);
+    }
+
+    public function campaigns() {
+        $status = sanitize_key($_GET['status'] ?? '');
+        $search = sanitize_text_field(wp_unslash($_GET['s'] ?? ''));
+        $audience = sanitize_key($_GET['audience'] ?? '');
+        $study_year = sanitize_text_field(wp_unslash($_GET['study_year'] ?? ''));
+        $sort = sanitize_key($_GET['sort'] ?? 'created_at');
+        $order = 'ASC' === ($_GET['order'] ?? '') ? 'ASC' : 'DESC';
+        $page = max(1,absint($_GET['paged'] ?? 1)); $limit = 25;
+        $rows = $this->plugin->campaigns()->list_campaigns(array('status'=>$status,'search'=>$search,'study_year'=>$study_year,'target_type'=>$audience,'orderby'=>$sort,'order'=>$order,'offset'=>($page-1)*$limit,'limit'=>$limit+1));
+        $has_next = count($rows)>$limit; $rows = array_slice($rows,0,$limit);
+        $t = array('Olama_Messages_Workspace','text');
+        $this->header($t('Campaigns','الحملات'),$t('Continue a draft, review recipients, or follow KDE submissions.','تابع المسودات، وراجع المستلمين، وراقب التقديم إلى KDE.'),'<a class="button button-primary" href="'.esc_url(Olama_Messages_Workspace::url('olama-messages-new-campaign')).'">+ '.esc_html($t('Create campaign','إنشاء حملة جديدة')).'</a>');
+        $this->print_flash(); ?>
+        <form class="omsg-filterbar" data-workspace-filter method="get"><input type="hidden" name="page" value="olama-messages-campaigns">
+        <label><span class="screen-reader-text"><?php echo esc_html($t('Search campaigns','البحث في الحملات')); ?></span><input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php echo esc_attr($t('Search campaign title','ابحث عن عنوان حملة')); ?>"></label>
+        <label><span class="screen-reader-text"><?php echo esc_html($t('Status','الحالة')); ?></span><select name="status"><option value=""><?php echo esc_html($t('Active & recent','النشطة والحديثة')); ?></option><?php foreach(array('draft','prepared','sending','paused','completed','cancelled','archived') as $item) : ?><option value="<?php echo esc_attr($item); ?>" <?php selected($status,$item); ?>><?php echo esc_html($this->status_label($item)); ?></option><?php endforeach; ?></select></label>
+        <label><span class="screen-reader-text"><?php echo esc_html($t('Audience','الجمهور')); ?></span><select name="audience"><option value=""><?php echo esc_html($t('All audiences','كل شرائح الجمهور')); ?></option><?php foreach(array('academic','collection','renewal_reminder','finance_outstanding','finance_agreements_collection','finance_renewal_reminder','transport_registered','transport_no_gps','store_missing','direct','general','transportation') as $type) : ?><option value="<?php echo esc_attr($type); ?>" <?php selected($audience,$type); ?>><?php echo esc_html($this->audience_label($type)); ?></option><?php endforeach; ?></select></label>
+        <label><span class="screen-reader-text"><?php echo esc_html($t('Sort by','الترتيب حسب')); ?></span><select name="sort"><?php foreach(array('created_at'=>$t('Creation date','تاريخ الإنشاء'),'title'=>$t('Title','العنوان'),'status'=>$t('Status','الحالة')) as $key=>$label) : ?><option value="<?php echo esc_attr($key); ?>" <?php selected($sort,$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></label><label><span class="screen-reader-text"><?php echo esc_html($t('Sort direction','اتجاه الترتيب')); ?></span><select name="order"><option value="DESC" <?php selected($order,'DESC'); ?>><?php echo esc_html($t('Descending','تنازلي')); ?></option><option value="ASC" <?php selected($order,'ASC'); ?>><?php echo esc_html($t('Ascending','تصاعدي')); ?></option></select></label>
+        <label><span class="screen-reader-text"><?php echo esc_html($t('Academic year','العام الدراسي')); ?></span><select name="study_year"><option value=""><?php echo esc_html($t('All academic years','كل الأعوام الدراسية')); ?></option><?php foreach($this->plugin->provider()->get_available_study_years() as $year) : ?><option <?php selected($study_year,$year); ?>><?php echo esc_html($year); ?></option><?php endforeach; ?></select></label>
+        <button class="button"><?php echo esc_html($t('Apply filters','تطبيق الفلاتر')); ?></button></form>
+        <section class="omsg-panel"><?php $this->campaign_table($rows,true); ?>
+        <nav class="omw-pagination" aria-label="<?php echo esc_attr($t('Campaign pages','صفحات الحملات')); ?>"><span><?php echo esc_html(sprintf($t('Page %d · up to 25 campaigns per page','الصفحة %d · حتى ٢٥ حملة لكل صفحة'),$page)); ?></span><div><?php $query = array('status'=>$status,'s'=>$search,'study_year'=>$study_year,'audience'=>$audience,'sort'=>$sort,'order'=>$order); if($page>1) : ?><a class="button" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaigns',array_merge($query,array('paged'=>$page-1)))); ?>"><?php echo esc_html($t('Previous','السابق')); ?></a><?php endif; if($has_next) : ?><a class="button" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-campaigns',array_merge($query,array('paged'=>$page+1)))); ?>"><?php echo esc_html($t('Next','التالي')); ?></a><?php endif; ?></div></nav></section></div><?php
+    }
+
+    private function audience_label($type) {
+        $labels = array('academic'=>'أكاديمي','general'=>'عام','collection'=>'مطالبات مالية','renewal_reminder'=>'تذكير بالتجديد','finance_outstanding'=>'الأرصدة المستحقة','finance_agreements_collection'=>'تحصيل الاتفاقيات','finance_renewal_reminder'=>'تذكير بالتجديد المالي','transport_registered'=>'المسجلون في النقل','transport_no_gps'=>'النقل دون GPS','store_missing'=>'مستلزمات لم تستلم','direct'=>'رسالة مباشرة','transportation'=>'النقل');
+        return Olama_Messages_Workspace::text(ucwords(str_replace('_',' ',$type)),$labels[$type] ?? $type);
+    }
+
+    private function status_label($status) {
+        $en = array('prepared'=>'Ready to authorize','sent'=>'Submitted via KDE','unknown'=>'Review needed','retry_wait'=>'Retry scheduled','reserved'=>'In progress','completed'=>'KDE submission complete','completed_with_errors'=>'Finished with errors');
+        $ar = array('draft'=>'مسودة','prepared'=>'جاهزة للاعتماد','sending'=>'قيد الإرسال','paused'=>'متوقفة مؤقتاً','completed'=>'اكتمل التقديم إلى KDE','completed_with_errors'=>'انتهت مع أخطاء','cancelled'=>'ملغاة','archived'=>'مؤرشفة','sent'=>'مقدمة إلى KDE','unknown'=>'تحتاج مراجعة','retry_wait'=>'إعادة محاولة مجدولة','reserved'=>'قيد المعالجة','failed'=>'فشل التقديم');
+        return Olama_Messages_Workspace::text($en[$status] ?? ucwords(str_replace('_',' ',$status)),$ar[$status] ?? $status);
+    }
+
+    /** Frozen exclusions are separate from queue failures and never re-resolved. */
+    public function campaign_exclusions( int $campaign_id ) {
+        $campaign = $this->plugin->campaigns()->get_campaign($campaign_id);
+        if (!$campaign) { wp_die(esc_html__('Campaign not found.','olama-messages')); }
+        global $wpdb;
+        $table=$wpdb->prefix.'olama_msg_campaign_recipients';
+        $page=max(1,absint($_GET['paged'] ?? 1));
+        $search=sanitize_text_field(wp_unslash($_GET['s'] ?? ''));
+        $where=$wpdb->prepare('campaign_id=%d AND included=0',$campaign_id);
+        if ($search !== '') { $term='%'.$wpdb->esc_like($search).'%'; $where.=$wpdb->prepare(' AND (recipient_name LIKE %s OR excluded_reason LIKE %s)',$term,$term); }
+        $total=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$table} WHERE {$where}");
+        $rows=(array)$wpdb->get_results($wpdb->prepare("SELECT id,recipient_name,recipient_type,phone_e164,excluded_reason FROM {$table} WHERE {$where} ORDER BY id ASC LIMIT 25 OFFSET %d",($page-1)*25),ARRAY_A);
+        $t=array('Olama_Messages_Workspace','text');
+        $this->header($t('Excluded recipients','المستلمون المستبعدون'),$campaign['title'],'<a class="button" href="'.esc_url(Olama_Messages_Workspace::url('olama-messages-campaign-progress',array('campaign_id'=>$campaign_id))).'">'.esc_html($t('Back to campaign','العودة إلى الحملة')).'</a>');
+        ?>
+        <p class="omw-delivery-note"><?php echo esc_html($t('Saved audience exclusions are shown here. These recipients were not queued and are separate from failed submissions. Draft eligibility is calculated during review.','تعرض هنا الاستبعادات المحفوظة عند التجهيز. لم يدرج هؤلاء المستلمون في قائمة الإرسال، وهم منفصلون عن محاولات التقديم الفاشلة. تحتسب أهلية المسودة عند المراجعة.')); ?></p>
+        <form class="omsg-filterbar" data-workspace-filter method="get"><input type="hidden" name="page" value="olama-messages-recipients"><input type="hidden" name="campaign_id" value="<?php echo (int)$campaign_id; ?>"><label><span class="screen-reader-text"><?php echo esc_html($t('Search exclusions','البحث في الاستبعادات')); ?></span><input type="search" name="s" value="<?php echo esc_attr($search); ?>" placeholder="<?php echo esc_attr($t('Name or exclusion reason','الاسم أو سبب الاستبعاد')); ?>"></label><button class="button"><?php echo esc_html($t('Search','بحث')); ?></button></form>
+        <section class="omw-panel"><div class="omsg-table-scroll"><table class="widefat omsg-table"><thead><tr><th><?php echo esc_html($t('Recipient','المستلم')); ?></th><th><?php echo esc_html($t('Phone','الهاتف')); ?></th><th><?php echo esc_html($t('Exclusion reason','سبب الاستبعاد')); ?></th></tr></thead><tbody><?php foreach($rows as $row) : ?><tr><td><?php echo esc_html($row['recipient_name'] ?: '—'); ?><small><bdi>#<?php echo (int)$row['id']; ?></bdi> · <?php echo esc_html($row['recipient_type']); ?></small></td><td><bdi><?php echo esc_html($row['phone_e164'] ? substr($row['phone_e164'],0,5).'•••'.substr($row['phone_e164'],-3) : '—'); ?></bdi></td><td><?php echo esc_html($row['excluded_reason'] ?: $t('Reason unavailable','السبب غير متاح')); ?></td></tr><?php endforeach; if(!$rows) : ?><tr><td colspan="3"><?php echo esc_html($t('No saved exclusions match these filters.','لا توجد استبعادات محفوظة تطابق هذه الفلاتر.')); ?></td></tr><?php endif; ?></tbody></table></div>
+        <nav class="omw-pagination" aria-label="<?php echo esc_attr($t('Exclusion pages','صفحات الاستبعادات')); ?>"><span><?php echo number_format_i18n($total); ?> <?php echo esc_html($t('matching exclusions','استبعاداً مطابقاً')); ?></span><div><?php foreach(array($page-1=>$t('Previous','السابق'),$page+1=>$t('Next','التالي')) as $number=>$label) { if($number<1 || $number>max(1,ceil($total/25))) { continue; } ?><a class="button" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-recipients',array('campaign_id'=>$campaign_id,'s'=>$search,'paged'=>$number))); ?>"><?php echo esc_html($label); ?></a><?php } ?></div></nav></section></div><?php
+    }
 
 	private function campaign_table( $rows, $actions = true ) {
 		?>
-		<div class="omsg-table-scroll"><table class="widefat striped omsg-table"><thead><tr><th>Campaign</th><th>Audience</th><th>Status</th><th>Messages</th><th>Created</th><?php if ( $actions ) : ?><th>Next action</th><?php endif; ?></tr></thead><tbody>
-		<?php if ( empty( $rows ) ) : ?><tr><td colspan="6">No campaigns match these filters.</td></tr><?php endif; ?>
+		<div class="omsg-table-scroll"><table class="widefat striped omsg-table"><thead><tr><th><?php echo esc_html(Olama_Messages_Workspace::text('Campaign','الحملة')); ?></th><th><?php echo esc_html(Olama_Messages_Workspace::text('Audience','الجمهور')); ?></th><th><?php echo esc_html(Olama_Messages_Workspace::text('Status','الحالة')); ?></th><th><?php echo esc_html(Olama_Messages_Workspace::text('Messages','الرسائل')); ?></th><th><?php echo esc_html(Olama_Messages_Workspace::text('Created','الإنشاء')); ?></th><?php if ( $actions ) : ?><th><?php echo esc_html(Olama_Messages_Workspace::text('Next action','الإجراء التالي')); ?></th><?php endif; ?></tr></thead><tbody>
+		<?php if ( empty( $rows ) ) : ?><tr><td colspan="6"><?php echo esc_html(Olama_Messages_Workspace::text('No campaigns match these filters.','لا توجد حملات تطابق هذه الفلاتر.')); ?></td></tr><?php endif; ?>
 		<?php foreach ( $rows as $row ) : ?>
 			<tr><td><strong><?php echo esc_html( $row['title'] ?: 'Untitled campaign' ); ?></strong><small>#<?php echo absint( $row['id'] ); ?> · <?php echo esc_html( $row['study_year'] ); ?></small></td>
-			<td><?php echo esc_html( ucwords( str_replace( '_', ' ', $row['target_type'] ) ) ); ?></td>
+			<td><?php echo esc_html( $this->audience_label($row['target_type']) ); ?></td>
 			<td><?php echo $this->status( $row['status'] ); ?></td>
 			<td><?php echo absint( $row['total_included'] ); ?> included<br><small><?php echo absint( $row['total_excluded'] ); ?> excluded</small></td>
 			<td><?php echo esc_html( $row['created_at'] ); ?></td>
             <?php if ( $actions ) : ?><td class="omsg-actions">
                 <?php if ( 'draft' === $row['status'] ) : ?><a class="button button-primary" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign', array( 'campaign_id' => $row['id'] ) ) ); ?>"><?php esc_html_e( 'Continue draft', 'olama-messages' ); ?></a><?php elseif ( 'prepared' === $row['status'] ) : ?><a class="button button-primary" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-new-campaign', array( 'campaign_id' => $row['id'], 'step' => 5 ) ) ); ?>"><?php esc_html_e( 'Review & authorize', 'olama-messages' ); ?></a><?php else : ?><a class="button" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-campaign-progress', array( 'campaign_id' => $row['id'] ) ) ); ?>"><?php esc_html_e( 'View delivery', 'olama-messages' ); ?></a><?php endif; ?>
                 <details class="omw-row-menu"><summary><?php esc_html_e( 'More', 'olama-messages' ); ?></summary>
+                <?php if(!empty($row['total_excluded'])) : ?><a class="button button-small" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-recipients',array('campaign_id'=>$row['id']))); ?>"><?php echo esc_html(Olama_Messages_Workspace::text('Inspect exclusions','مراجعة الاستبعادات')); ?></a><?php endif; ?>
                 <?php if ( in_array( $row['status'], array( 'draft','prepared','sending','paused','cancelled' ), true ) ) { echo $this->post_button( 'olama_msg_delete_campaign', $row['id'], __( 'Delete campaign', 'olama-messages' ), 'button button-small button-link-delete', 'Permanently delete this unfinished campaign and its queued messages?' ); } ?>
                 <?php if ( in_array( $row['status'], array( 'completed','completed_with_errors' ), true ) ) { echo $this->post_button( 'olama_msg_archive_campaign', $row['id'], __( 'Archive', 'olama-messages' ), 'button button-small', 'Archive this finished campaign? Its delivery history will be retained.' ); } ?>
                 <?php if ( 'archived' === $row['status'] ) : ?><small><?php esc_html_e( 'Delivery history retained.', 'olama-messages' ); ?></small><?php endif; ?>
@@ -123,20 +198,21 @@ class Olama_Messages_Modern_Admin {
 		$prefill = ! $campaign && ! empty( $_GET['template_id'] ) ? $this->plugin->templates()->get_template( absint( $_GET['template_id'] ) ) : null;
         if ( $prefill && ( empty( $prefill['is_active'] ) || 'sms' !== ( $prefill['channel'] ?? 'sms' ) ) ) { $prefill = null; }
         $body = $campaign ? $this->plugin->campaigns()->get_effective_message_body( $campaign ) : ( $prefill['body'] ?? '' );
-		$this->header( $campaign ? 'Edit Campaign' : 'Create Campaign', 'A guided five-step flow. Draft changes save automatically.' );
+		$this->header( Olama_Messages_Workspace::label($campaign ? 'Edit Campaign' : 'Create Campaign'), Olama_Messages_Workspace::text('Three stages: audience, message, review and authorization. Drafts save automatically.','ثلاث مراحل: الجمهور، الرسالة، ثم المراجعة والاعتماد. تحفظ المسودات تلقائياً.') );
 		?>
 		<div class="omsg-wizard" data-campaign-id="<?php echo absint( $id ); ?>" data-step="<?php echo absint( $step ); ?>" data-status="<?php echo esc_attr( $campaign['status'] ?? 'draft' ); ?>">
-			<ol class="omsg-steps"><?php foreach ( array( 'Purpose','Audience','Message','Review & Prepare','Authorize' ) as $i => $label ) : ?><li class="<?php echo $step === $i + 1 ? 'is-current' : ( $step > $i + 1 ? 'is-done' : '' ); ?>"><span><?php echo $i + 1; ?></span><?php echo esc_html( $label ); ?></li><?php endforeach; ?></ol>
-			<div class="omsg-save-state" aria-live="polite">Draft changes save automatically</div>
+			<ol class="omsg-steps"><?php foreach(array(Olama_Messages_Workspace::text('Audience','الجمهور'),Olama_Messages_Workspace::text('Message','الرسالة'),Olama_Messages_Workspace::text('Review & authorization','المراجعة والاعتماد')) as $i=>$label) : $stage = $step<=2 ? 1 : ($step===3 ? 2 : 3); ?><li class="<?php echo $stage===$i+1 ? 'is-current' : ($stage>$i+1 ? 'is-done' : ''); ?>" <?php echo $stage===$i+1 ? 'aria-current="step"' : ''; ?>><span><?php echo $i+1; ?></span><?php echo esc_html($label); ?></li><?php endforeach; ?></ol>
+			<div class="omsg-save-state" aria-live="polite"><?php echo esc_html(Olama_Messages_Workspace::label('Draft changes save automatically')); ?></div>
 			<div class="omw-wizard-layout"><div class="omw-wizard-editor"><form id="omsg-campaign-wizard-form">
 				<input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><input type="hidden" name="ui_step" value="<?php echo absint( $step ); ?>">
-				<section class="omsg-step-panel" data-step="1"><h2>What is this campaign for?</h2><label>Campaign title<input type="text" required name="title" value="<?php echo esc_attr( $campaign['title'] ?? '' ); ?>" placeholder="Example: July payment reminder"></label><label>Study year<select name="study_year"><?php foreach ( $years as $year ) : ?><option <?php selected( $campaign['study_year'] ?? '', $year ); ?>><?php echo esc_html( $year ); ?></option><?php endforeach; ?></select></label></section>
+				<section class="omsg-step-panel" data-step="1"><h2><?php echo esc_html(Olama_Messages_Workspace::text('What is this campaign for?','معلومات الحملة')); ?></h2><label><?php echo esc_html(Olama_Messages_Workspace::text('Campaign title','عنوان الحملة')); ?><input type="text" required name="title" value="<?php echo esc_attr( $campaign['title'] ?? '' ); ?>" placeholder="<?php echo esc_attr(Olama_Messages_Workspace::label('Example: July payment reminder')); ?>"></label><label><?php echo esc_html(Olama_Messages_Workspace::text('Study year','العام الدراسي')); ?><select name="study_year"><?php foreach ( $years as $year ) : ?><option <?php selected( $campaign['study_year'] ?? '', $year ); ?>><?php echo esc_html( $year ); ?></option><?php endforeach; ?></select></label></section>
 				<section class="omsg-step-panel" data-step="2">
-					<h2>Choose the audience category</h2>
-					<p class="description">Select an audience category and configure specific filters for targeted messaging.</p>
+					<h2><?php echo esc_html(Olama_Messages_Workspace::text('Choose the audience category','اختر شريحة الجمهور')); ?></h2>
+					<p class="description"><?php echo esc_html(Olama_Messages_Workspace::label('Select an audience category and configure specific filters for targeted messaging.')); ?></p>
 
 					<?php
-					$curr_target = $campaign['target_type'] ?? 'finance_outstanding';
+					$requested_audience = sanitize_key($_GET['audience'] ?? '');
+                    $curr_target = $campaign['target_type'] ?? (in_array($requested_audience,array('academic','finance_outstanding','transport_registered','store_missing'),true) ? $requested_audience : 'finance_outstanding');
 					// Map legacy target_types to new category tabs
 					if ( 'collection' === $curr_target ) { $curr_target = 'finance_outstanding'; }
 					if ( 'renewal_reminder' === $curr_target ) { $curr_target = 'finance_renewal_reminder'; }
@@ -158,23 +234,23 @@ class Olama_Messages_Modern_Admin {
 					<div class="omsg-audience-cats" role="tablist">
 						<button type="button" class="omsg-cat-tab <?php echo 'finance' === $active_cat ? 'is-active' : ''; ?>" data-cat="finance">
 							<span class="dashicons dashicons-money-alt"></span>
-							<strong>Finance</strong>
-									<small>Outstanding balances</small>
+							<strong><?php echo esc_html(Olama_Messages_Workspace::label('Finance')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Outstanding balances')); ?></small>
 						</button>
 						<button type="button" class="omsg-cat-tab <?php echo 'academic' === $active_cat ? 'is-active' : ''; ?>" data-cat="academic">
 							<span class="dashicons dashicons-welcome-learn-more"></span>
-							<strong>Academic</strong>
-							<small>School / Grade / Section</small>
+							<strong><?php echo esc_html(Olama_Messages_Workspace::label('Academic')); ?></strong>
+							<small><?php echo esc_html(Olama_Messages_Workspace::label('School / Grade / Section')); ?></small>
 						</button>
 						<button type="button" class="omsg-cat-tab <?php echo 'transportation' === $active_cat ? 'is-active' : ''; ?>" data-cat="transportation">
 							<span class="dashicons dashicons-car"></span>
-							<strong>Transportation</strong>
-							<small>GPS status &amp; bus routes</small>
+							<strong><?php echo esc_html(Olama_Messages_Workspace::label('Transportation')); ?></strong>
+							<small><?php echo esc_html(Olama_Messages_Workspace::label('GPS status & bus routes')); ?></small>
 						</button>
 						<button type="button" class="omsg-cat-tab <?php echo 'store' === $active_cat ? 'is-active' : ''; ?>" data-cat="store">
 							<span class="dashicons dashicons-store"></span>
-							<strong>Store</strong>
-							<small>Pending books &amp; uniforms</small>
+							<strong><?php echo esc_html(Olama_Messages_Workspace::label('Store')); ?></strong>
+							<small><?php echo esc_html(Olama_Messages_Workspace::label('Pending books & uniforms')); ?></small>
 						</button>
 					</div>
 
@@ -184,29 +260,29 @@ class Olama_Messages_Modern_Admin {
 							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="finance_outstanding" <?php checked( $curr_target, 'finance_outstanding' ); ?>>
 								<div>
-									<strong>Outstanding Balances</strong>
-									<small>Target families with unpaid balances or specific financial statuses.</small>
+									<strong><?php echo esc_html(Olama_Messages_Workspace::label('Outstanding Balances')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Target families with unpaid balances or specific financial statuses.')); ?></small>
 								</div>
 							</label>
 							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="finance_agreements_collection" <?php checked( $curr_target, 'finance_agreements_collection' ); ?>>
 								<div>
-									<strong>Olama Agreements Collection</strong>
-									<small>Families with unpaid agreement installments in the selected month.</small>
+									<strong><?php echo esc_html(Olama_Messages_Workspace::label('Olama Agreements Collection')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Families with unpaid agreement installments in the selected month.')); ?></small>
 								</div>
 							</label>
 							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="finance_renewal_reminder" <?php checked( $curr_target, 'finance_renewal_reminder' ); ?>>
 								<div>
-									<strong>Renewal Reminder</strong>
-									<small>Target families enrolled in the previous academic year who have not registered for the current academic year and were not transferred.</small>
+									<strong><?php echo esc_html(Olama_Messages_Workspace::label('Renewal Reminder')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Target families enrolled in the previous academic year who have not registered for the current academic year and were not transferred.')); ?></small>
 								</div>
 							</label>
 						</div>
 
 						<div class="omsg-filter-box omsg-finance-outstanding-filters <?php echo 'finance_renewal_reminder' === $curr_target ? 'is-hidden' : ''; ?>">
-							<h3>Finance Audience Filters</h3>
-							<p class="description">Target families with unpaid balances or specific financial statuses.</p>
+							<h3><?php echo esc_html(Olama_Messages_Workspace::label('Finance Audience Filters')); ?></h3>
+							<p class="description"><?php echo esc_html(Olama_Messages_Workspace::label('Target families with unpaid balances or specific financial statuses.')); ?></p>
 						<label><span data-finance-month-label><?php echo 'finance_agreements_collection' === $curr_target ? 'Payment due in month' : 'Payment due through month'; ?></span>
 							<select name="filter_due_month" data-due-month selected-data="<?php echo esc_attr( $saved_filters['due_month'] ?? '' ); ?>"></select>
 							<small data-finance-month-help><?php echo 'finance_agreements_collection' === $curr_target ? 'Includes unpaid agreement installments scheduled in the selected month.' : 'Includes all unpaid installments through the selected month, including August.'; ?></small>
@@ -231,28 +307,28 @@ class Olama_Messages_Modern_Admin {
 					<div class="omsg-cat-panel <?php echo 'academic' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="academic">
 						<input type="radio" name="target_type" value="academic" class="omsg-target-radio" <?php checked( $curr_target, 'academic' ); ?>>
 						<div class="omsg-filter-box">
-							<h3>Academic Filtering (School / Grade / Section)</h3>
-							<p class="description">Select a school, grade, or section to filter student families.</p>
+							<h3><?php echo esc_html(Olama_Messages_Workspace::label('Academic Filtering (School / Grade / Section)')); ?></h3>
+							<p class="description"><?php echo esc_html(Olama_Messages_Workspace::label('Select a school, grade, or section to filter student families.')); ?></p>
 							<div class="omsg-filter-row">
-								<label>School (مدرسة / روضة)
+								<label><?php echo esc_html(Olama_Messages_Workspace::label('School (مدرسة / روضة)')); ?>
 									<select name="filter_school_id" id="omsg-filter-school">
-										<option value="">All Schools / Kindergarten</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Schools / Kindergarten')); ?></option>
 										<?php if ( ! empty( $saved_filters['school_id'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['school_id'] ); ?>" selected><?php echo esc_html( $saved_filters['school_name'] ?? $saved_filters['school_id'] ); ?></option>
 										<?php endif; ?>
 									</select>
 								</label>
-								<label>Grade (الصف)
+								<label><?php echo esc_html(Olama_Messages_Workspace::label('Grade (الصف)')); ?>
 									<select name="filter_class_id" id="omsg-filter-grade">
-										<option value="">All Grades</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Grades')); ?></option>
 										<?php if ( ! empty( $saved_filters['class_id'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['class_id'] ); ?>" selected><?php echo esc_html( $saved_filters['class_name'] ?? $saved_filters['class_id'] ); ?></option>
 										<?php endif; ?>
 									</select>
 								</label>
-								<label>Section (الشعبة)
+								<label><?php echo esc_html(Olama_Messages_Workspace::label('Section (الشعبة)')); ?>
 									<select name="filter_section_id" id="omsg-filter-section">
-										<option value="">All Sections</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Sections')); ?></option>
 										<?php if ( ! empty( $saved_filters['section_id'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['section_id'] ); ?>" selected><?php echo esc_html( $saved_filters['section_name'] ?? $saved_filters['section_id'] ); ?></option>
 										<?php endif; ?>
@@ -268,25 +344,25 @@ class Olama_Messages_Modern_Admin {
 							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="transport_no_gps" <?php checked( $curr_target, 'transport_no_gps' ); ?>>
 								<div>
-									<strong>Families without GPS locations</strong>
-									<small>Target registered bus families who have not set coordinates in the transportation map.</small>
+									<strong><?php echo esc_html(Olama_Messages_Workspace::label('Families without GPS locations')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Target registered bus families who have not set coordinates in the transportation map.')); ?></small>
 								</div>
 							</label>
 							<label class="omsg-choice">
 								<input type="radio" name="target_type" value="transport_registered" <?php checked( $curr_target, 'transport_registered' ); ?>>
 								<div>
-									<strong>Registered transportation families</strong>
-									<small>Filter bus subscribers by geographic area, bus number, or trip direction.</small>
+									<strong><?php echo esc_html(Olama_Messages_Workspace::label('Registered transportation families')); ?></strong>
+									<small><?php echo esc_html(Olama_Messages_Workspace::label('Filter bus subscribers by geographic area, bus number, or trip direction.')); ?></small>
 								</div>
 							</label>
 						</div>
 
 						<div class="omsg-filter-box omsg-transport-filters <?php echo 'transport_registered' === $curr_target ? '' : 'is-hidden'; ?>">
-							<h3>Transportation Filters</h3>
+							<h3><?php echo esc_html(Olama_Messages_Workspace::label('Transportation Filters')); ?></h3>
 							<div class="omsg-filter-row">
 								<label>Major Area (المنطقة)
 									<select name="filter_major_area_id" id="omsg-filter-area">
-										<option value="">All Areas</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Areas')); ?></option>
 										<?php if ( ! empty( $saved_filters['major_area_id'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['major_area_id'] ); ?>" selected><?php echo esc_html( $saved_filters['major_area_name'] ?? $saved_filters['major_area_id'] ); ?></option>
 										<?php endif; ?>
@@ -294,7 +370,7 @@ class Olama_Messages_Modern_Admin {
 								</label>
 								<label>Departure Bus (حافلة الصباح / الذهاب)
 									<select name="filter_departure_bus" id="omsg-filter-dep-bus">
-										<option value="">All Departure Buses</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Departure Buses')); ?></option>
 										<?php if ( ! empty( $saved_filters['departure_bus'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['departure_bus'] ); ?>" selected><?php echo esc_html( $saved_filters['departure_bus'] ); ?></option>
 										<?php endif; ?>
@@ -302,7 +378,7 @@ class Olama_Messages_Modern_Admin {
 								</label>
 								<label>Arrival Bus (حافلة المساء / العودة)
 									<select name="filter_arrival_bus" id="omsg-filter-arr-bus">
-										<option value="">All Arrival Buses</option>
+										<option value=""><?php echo esc_html(Olama_Messages_Workspace::label('All Arrival Buses')); ?></option>
 										<?php if ( ! empty( $saved_filters['arrival_bus'] ) ) : ?>
 											<option value="<?php echo esc_attr( $saved_filters['arrival_bus'] ); ?>" selected><?php echo esc_html( $saved_filters['arrival_bus'] ); ?></option>
 										<?php endif; ?>
@@ -316,12 +392,12 @@ class Olama_Messages_Modern_Admin {
 					<div class="omsg-cat-panel <?php echo 'store' === $active_cat ? 'is-active' : ''; ?>" data-cat-panel="store">
 						<input type="radio" name="target_type" value="store_missing" class="omsg-target-radio" <?php checked( $curr_target, 'store_missing' ); ?>>
 						<div class="omsg-filter-box">
-							<h3>Store &amp; Warehouse Audience</h3>
-							<p class="description">Target families who have NOT yet received their allocated textbooks or school uniform/custom packages for this academic year.</p>
+							<h3><?php echo esc_html(Olama_Messages_Workspace::label('Store & Warehouse Audience')); ?></h3>
+							<p class="description"><?php echo esc_html(Olama_Messages_Workspace::label('Target families who have NOT yet received their allocated textbooks or school uniform/custom packages for this academic year.')); ?></p>
 							<div class="omsg-filter-row">
-								<label>Missing Item Filter
+								<label><?php echo esc_html(Olama_Messages_Workspace::label('Missing Item Filter')); ?>
 									<select name="filter_store_item_type" id="omsg-filter-store-item-type">
-										<option value="both" <?php selected( $saved_filters['store_item_type'] ?? 'both', 'both' ); ?>>Families missing Textbooks OR Uniforms (All Unreceived)</option>
+										<option value="both" <?php selected( $saved_filters['store_item_type'] ?? 'both', 'both' ); ?>><?php echo esc_html(Olama_Messages_Workspace::label('Families missing Textbooks OR Uniforms (All Unreceived)')); ?></option>
 										<option value="books" <?php selected( $saved_filters['store_item_type'] ?? '', 'books' ); ?>>Families missing Textbooks only (الكتب المدرسية فقط)</option>
 										<option value="custom" <?php selected( $saved_filters['store_item_type'] ?? '', 'custom' ); ?>>Families missing Uniforms / Custom Items only (الزي والزي الموحد فقط)</option>
 									</select>
@@ -329,41 +405,41 @@ class Olama_Messages_Modern_Admin {
 							</div>
 							<div class="omsg-info-banner">
 								<span class="dashicons dashicons-info"></span>
-								<span>Uses the authoritative Olama Stores report engine for 100% accuracy matching the Reports Center.</span>
+								<span><?php echo esc_html(Olama_Messages_Workspace::label('Uses the authoritative Olama Stores report engine for 100% accuracy matching the Reports Center.')); ?></span>
 							</div>
 						</div>
 					</div>
 
 					<!-- Common Setting: Recipient Policy -->
 					<div class="omsg-policy-box">
-						<label><strong>Recipient Policy</strong>
+						<label><strong><?php echo esc_html(Olama_Messages_Workspace::label('Recipient Policy')); ?></strong>
 							<select name="recipient_policy">
-								<option value="father_first">Father first, mother fallback</option>
-								<option value="mother_first" <?php selected( $campaign['recipient_policy'] ?? '', 'mother_first' ); ?>>Mother first, father fallback</option>
-								<option value="both_parents" <?php echo in_array( $campaign['recipient_policy'] ?? '', array( 'both', 'both_parents' ), true ) ? 'selected' : ''; ?>>Both parents (separate SMS)</option>
+								<option value="father_first"><?php echo esc_html(Olama_Messages_Workspace::label('Father first, mother fallback')); ?></option>
+								<option value="mother_first" <?php selected( $campaign['recipient_policy'] ?? '', 'mother_first' ); ?>><?php echo esc_html(Olama_Messages_Workspace::label('Mother first, father fallback')); ?></option>
+								<option value="both_parents" <?php echo in_array( $campaign['recipient_policy'] ?? '', array( 'both', 'both_parents' ), true ) ? 'selected' : ''; ?>><?php echo esc_html(Olama_Messages_Workspace::label('Both parents (separate SMS)')); ?></option>
 							</select>
 						</label>
 					</div>
 				</section>
-				<section class="omsg-step-panel" data-step="3"><h2>Write the message</h2><label>Start from a message library item<select name="template_id"><option value="">Custom message</option><?php foreach ( $templates as $template ) : ?><option value="<?php echo absint( $template['id'] ); ?>" data-body="<?php echo esc_attr( $template['body'] ); ?>" <?php selected( $campaign['template_id'] ?? ( $prefill['id'] ?? 0 ), $template['id'] ); ?>><?php echo esc_html( $template['name'] ); ?></option><?php endforeach; ?></select></label><label>Message<textarea required name="message_body_draft" rows="9"><?php echo esc_textarea( $body ); ?></textarea></label><div class="omsg-message-meter"><strong data-sms-parts>0 SMS parts</strong><span data-sms-detail>0 characters</span></div><p class="description">Available fields: {sponsor_name}, {family_id}, {students}, {balance}, {monthly_due}, {payment_link}, {study_year}, {school_name}</p><p class="description">For Outstanding Balances, {balance} and {monthly_due} show unpaid installments through the selected month. For Agreements Collection, both show unpaid agreement installments in the selected month.</p></section>
-				<section class="omsg-step-panel" data-step="4"><h2>Review and prepare</h2><div class="omsg-review-summary"><p>Preparation freezes the audience and rendered messages. It does not send anything.</p><button type="button" class="button" data-preview-campaign>Refresh audience preview</button><div data-preview-result aria-live="polite"></div></div></section>
-				<section class="omsg-step-panel" data-step="5"><h2>Authorize sending</h2>
-					<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><p><strong><?php echo absint( $campaign['total_prepared'] ); ?></strong> prepared messages are locked and awaiting authorization.</p><p>Type <code>SEND <?php echo absint( $campaign['total_prepared'] ); ?></code> to start.</p><?php else : ?><p>Prepare the campaign in step 4 before authorization.</p><?php endif; ?>
+				<section class="omsg-step-panel" data-step="3"><h2><?php echo esc_html(Olama_Messages_Workspace::text('Write the message','اكتب الرسالة')); ?></h2><label><?php echo esc_html(Olama_Messages_Workspace::label('Start from a message library item')); ?><select name="template_id"><option value=""><?php echo esc_html(Olama_Messages_Workspace::label('Custom message')); ?></option><?php foreach ( $templates as $template ) : ?><option value="<?php echo absint( $template['id'] ); ?>" data-body="<?php echo esc_attr( $template['body'] ); ?>" <?php selected( $campaign['template_id'] ?? ( $prefill['id'] ?? 0 ), $template['id'] ); ?>><?php echo esc_html( $template['name'] ); ?></option><?php endforeach; ?></select></label><label><?php echo esc_html(Olama_Messages_Workspace::text('Message','الرسالة')); ?><textarea required name="message_body_draft" rows="9"><?php echo esc_textarea( $body ); ?></textarea></label><div class="omsg-message-meter"><strong data-sms-parts>0 SMS parts</strong><span data-sms-detail>0 characters</span></div><p class="description">Available fields: {sponsor_name}, {family_id}, {students}, {balance}, {monthly_due}, {payment_link}, {study_year}, {school_name}</p><p class="description">For Outstanding Balances, {balance} and {monthly_due} show unpaid installments through the selected month. For Agreements Collection, both show unpaid agreement installments in the selected month.</p></section>
+				<section class="omsg-step-panel" data-step="4"><h2><?php echo esc_html(Olama_Messages_Workspace::text('Review and prepare','المراجعة والتجهيز')); ?></h2><div class="omsg-review-summary"><p><?php echo esc_html(Olama_Messages_Workspace::label('Preparation freezes the audience and rendered messages. It does not send anything.')); ?></p><button type="button" class="button" data-preview-campaign><?php echo esc_html(Olama_Messages_Workspace::label('Refresh audience preview')); ?></button><div data-preview-result aria-live="polite"></div></div></section>
+				<section class="omsg-step-panel" data-step="5"><h2><?php echo esc_html(Olama_Messages_Workspace::text('Authorize sending','اعتماد الإرسال')); ?></h2>
+					<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><p><strong><?php echo absint( $campaign['total_prepared'] ); ?></strong> prepared messages are locked and awaiting authorization.</p><p>Type <code>SEND <?php echo absint( $campaign['total_prepared'] ); ?></code> to start.</p><?php else : ?><p><?php echo esc_html(Olama_Messages_Workspace::label('Review and prepare the campaign before authorization.')); ?></p><?php endif; ?>
 				</section>
-				<div class="omsg-wizard-actions"><button type="button" class="button" data-wizard-back>Back</button><button type="button" class="button button-primary" data-wizard-next>Save & continue</button></div>
+				<div class="omsg-wizard-actions"><button type="button" class="button" data-wizard-back><?php echo esc_html(Olama_Messages_Workspace::text('Back','السابق')); ?></button><button type="button" class="button button-primary" data-wizard-next><?php echo esc_html(Olama_Messages_Workspace::text('Save & continue','حفظ ومتابعة')); ?></button></div>
 			</form>
-			<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><form class="omsg-reset-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_reset_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><input type="hidden" name="redirect_step" value="4"><?php wp_nonce_field( 'olama_msg_reset_' . $id ); ?><button class="button">Unlock &amp; edit recipients</button><small>This removes the prepared snapshot. It does not send anything.</small></form><?php endif; ?>
-			<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><form class="omsg-authorize-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_start_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><?php wp_nonce_field( 'olama_msg_start_' . $id ); ?><input name="confirmation" autocomplete="off" placeholder="SEND <?php echo absint( $campaign['total_prepared'] ); ?>"><button class="button button-primary">Authorize & start</button></form><?php endif; ?>
-            </div><aside class="omw-wizard-summary"><div><h3><?php esc_html_e( 'Campaign at a glance', 'olama-messages' ); ?></h3><dl><div><dt><?php esc_html_e( 'Title', 'olama-messages' ); ?></dt><dd data-workspace-draft-title><?php echo esc_html( $campaign['title'] ?? __( 'Untitled campaign', 'olama-messages' ) ); ?></dd></div><div><dt><?php esc_html_e( 'Prepared recipients', 'olama-messages' ); ?></dt><dd><?php echo ! empty( $campaign['total_prepared'] ) ? number_format_i18n( $campaign['total_prepared'] ) : esc_html__( 'Preview in step 4', 'olama-messages' ); ?></dd></div><div><dt><?php esc_html_e( 'Target interval', 'olama-messages' ); ?></dt><dd><?php echo (int) Olama_Messages_Dispatcher_Service::config()['min_seconds_between_sms']; ?> <?php esc_html_e( 'seconds', 'olama-messages' ); ?></dd></div></dl></div><p><?php esc_html_e( 'Preparation freezes the audience and message. Only explicit authorization starts sending.', 'olama-messages' ); ?></p><div class="omw-draft-phone"><span><?php esc_html_e( 'Draft message preview', 'olama-messages' ); ?></span><div class="omw-draft-preview" data-workspace-message-preview dir="auto"><?php echo esc_html( $body ); ?></div><p class="description" data-workspace-message-stats></p><p class="description"><?php esc_html_e( 'Fields are replaced during preparation. Final SMS lengths can vary by recipient.', 'olama-messages' ); ?></p></div></aside></div>
+			<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><form class="omsg-reset-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_reset_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><input type="hidden" name="redirect_step" value="4"><?php wp_nonce_field( 'olama_msg_reset_' . $id ); ?><button class="button"><?php echo esc_html(Olama_Messages_Workspace::label('Unlock & edit recipients')); ?></button><small><?php echo esc_html(Olama_Messages_Workspace::label('This removes the prepared snapshot. It does not send anything.')); ?></small></form><?php endif; ?>
+			<?php if ( $campaign && 'prepared' === $campaign['status'] ) : ?><form class="omsg-authorize-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="olama_msg_start_campaign"><input type="hidden" name="campaign_id" value="<?php echo absint( $id ); ?>"><?php wp_nonce_field( 'olama_msg_start_' . $id ); ?><input name="confirmation" autocomplete="off" placeholder="SEND <?php echo absint( $campaign['total_prepared'] ); ?>"><button class="button button-primary"><?php echo esc_html(Olama_Messages_Workspace::label('Authorize & start')); ?></button></form><?php endif; ?>
+            </div><aside class="omw-wizard-summary"><div><h3><?php esc_html_e( 'Campaign at a glance', 'olama-messages' ); ?></h3><dl><div><dt><?php esc_html_e( 'Title', 'olama-messages' ); ?></dt><dd data-workspace-draft-title><?php echo esc_html( $campaign['title'] ?? __( 'Untitled campaign', 'olama-messages' ) ); ?></dd></div><div><dt><?php esc_html_e( 'Prepared recipients', 'olama-messages' ); ?></dt><dd><?php echo ! empty( $campaign['total_prepared'] ) ? number_format_i18n( $campaign['total_prepared'] ) : esc_html__( 'Preview during review', 'olama-messages' ); ?></dd></div><div><dt><?php esc_html_e( 'Target interval', 'olama-messages' ); ?></dt><dd><?php echo (int) Olama_Messages_Dispatcher_Service::config()['min_seconds_between_sms']; ?> <?php esc_html_e( 'seconds', 'olama-messages' ); ?></dd></div></dl></div><p><?php esc_html_e( 'Preparation freezes the audience and message. Only explicit authorization starts sending.', 'olama-messages' ); ?></p><div class="omw-draft-phone"><span><?php esc_html_e( 'Draft message preview', 'olama-messages' ); ?></span><div class="omw-draft-preview" data-workspace-message-preview dir="auto"><?php echo esc_html( $body ); ?></div><p class="description" data-workspace-message-stats></p><p class="description"><?php esc_html_e( 'Fields are replaced during preparation. Final SMS lengths can vary by recipient.', 'olama-messages' ); ?></p></div></aside></div>
 		</div>
 		<div class="omsg-sms-preview-modal" data-sms-preview-modal role="dialog" aria-modal="true" aria-labelledby="omsg-sms-preview-title" hidden>
 			<button type="button" class="omsg-sms-preview-backdrop" data-close-sms-preview aria-label="Close message preview"></button>
 			<div class="omsg-sms-preview-dialog">
-				<div class="omsg-sms-preview-head"><div><h2 id="omsg-sms-preview-title">SMS preview</h2><p data-sms-preview-recipient></p></div><button type="button" class="button-link omsg-sms-preview-close" data-close-sms-preview aria-label="Close message preview">&times;</button></div>
+				<div class="omsg-sms-preview-head"><div><h2 id="omsg-sms-preview-title"><?php echo esc_html(Olama_Messages_Workspace::label('SMS preview')); ?></h2><p data-sms-preview-recipient></p></div><button type="button" class="button-link omsg-sms-preview-close" data-close-sms-preview aria-label="Close message preview">&times;</button></div>
 				<div class="omsg-sms-preview-meta"><span data-sms-preview-phone></span><span data-sms-preview-counts></span></div>
 				<div class="omsg-sms-phone-frame"><div class="omsg-sms-bubble" data-sms-preview-body dir="auto"></div></div>
 				<p class="description">This is the rendered message with family-specific variables applied. Payment links remain placeholders until sending.</p>
-				<div class="omsg-sms-preview-footer"><button type="button" class="button button-primary" data-close-sms-preview>Close</button></div>
+				<div class="omsg-sms-preview-footer"><button type="button" class="button button-primary" data-close-sms-preview><?php echo esc_html(Olama_Messages_Workspace::label('Close')); ?></button></div>
 			</div>
 		</div>
 		</div>
@@ -376,7 +452,7 @@ class Olama_Messages_Modern_Admin {
         $this->header( __( 'Know what happened.', 'olama-messages' ), __( 'Submissions, uncertain outcomes and worker health in one delivery workspace.', 'olama-messages' ), '<a class="button" href="' . esc_url( Olama_Messages_Workspace::url( 'olama-messages-agents' ) ) . '">' . esc_html__( 'Sending agents', 'olama-messages' ) . ' ↗</a>' ); ?>
         <div class="omsg-stat-grid omw-metrics"><?php foreach ( array( array( __( 'Authorized queue', 'olama-messages' ), $summary['authorized'], __( 'Sending and paused campaigns', 'olama-messages' ) ), array( __( 'In progress', 'olama-messages' ), $counts['reserved'], __( 'Current reservations', 'olama-messages' ) ), array( __( 'Submitted today', 'olama-messages' ), $summary['submitted'], __( 'KDE command completed', 'olama-messages' ) ), array( __( 'Need review', 'olama-messages' ), $summary['review'], __( 'Uncertain outcomes · no automatic resend', 'olama-messages' ) ) ) as $metric ) : ?><div class="omsg-stat"><span><?php echo esc_html( $metric[0] ); ?></span><strong><?php echo number_format_i18n( $metric[1] ); ?></strong><small><?php echo esc_html( $metric[2] ); ?></small></div><?php endforeach; ?></div>
         <div class="omw-columns"><div class="omw-stack"><section class="omsg-panel" style="margin:0"><div class="omsg-panel-head"><div><h2><?php esc_html_e( 'Message outcomes', 'olama-messages' ); ?></h2><p class="description"><?php esc_html_e( 'Latest outcome per message. Times are shown in the school timezone.', 'olama-messages' ); ?></p></div></div>
-        <form class="omsg-filterbar" method="get"><input type="hidden" name="page" value="olama-messages-delivery"><label class="screen-reader-text" for="omw-outcome-filter"><?php esc_html_e( 'Filter outcomes', 'olama-messages' ); ?></label><select name="status" id="omw-outcome-filter"><?php foreach ( array( '' => __( 'All recent outcomes', 'olama-messages' ), 'unknown' => __( 'Need review', 'olama-messages' ), 'retry_wait' => __( 'Retry scheduled', 'olama-messages' ), 'failed' => __( 'Failed', 'olama-messages' ), 'sent' => __( 'Submitted via KDE', 'olama-messages' ), 'reserved' => __( 'In progress', 'olama-messages' ) ) as $value => $label ) : ?><option value="<?php echo esc_attr( $value ); ?>" <?php selected( $filter, $value ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select><button class="button"><?php esc_html_e( 'Filter', 'olama-messages' ); ?></button></form>
+        <form class="omsg-filterbar" data-workspace-filter method="get"><input type="hidden" name="page" value="olama-messages-delivery"><label class="screen-reader-text" for="omw-outcome-filter"><?php esc_html_e( 'Filter outcomes', 'olama-messages' ); ?></label><select name="status" id="omw-outcome-filter"><?php foreach ( array( '' => __( 'All recent outcomes', 'olama-messages' ), 'unknown' => __( 'Need review', 'olama-messages' ), 'retry_wait' => __( 'Retry scheduled', 'olama-messages' ), 'failed' => __( 'Failed', 'olama-messages' ), 'sent' => __( 'Submitted via KDE', 'olama-messages' ), 'reserved' => __( 'In progress', 'olama-messages' ) ) as $value => $label ) : ?><option value="<?php echo esc_attr( $value ); ?>" <?php selected( $filter, $value ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select><button class="button"><?php esc_html_e( 'Filter', 'olama-messages' ); ?></button></form>
         <div class="omsg-table-scroll"><table class="widefat"><thead><tr><th><?php esc_html_e( 'Message / campaign', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Outcome', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Recorded', 'olama-messages' ); ?></th><th><?php esc_html_e( 'Next action', 'olama-messages' ); ?></th></tr></thead><tbody>
         <?php if ( ! $activity ) : ?><tr><td colspan="4"><div class="omw-empty"><h2><?php esc_html_e( 'No matching outcomes.', 'olama-messages' ); ?></h2><p><?php esc_html_e( 'Try another filter. Message outcomes appear as your agent processes a campaign.', 'olama-messages' ); ?></p></div></td></tr><?php endif; ?>
         <?php foreach ( $activity as $row ) : $phone = $row['phone_e164'] ? substr( $row['phone_e164'], 0, 5 ) . '•••' . substr( $row['phone_e164'], -3 ) : '—'; ?><tr><td><strong><?php echo esc_html( $row['campaign_title'] ?: __( 'Historical campaign', 'olama-messages' ) ); ?></strong><small>#<?php echo (int) $row['id']; ?> · <bdi><?php echo esc_html( $phone ); ?></bdi></small></td><td><?php echo $this->status( $row['status'] ); ?><?php if ( $row['last_error_message'] ) : ?><details class="omw-row-menu"><summary><?php esc_html_e( 'Reason', 'olama-messages' ); ?></summary><p><?php echo esc_html( $row['last_error_message'] ); ?></p></details><?php endif; ?></td><td><small><?php echo esc_html( Olama_Messages_Agent_Dashboard::time_label( $row['updated_at'] ) ); ?></small></td><td><a class="button button-small" href="<?php echo esc_url( Olama_Messages_Workspace::url( 'olama-messages-campaign-progress', array( 'campaign_id' => $row['campaign_id'] ) ) ); ?>"><?php echo esc_html( 'unknown' === $row['status'] ? __( 'Review outcome', 'olama-messages' ) : __( 'Open campaign', 'olama-messages' ) ); ?> →</a></td></tr><?php endforeach; ?></tbody></table></div><p class="description"><?php esc_html_e( 'Latest 50 outcomes. Complete delivery history is available in each campaign.', 'olama-messages' ); ?></p></section></div>
@@ -431,9 +507,10 @@ class Olama_Messages_Modern_Admin {
 			$action .= '<button class="button button-primary"' . ( $bridge_available ? '' : ' disabled' ) . '>' . esc_html__( 'Sync latest from Olama Bridge', 'olama-messages' ) . '</button>';
 			$action .= '</form>';
 		}
-		$this->header( 'Audience', 'Active families and parent contact details synchronized from Olama Core.', $action );
+		$this->header( Olama_Messages_Workspace::label('Audience'), Olama_Messages_Workspace::text('Active families and parent contact details synchronized from Olama Core.','الأسر النشطة وبيانات التواصل مع أولياء الأمور من Olama Core.'), $action );
 		$this->print_flash();
 		?>
+        <div class="omw-audience-sources"><?php foreach(array('academic'=>array('Academic families','أولياء الأمور','groups'),'finance_outstanding'=>array('Financial audiences','الشرائح المالية','money-alt'),'transport_registered'=>array('Transportation','النقل المدرسي','location'),'store_missing'=>array('School supplies','المستلزمات المدرسية','archive')) as $type=>$source) : ?><article class="omw-panel"><span class="omw-metric-icon dashicons dashicons-<?php echo esc_attr($source[2]); ?>"></span><h2><?php echo esc_html(Olama_Messages_Workspace::text($source[0],$source[1])); ?></h2><p class="omw-caption"><?php echo esc_html($type==='academic' && ($result['data_source'] ?? '')==='olama_core' ? sprintf(Olama_Messages_Workspace::text('%s active families in the selected year','%s أسرة نشطة في العام المحدد'),number_format_i18n($total)) : Olama_Messages_Workspace::text('Eligibility and recipient counts are calculated during campaign review.','تحتسب الأهلية وأعداد المستلمين عند مراجعة الحملة.')); ?></p><a class="omw-link" href="<?php echo esc_url(Olama_Messages_Workspace::url('olama-messages-new-campaign',array('audience'=>$type))); ?>"><?php echo esc_html(Olama_Messages_Workspace::text('Create campaign','إنشاء حملة')); ?> ↗</a></article><?php endforeach; ?></div>
 		<?php if ( 'olama_core' !== ( $result['data_source'] ?? '' ) ) : ?>
 			<div class="notice notice-error inline"><p><?php esc_html_e( 'Olama Core is unavailable. Activate or update Olama Core before using the Phone Book.', 'olama-messages' ); ?></p></div>
 		<?php elseif ( $can_sync && ! $bridge_available ) : ?>
@@ -580,6 +657,10 @@ class Olama_Messages_Modern_Admin {
 	}
 
 	public function reports() {
+		if ( isset( $_GET['report'] ) && $_GET['report'] === 'collection' ) {
+			Olama_Messages_Collection_Report_Page::render();
+			return;
+		}
 		$years = $this->plugin->provider()->get_phone_book_study_years();
 		$selected_year = sanitize_text_field( wp_unslash( $_GET['study_year'] ?? ( $years[0] ?? '' ) ) );
 		if ( ! in_array( $selected_year, $years, true ) && $years ) {
@@ -598,6 +679,7 @@ class Olama_Messages_Modern_Admin {
 		$rows = $selected ? $this->plugin->provider()->get_section_users_report( $selected_year, $selected['class_id'], $selected['section_id'] ) : array();
 
 		$this->header( 'Reports', 'Operational reports built from synchronized Olama Core records.' );
+		Olama_Messages_Collection_Report_Page::tabs( 'sections' );
 		?>
 		<?php if ( ! $years ) : ?>
 			<div class="notice notice-error inline"><p><?php esc_html_e( 'Olama Core is unavailable or has no synchronized student-year records.', 'olama-messages' ); ?></p></div>

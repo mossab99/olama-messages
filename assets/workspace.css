@@ -1,20 +1,20 @@
 /* Unified Olama Messages workspace. All rules are scoped to this plugin. */
 body.olama-workspace {
-    --omsg-primary:#087f72;
-    --omsg-primary-dark:#06695e;
+    --omsg-primary:#6658ee;
+    --omsg-primary-dark:#5044d4;
     --omsg-success:#16846c;
     --omsg-warning:#a77928;
     --omsg-danger:#ae4d4d;
-    --omsg-text:#1d3038;
-    --omsg-muted:#5c7078;
-    --omsg-border:#e1e8e8;
-    --omsg-bg:#f5f8f7;
+    --omsg-text:#1c2845;
+    --omsg-muted:#6f7d96;
+    --omsg-border:#e9ecf3;
+    --omsg-bg:#f7f8fc;
     --omsg-surface:#fff;
-    --omsg-radius:11px;
+    --omsg-radius:18px;
     --omsg-shadow:0 3px 14px #17353c04;
-    background:#f5f8f7;
+    background:#f7f8fc;
     color:var(--omsg-text);
-    font-family:"Segoe UI",Arial,sans-serif}
+    font-family:"IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
 
 .olama-workspace #adminmenumain {
     display:none}
@@ -37,10 +37,10 @@ body.olama-workspace {
 .omw-shell button,.omw-shell input,.omw-shell select,.omw-shell textarea {
     font:inherit}
 .omw-shell a:focus-visible,.omw-shell button:focus-visible,.omw-shell summary:focus-visible {
-    outline:3px solid #78b9ad;
+    outline:3px solid #6658ee;
     outline-offset:3px}
 .omw-shell input:focus,.omw-shell textarea:focus,.omw-shell select:focus {
-    border-color:#6eaa99!important;
+    border-color:#6658ee!important;
     box-shadow:0 0 0 2px #9bcbbd30!important}
 .omw-sidebar {
     position:fixed;
@@ -83,19 +83,19 @@ body.olama-workspace {
     display:block;
     font-size:12px;
     letter-spacing:1.6px;
-    color:#536b64;
+    color:#62718c;
     margin-top:5px}
 .omw-school {
     display:flex;
     gap:10px;
     padding:12px 10px;
-    border:1px solid #e4eae8;
+    border:1px solid #e9ecf3;
     border-radius:8px;
     margin-bottom:24px;
-    background:#fcfdfc;
+    background:#fff;
     align-items:center}
 .omw-school>.dashicons {
-    color:#536b64;
+    color:#62718c;
     flex:none;
     font-size:20px}
 .omw-school>div {
@@ -111,11 +111,11 @@ body.olama-workspace {
 .omw-school small {
     display:block;
     font-size:12px;
-    color:#536b64;
+    color:#62718c;
     margin-top:5px}
 .omw-nav-group {
     font-size:11px;
-    color:#536b64;
+    color:#62718c;
     letter-spacing:1.3px;
     margin:23px 12px 10px}
 .omw-sidebar nav .omw-nav-group:first-child {
@@ -125,7 +125,7 @@ body.olama-workspace {
     align-items:center;
     gap:12px;
     font-size:15px;
-    color:#536b64;
+    color:#62718c;
     padding:11px 12px;
     border-radius:7px;
     margin-bottom:5px}
@@ -133,16 +133,16 @@ body.olama-workspace {
     width:18px;
     height:18px;
     font-size:18px;
-    color:#536b64}
+    color:#62718c}
 .omw-nav-link:hover {
-    background:#f4f8f5;
-    color:#355e4c}
+    background:#f1efff;
+    color:#5044d4}
 .omw-nav-link.is-current {
-    background:#e8f3ed;
-    color:#087f72;
+    background:#f1efff;
+    color:#6658ee;
     font-weight:600}
 .omw-nav-link.is-current .dashicons {
-    color:#087f72}
+    color:#6658ee}
 .omw-sidebar-bottom {
     margin-top:auto;
     padding-top:28px}
@@ -163,7 +163,7 @@ body.olama-workspace {
     display:block}
 .omw-agent-connection small {
     font-size:12px;
-    color:#536b64;
+    color:#62718c;
     display:block;
     margin-top:6px}
 .omw-dot {
@@ -180,7 +180,7 @@ body.olama-workspace {
     align-items:center;
     gap:7px;
     font-size:13px;
-    color:#536b64;
+    color:#62718c;
     margin:18px 8px 0}
 .omw-wp-return .dashicons {
     font-size:15px;
@@ -203,22 +203,22 @@ body.olama-workspace {
     gap:10px;
     align-items:center;
     font-size:14px;
-    color:#536b64}
+    color:#62718c}
 .omw-breadcrumb>a {
-    color:#536b64}
+    color:#62718c}
 .omw-breadcrumb strong {
     font-size:14px;
-    color:#4b6558;
+    color:#1c2845;
     font-weight:500}
 .omw-search-button {
     display:flex;
     align-items:center;
     gap:9px;
-    border:1px solid #e5ebe7;
-    background:#f7faf8;
+    border:1px solid #e9ecf3;
+    background:#f7f8fc;
     border-radius:7px;
     padding:8px 10px;
-    color:#536b64;
+    color:#62718c;
     font-size:13px;
     min-width:200px;
     cursor:pointer}
@@ -231,7 +231,7 @@ body.olama-workspace {
     padding:1px 4px;
     font-size:11px;
     background:#fff;
-    border:1px solid #e1e8e3;
+    border:1px solid #e9ecf3;
     border-radius:3px;
     font-family:inherit}
 .omw-content {
@@ -248,19 +248,19 @@ body.olama-workspace {
     padding-bottom:12px}
 .omw-context-nav a {
     font-size:14px;
-    color:#536b64;
+    color:#62718c;
     padding:7px 12px;
     border-radius:6px}
 .omw-context-nav a.is-current {
-    background:#e7f0e9;
-    color:#25755d;
+    background:#f1efff;
+    color:#5044d4;
     font-weight:600}
 .omw-footer {
     display:flex;
     justify-content:space-between;
     gap:16px;
     font-size:12px;
-    color:#536b64;
+    color:#62718c;
     margin-top:35px;
     line-height:1.8}
 .omw-content>.wrap,.omw-content .olama-msg-wrap,.omw-content .olama-msg-app,.omw-content .om-agent {
@@ -270,9 +270,9 @@ body.olama-workspace {
     color:var(--omsg-text);
     font-family:inherit}
 .omw-content .om-agent {
-    --oa-ink:#1d3038;
-    --oa-muted:#5c7078;
-    --oa-line:#e1e8e8}
+    --oa-ink:#1c2845;
+    --oa-muted:#6f7d96;
+    --oa-line:#e9ecf3}
 .omw-content h1,.omw-content .olama-msg-page-title {
     color:var(--omsg-text)!important;
     font-size:27px!important;
@@ -310,7 +310,7 @@ body.olama-workspace {
     color:var(--omsg-muted);
     line-height:1.8}
 .omw-content .button,.omw-content .button-secondary,.omw-content .page-title-action {
-    border:1px solid #d9e4dd;
+    border:1px solid #e9ecf3;
     border-radius:7px;
     padding:5px 13px;
     min-height:36px;
@@ -332,14 +332,14 @@ body.olama-workspace {
     border-color:#abcbbc;
     color:#2f6f55}
 .omw-content .button-primary {
-    background:#087f72!important;
-    border-color:#087f72!important;
+    background:#6658ee!important;
+    border-color:#6658ee!important;
     color:#fff!important;
     text-shadow:none!important;
     box-shadow:none!important}
 .omw-content .button-primary:hover {
-    background:#06695e!important;
-    border-color:#06695e!important}
+    background:#5044d4!important;
+    border-color:#5044d4!important}
 .omw-content .button-small {
     font-size:13px;
     min-height:29px;
@@ -350,7 +350,7 @@ body.olama-workspace {
     background:#fff!important;
     border-color:#e8d8d2!important}
 .omw-content a {
-    color:#087f72}
+    color:#6658ee}
 .omw-content .button[disabled] {
     opacity:.5}
 .omw-content input[type=text],.omw-content input[type=search],.omw-content input[type=number],.omw-content input[type=url],.omw-content input[type=password],.omw-content select,.omw-content textarea {
@@ -368,10 +368,10 @@ body.olama-workspace {
     resize:vertical;
     font-family:inherit}
 .omw-content input[type=checkbox],.omw-content input[type=radio] {
-    accent-color:#087f72;
+    accent-color:#6658ee;
     border-color:#bdcfc3}
 .omw-content input[type=checkbox]:checked:before {
-    color:#087f72}
+    color:#6658ee}
 .omw-content .notice {
     border-radius:7px;
     box-shadow:none;
@@ -432,7 +432,7 @@ body.olama-workspace {
     text-transform:none;
     letter-spacing:0;
     padding:18px 22px;
-    border-bottom:1px solid #edf1ed}
+    border-bottom:1px solid #e9ecf3}
 .omw-content .olama-msg-card__body {
     padding:22px}
 .omw-content .postbox-header {
@@ -453,7 +453,7 @@ body.olama-workspace {
 .omw-content .form-table th,.omw-content .form-table td {
     padding:19px 22px;
     vertical-align:top;
-    border-bottom:1px solid #edf1ed}
+    border-bottom:1px solid #e9ecf3}
 .omw-content .form-table th {
     font-size:15px;
     font-weight:600;
@@ -471,26 +471,26 @@ body.olama-workspace {
     line-height:1.65;
     min-width:600px}
 .omw-content .widefat th,.omw-content .olama-msg-table th {
-    color:#536b64!important;
-    background:#f8faf8!important;
+    color:#62718c!important;
+    background:#f9faff!important;
     text-transform:none;
     font-size:13px;
     font-weight:500;
     padding:13px 18px;
-    border-bottom:1px solid #e5ece6!important;
+    border-bottom:1px solid #e9ecf3!important;
     text-align:start}
 .omw-content .widefat td,.omw-content .olama-msg-table td {
     padding:17px 18px;
-    border-bottom:1px solid #edf1ed;
-    color:#536e5d;
+    border-bottom:1px solid #e9ecf3;
+    color:#53627c;
     font-size:14px;
     vertical-align:middle;
     background:#fff!important}
 .omw-content .widefat td strong {
     font-weight:600;
-    color:#35513e}
+    color:#1c2845}
 .omw-content .widefat small {
-    color:#536b64;
+    color:#62718c;
     font-size:13px;
     line-height:1.6}
 .omw-content .widefat tbody tr:last-child td {
@@ -525,7 +525,7 @@ body.olama-workspace {
     background:#fff;
     padding:21px}
 .omw-content .omsg-stat>span {
-    color:#536b64;
+    color:#62718c;
     font-size:14px;
     font-weight:400}
 .omw-content .omsg-stat>strong {
@@ -538,7 +538,7 @@ body.olama-workspace {
     margin:12px 0 6px}
 .omw-content .omsg-stat>small {
     font-size:13px;
-    color:#536b64;
+    color:#62718c;
     line-height:1.7}
 .omw-content .omsg-status,.omw-content .olama-msg-badge,.omw-content .olama-msg-pill {
     display:inline-flex;
@@ -550,7 +550,7 @@ body.olama-workspace {
     padding:4px 8px;
     border-radius:5px;
     background:#eef2f0;
-    color:#536b64;
+    color:#62718c;
     white-space:nowrap}
 .omw-content .omsg-status--sending,.omw-content .omsg-status--completed,.omw-content .omsg-status--sent,.omw-content .olama-msg-badge--completed,.omw-content .olama-msg-pill--ok {
     background:#e7f5ec;
@@ -560,7 +560,7 @@ body.olama-workspace {
     color:#5a70a0}
 .omw-content .omsg-status--unknown,.omw-content .omsg-status--retry_wait,.omw-content .omsg-status--paused,.omw-content .olama-msg-pill--warn {
     background:#fff3da;
-    color:#536b64}
+    color:#62718c}
 .omw-content .omsg-status--failed,.omw-content .olama-msg-pill--err {
     background:#fceee8;
     color:#a75a4e}
@@ -575,7 +575,7 @@ body.olama-workspace {
 .omw-row-menu {
     position:relative;
     font-size:13px;
-    color:#536b64}
+    color:#62718c}
 .omw-row-menu summary {
     cursor:pointer;
     white-space:nowrap}
@@ -588,13 +588,13 @@ body.olama-workspace {
     margin-top:8px!important}
 .omw-eyebrow {
     font-size:12px;
-    color:#536b64;
+    color:#62718c;
     letter-spacing:1.4px;
     font-weight:600;
     line-height:1.7}
 .omw-caption {
     font-size:14px;
-    color:#536b64;
+    color:#62718c;
     line-height:1.8}
 .omw-panel-top {
     display:flex;
@@ -608,7 +608,7 @@ body.olama-workspace {
     gap:16px;
     background:#edf6ef;
     border:1px solid #dce9dd;
-    color:#536b64;
+    color:#62718c;
     border-radius:8px;
     padding:12px 15px;
     margin:0 0 22px;
@@ -656,10 +656,10 @@ body.olama-workspace {
     letter-spacing:-1px}
 .omw-progress-summary span {
     font-size:16px;
-    color:#536b64}
+    color:#62718c}
 .omw-progress-summary small {
     display:block;
-    color:#536b64;
+    color:#62718c;
     font-size:13px;
     line-height:1.8}
 .omw-progress-summary>div:last-child {
@@ -692,7 +692,7 @@ body.olama-workspace {
 .omw-active-campaign footer>span {
     font-size:13px;
     line-height:1.8;
-    color:#536b64;
+    color:#62718c;
     max-width:300px}
 .omw-content .omw-recent-campaigns {
     margin:0;
@@ -709,7 +709,7 @@ body.olama-workspace {
     margin:0}
 .omw-device-heading p {
     font-size:13px;
-    color:#536b64;
+    color:#62718c;
     margin:6px 0 0}
 .omw-device-icon {
     display:grid;
@@ -719,7 +719,7 @@ body.olama-workspace {
     border:1px solid #e1ece2;
     background:#eef7f0;
     border-radius:10px;
-    color:#536b64;
+    color:#62718c;
     flex:none}
 .omw-device dl {
     display:grid;
@@ -732,7 +732,7 @@ body.olama-workspace {
     gap:15px;
     font-size:13px}
 .omw-device dt {
-    color:#536b64}
+    color:#62718c}
 .omw-device dd {
     margin:0;
     text-align:end;
@@ -754,7 +754,7 @@ body.olama-workspace {
     margin:12px 0}
 .omw-attention p {
     font-size:14px;
-    color:#536b64;
+    color:#62718c;
     line-height:1.9;
     margin:0 0 20px}
 .omw-empty {
@@ -764,14 +764,14 @@ body.olama-workspace {
     font-size:33px;
     width:33px;
     height:33px;
-    color:#536b64;
+    color:#62718c;
     margin-bottom:17px}
 .omw-empty h2 {
     font-size:21px;
     margin:0 0 12px}
 .omw-empty p {
     font-size:15px;
-    color:#536b64;
+    color:#62718c;
     line-height:1.9;
     margin:0 auto 22px;
     max-width:560px}
@@ -810,36 +810,36 @@ body.olama-workspace {
     gap:0}
 .omw-content .omsg-steps li {
     border:0!important;
-    border-top:2px solid #e1e9e2!important;
+    border-top:2px solid #e9ecf3!important;
     padding:13px 12px 0 0!important;
     background:none!important;
     border-radius:0!important;
     box-shadow:none!important;
     font-size:14px;
-    color:#536b64;
+    color:#62718c;
     justify-content:flex-start}
 .omw-content .omsg-steps li:before {
     display:none}
 .omw-content .omsg-steps li span {
     width:22px;
     height:22px;
-    background:#e9eeea;
-    color:#536b64;
+    background:#f1efff;
+    color:#62718c;
     font-size:12px;
     border-radius:50%;
     margin-inline-end:7px}
 .omw-content .omsg-steps li.is-current {
-    border-top-color:#087f72!important;
-    color:#087f72}
+    border-top-color:#6658ee!important;
+    color:#6658ee}
 .omw-content .omsg-steps li.is-current span {
-    background:#deeee3;
-    color:#087f72}
+    background:#f1efff;
+    color:#6658ee}
 .omw-content .omsg-steps li.is-done {
-    border-top-color:#91b6a0!important;
-    color:#536b64}
+    border-top-color:#b4aaf4!important;
+    color:#62718c}
 .omw-content .omsg-save-state {
     font-size:13px;
-    color:#536b64;
+    color:#62718c;
     margin-bottom:13px}
 .omw-wizard-layout {
     display:grid;
@@ -858,7 +858,7 @@ body.olama-workspace {
 .omw-content .omsg-step-panel>label {
     display:block;
     font-size:15px;
-    color:#647c6a;
+    color:#53627c;
     font-weight:600;
     margin:20px 0}
 .omw-content .omsg-step-panel>label input,.omw-content .omsg-step-panel>label select,.omw-content .omsg-step-panel>label textarea {
@@ -869,42 +869,42 @@ body.olama-workspace {
 .omw-content .omsg-audience-cats {
     gap:10px}
 .omw-content .omsg-cat-tab {
-    border:1px solid #dce7dd;
+    border:1px solid #e9ecf3;
     padding:15px 10px;
     background:#fff;
     border-radius:8px}
 .omw-content .omsg-cat-tab .dashicons {
-    color:#536b64}
+    color:#62718c}
 .omw-content .omsg-cat-tab strong {
     font-size:15px}
 .omw-content .omsg-cat-tab small {
     font-size:12px}
 .omw-content .omsg-cat-tab.is-active {
-    background:#eff7f0;
-    border-color:#80ad8d;
+    background:#f1efff;
+    border-color:#a69af3;
     box-shadow:none}
 .omw-content .omsg-filter-box {
-    background:#f8faf8;
-    border-color:#e0e9e0;
+    background:#f9faff;
+    border-color:#e9ecf3;
     border-radius:8px;
     padding:20px}
 .omw-content .omsg-message-meter {
-    background:#f5faf6;
-    border:1px solid #e2ece2;
+    background:#f7f8fc;
+    border:1px solid #e9ecf3;
     border-radius:7px;
     padding:11px 13px;
-    color:#536b64;
+    color:#62718c;
     font-size:14px}
 .omw-content .omsg-wizard-actions {
     display:flex;
     justify-content:space-between;
     align-items:center;
     margin-top:26px;
-    border-top:1px solid #e8eee7;
+    border-top:1px solid #e9ecf3;
     padding-top:20px}
 .omw-wizard-summary {
-    background:#eef5ef;
-    border:1px solid #dfe9df;
+    background:#f7f8fc;
+    border:1px solid #e9ecf3;
     border-radius:11px;
     padding:22px;
     position:sticky;
@@ -913,29 +913,29 @@ body.olama-workspace {
     font-size:15px;
     font-weight:600;
     margin:0 0 20px;
-    color:#43674c}
+    color:#1c2845}
 .omw-wizard-summary dl {
     margin:0}
 .omw-wizard-summary dl>div {
     padding:12px 0;
-    border-bottom:1px solid #dce7db;
+    border-bottom:1px solid #e9ecf3;
     display:flex;
     justify-content:space-between;
     gap:15px;
     font-size:14px}
 .omw-wizard-summary dt {
-    color:#536b64}
+    color:#62718c}
 .omw-wizard-summary dd {
-    color:#4c7254;
+    color:#53627c;
     margin:0;
     text-align:end}
 .omw-wizard-summary>p {
     font-size:13px;
-    color:#536b64;
+    color:#62718c;
     line-height:1.9;
     margin:18px 0}
 .omw-draft-phone {
-    border:1px solid #dfe9df;
+    border:1px solid #e9ecf3;
     border-radius:19px;
     background:#fff;
     padding:15px;
@@ -944,16 +944,16 @@ body.olama-workspace {
     display:block;
     text-align:center;
     padding:7px 0 17px;
-    border-bottom:1px solid #e8eee5;
+    border-bottom:1px solid #e9ecf3;
     font-size:13px;
-    color:#536b64}
+    color:#62718c}
 .omw-draft-preview {
     font-size:15px;
     line-height:1.9;
-    background:#eff5ef;
+    background:#f1efff;
     border-radius:10px 10px 10px 2px;
     padding:13px;
-    color:#536b64;
+    color:#62718c;
     margin:16px 0 7px;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
@@ -968,13 +968,13 @@ body.olama-workspace {
 .omw-template-disclosure>summary {
     font-size:15px;
     font-weight:600;
-    color:#55765a;
+    color:#5044d4;
     cursor:pointer;
     list-style:none}
 .omw-template-disclosure>summary:after {
     content:' +';
     float:inline-end;
-    color:#536b64}
+    color:#62718c}
 .omw-template-disclosure[open]>summary:after {
     content:' −'}
 .omw-content .omw-template-disclosure #col-left {
@@ -1011,7 +1011,7 @@ body.olama-workspace {
 .omw-template-body {
     font-size:15px;
     line-height:1.9;
-    color:#536b64;
+    color:#62718c;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
     max-height:190px;
@@ -1028,7 +1028,7 @@ body.olama-workspace {
     margin-top:auto}
 .omw-template-card details {
     font-size:13px;
-    color:#536b64}
+    color:#62718c}
 .omw-template-card summary {
     cursor:pointer}
 .omw-template-card details a {
@@ -1068,7 +1068,7 @@ body.olama-workspace {
     border:0;
     background:none;
     font-size:22px;
-    color:#536b64;
+    color:#62718c;
     cursor:pointer}
 .omw-command-results {
     padding:8px;
@@ -1091,13 +1091,13 @@ body.olama-workspace {
 .omw-command-results p {
     font-size:14px;
     padding:15px;
-    color:#536b64}
+    color:#62718c}
 .omw-command>small {
     display:block;
     padding:12px 20px;
     border-top:1px solid #e0e9e1;
     font-size:12px;
-    color:#536b64}
+    color:#62718c}
 .omw-shell [hidden] {
     display:none!important}
 
@@ -1182,7 +1182,7 @@ html[dir=rtl] .omw-sidebar {
     display:inline-flex;
     background:none;
     border:0;
-    color:#536b64;
+    color:#62718c;
     padding:0}
 .omw-breadcrumb {
     gap:8px;
@@ -1334,30 +1334,151 @@ html[dir=rtl] .omw-sidebar {
 
 /* Readable secondary text across shared and legacy views. */
 .omw-content .description,.omw-content .omw-caption,.omw-content .omsg-stat>small,.omw-content .omsg-stat>span,.omw-template-body,.omw-wizard-summary>p,.omw-draft-phone>span,.omw-device dt {
-    color:#63797b}
+    color:#62718c}
 .omw-content .widefat td small {
     font-size:13px;
-    color:#65787c}
+    color:#62718c}
 .omw-footer {
     color:#6c7f79}
 .omw-sidebar .omw-nav-group {
-    color:#536b64}
+    color:#62718c}
 .omw-content .omw-device dl {
     font-size:14px}
 
 
 /* Clear navigation symbols and comfortable reading sizes. */
 .omw-nav-link {font-weight:600;line-height:1.5}
-.omw-nav-link .dashicons {font-size:22px;width:22px;height:22px;color:#506d62;opacity:1;flex-shrink:0}
-.omw-nav-link.is-current .dashicons {color:#076f63}
-.omw-search-button .dashicons,.omw-mobile-toggle .dashicons {font-size:22px;width:22px;height:22px;color:#506d62}
-.omw-wp-return .dashicons {font-size:20px;width:20px;height:20px;color:#506d62}
-.omw-school>.dashicons {color:#506d62}
-.omw-content .widefat th,.omw-content .olama-msg-table th {color:#50665e!important;font-weight:600}
-.omw-content .omw-draft-preview,.omw-template-body {font-size:16px;line-height:1.9;color:#344f46}
+.omw-nav-link .dashicons {font-size:22px;width:22px;height:22px;color:#62718c;opacity:1;flex-shrink:0}
+.omw-nav-link.is-current .dashicons {color:#5044d4}
+.omw-search-button .dashicons,.omw-mobile-toggle .dashicons {font-size:22px;width:22px;height:22px;color:#62718c}
+.omw-wp-return .dashicons {font-size:20px;width:20px;height:20px;color:#62718c}
+.omw-school>.dashicons {color:#62718c}
+.omw-content .widefat th,.omw-content .olama-msg-table th {color:#53627c!important;font-weight:600}
+.omw-content .omw-draft-preview,.omw-template-body {font-size:16px;line-height:1.9;color:#1c2845}
 .omw-content .om-agent {--oa-muted:#596d76}
 .omw-content .om-agent-metrics span,.omw-content .om-agent-metrics small,.omw-content .om-agent-activity-table th,.omw-content .om-agent-activity-table td small,.omw-content .om-agent-pagination {font-size:13px}
 .omw-content .om-agent-activity-table td {font-size:14px}
 .omw-content .om-agent-hero p {font-size:14px}
 .omw-content .omsg-status,.omw-content .olama-msg-pill,.omw-content .olama-msg-badge {font-size:12px;font-weight:600}
 .omw-content input::placeholder,.omw-content textarea::placeholder {color:#687b73;opacity:1}
+
+/* Command Center 2 — shared product tokens and reference layout. */
+body.olama-workspace {--omw-navy:#111a35;--omw-navy-secondary:#1c294b;--omw-indigo:#6658ee;--omw-indigo-deep:#5044d4;--omw-tint:#f1efff;--omw-gold:#eebf78;font-variant-numeric:tabular-nums}
+.omw-shell {line-height:1.7;overflow-wrap:anywhere}
+.omw-shell [hidden] {display:none!important}
+.omw-sidebar {width:260px;background:linear-gradient(155deg,#263154,var(--omw-navy) 55%);border:0;padding:30px 18px 22px;color:#c3cce0}
+.omw-brand {color:#fff;justify-content:center;padding-bottom:30px;flex-direction:row-reverse}
+.omw-brand:hover,.omw-brand:focus {color:#fff}
+.omw-brand strong {font-size:32px;letter-spacing:-1.7px}
+.omw-brand strong:after {content:'.';color:var(--omw-gold)}
+.omw-brand small {color:#b9c3dd;font-size:10px;letter-spacing:3px}
+.omw-brand-mark {background:var(--omw-indigo);width:44px;height:44px;border-radius:15px;color:#fff}
+.omw-school {background:#ffffff09;border-color:#ffffff20;border-radius:14px;padding:15px 12px;margin-bottom:20px}
+.omw-school strong {color:#fff;font-size:13px}.omw-school small {color:#bdc6db}
+.omw-school>.dashicons {color:var(--omw-gold);background:#ffffff12;padding:8px;width:36px;height:36px;border-radius:10px}
+.omw-sidebar .omw-nav-group {color:#a2afcd;font-size:10px;letter-spacing:1.6px;margin:23px 12px 10px}
+.omw-nav-link {color:#c8d0e3;border-radius:12px;padding:13px 15px;margin-bottom:5px;min-height:46px;font-weight:500}
+.omw-nav-link .dashicons {color:#b7c2dc}
+.omw-nav-link:hover {background:#ffffff0c;color:white}
+.omw-nav-link.is-current {background:var(--omw-indigo);color:#fff;box-shadow:0 6px 20px #6658ee25}
+.omw-nav-link.is-current .dashicons {color:#fff}
+.omw-agent-connection {background:#1c7d6920;border-color:#62b9a440;border-radius:13px;color:#d5f3eb}
+.omw-agent-connection small {color:#b0c5d0}
+.omw-wp-return,.omw-wp-return .dashicons {color:#bdc7df}
+.omw-wp-return:hover {color:#fff}
+.omw-app {margin-inline-start:260px;min-height:calc(100vh - 32px)}
+.omw-topbar {height:76px;padding-inline:35px}
+.omw-content {padding:42px 35px 28px;max-width:1550px}
+.omw-content h1,.omw-content .olama-msg-page-title {font-size:34px!important;letter-spacing:-.7px}
+.omw-content .omsg-page-head {margin-bottom:28px}
+.omw-content .button,.omw-content .page-title-action {border-radius:10px;min-height:42px;padding:8px 15px;box-shadow:none}
+.omw-content .button-primary {background:var(--omw-indigo);border-color:var(--omw-indigo);color:#fff;box-shadow:0 5px 15px #6658ee18}
+.omw-content .button-primary:hover,.omw-content .button-primary:focus {background:var(--omw-indigo-deep);border-color:var(--omw-indigo-deep);color:#fff}
+.omw-content a:not(.button):not(.omsg-stat):not(.omw-chart-column):hover {text-decoration:underline;text-underline-offset:4px}
+.omw-content input,.omw-content select,.omw-content textarea {max-width:100%;border-color:var(--omsg-border);border-radius:9px}
+.omw-content .omsg-panel,.omw-panel,.omw-wizard-editor,.omw-wizard-summary,.omw-template-card {border:1px solid var(--omsg-border);border-radius:19px;box-shadow:0 6px 24px #1c284503;background:#fff}
+.omw-panel {padding:25px}.omw-stack {gap:20px}
+.omw-columns {grid-template-columns:minmax(0,1.85fr) minmax(280px,1fr);gap:20px}
+.omw-eyebrow {color:#6558d7;letter-spacing:1.8px;font-size:10px;font-weight:600}
+.omw-caption {color:#62718c;font-size:13px;line-height:1.8}
+.omw-hero {display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,1fr);align-items:center;gap:40px;background:radial-gradient(ellipse at top left,#4e468a66,transparent 65%),var(--omw-navy);color:#e2e6f3;padding:36px;border-radius:24px;margin-bottom:20px;box-shadow:0 12px 30px #111a3508}
+.omw-content .omw-hero h2 {font-size:30px;line-height:1.6;color:#fff;margin:16px 0 10px;font-weight:700}
+.omw-hero h2 span {color:#c9c3ff}
+.omw-hero-copy>p {color:#c4cce1;font-size:13px;line-height:1.9;margin-bottom:20px}
+.omw-hero .button {background:#fff;color:#222c50;border:0}
+.omw-health-chip {display:inline-flex;gap:9px;align-items:center;border:1px solid #58ad9638;border-radius:30px;padding:5px 12px;background:#16856c20;color:#daf4e9;font-size:12px}
+.omw-health-chip:hover {color:#fff}
+.omw-hero .omw-dot {width:8px;height:8px;background:#53d6b0;box-shadow:0 0 0 4px #53d6b014}
+.omw-hero .omw-dot.is-warning {background:#eebf78}
+.omw-hero-snapshot {background:#ffffff0c;border:1px solid #ffffff30;border-radius:19px;padding:22px;min-width:0}
+.omw-hero-snapshot .omw-eyebrow {color:#c4cce1;font-size:10px}
+.omw-hero-snapshot h3 {color:#fff;margin:16px 0;font-size:17px}
+.omw-hero-snapshot>p {font-size:12px;margin-bottom:0}
+.omw-hero-snapshot .omw-progress {background:#ffffff20;height:5px;margin-top:20px}
+.omw-hero-snapshot .omw-progress span {background:#7dddc1}
+.omw-pipeline {list-style:none;margin:25px 0 0;padding:0;display:flex;justify-content:space-between;gap:12px;position:relative}
+.omw-pipeline li {display:flex;flex:1;flex-direction:column;align-items:center;font-size:12px;position:relative;text-align:center}
+.omw-pipeline li:before {content:'';position:absolute;inset-inline-start:-50%;inset-block-start:17px;width:100%;height:1px;background:#ffffff30}
+.omw-pipeline li:first-child:before {display:none}
+.omw-pipeline .dashicons {display:grid;place-items:center;width:36px;height:36px;font-size:19px;background:#324562;border:1px solid #70cdbb66;color:#a2e3d6;border-radius:50%;z-index:1;margin-bottom:9px}
+.omw-pipeline small {color:#bbc7df;font-size:11px;margin-top:4px}.omw-pipeline .is-unavailable .dashicons {color:#c2c9dc;border-color:#ffffff30;background:#29334f}
+.omw-content .omw-metrics {gap:16px;margin-bottom:24px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.omw-content .omsg-stat {border-radius:18px;padding:20px;min-width:0;display:flex;align-items:flex-start;flex-direction:column;color:var(--omsg-text);border:1px solid var(--omsg-border);background:#fff;box-shadow:0 6px 24px #1c284503}
+.omw-content a.omsg-stat:hover {border-color:#aaa0fa;transform:translateY(-2px)}
+.omw-metric-icon {width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#f1efff;color:#6658ee;margin-bottom:12px;font-size:21px}
+.omw-metrics .omsg-stat:nth-child(2) .omw-metric-icon {background:#e8f6ef;color:#16856c}.omw-metrics .omsg-stat:nth-child(3) .omw-metric-icon {background:#fff3e6;color:#a96216}.omw-metrics .omsg-stat:nth-child(4) .omw-metric-icon {background:#eaf3ff;color:#356ead}
+.omw-content .omsg-stat>strong {color:#1c2845;font-size:34px;font-weight:700;line-height:1.5}.omw-content .omsg-stat>small {font-size:11px;line-height:1.7;margin-top:7px}
+.omw-chart {display:flex;gap:14px;min-height:220px;align-items:flex-end;margin:18px 0 22px;padding-bottom:12px;border-bottom:1px solid var(--omsg-border);background:repeating-linear-gradient(to top,transparent 0,transparent 49px,#e9ecf3 49px,#e9ecf3 50px)}
+.omw-chart-column {display:flex;flex:1;min-width:0;flex-direction:column;align-items:center;text-align:center;color:#62718c;font-size:11px;gap:8px}
+.omw-chart-column strong {font-size:11px;font-weight:600;color:#5044d4;background:#f1efff;border-radius:4px;padding:0 4px}
+.omw-chart-track {height:150px;display:flex;align-items:flex-end;width:100%;justify-content:center}
+.omw-chart-track i {display:block;background:linear-gradient(#cfc9ff,#a89ff5);width:min(100%,40px);border-radius:9px 9px 3px 3px;min-height:3px}
+.omw-chart-column:first-child .omw-chart-track i {background:linear-gradient(#9387ff,#6658ee)}
+.omw-chart-column:hover .omw-chart-track i {background:#5044d4}
+.omw-attention-icon {display:grid;place-items:center;width:52px;height:52px;font-size:30px;border-radius:17px;background:#edf8f3;color:#16856c;margin-bottom:15px}
+.omw-attention-list {list-style:none;margin:15px 0;padding:0}.omw-attention-list a {display:flex;justify-content:space-between;gap:15px;color:#53627c;font-size:13px;padding:12px 0;border-bottom:1px solid var(--omsg-border)}.omw-attention-list strong {color:#1c2845}
+.omw-exclusion-note {display:block;background:var(--omw-tint);color:#5044d4;padding:12px;border-radius:10px;font-size:12px;margin-top:16px}
+.omw-device-icon {background:var(--omw-tint);color:#6658ee;border-radius:14px}
+.omw-context-nav a.is-current {background:#eeebff;color:#5044d4}
+.omw-content .widefat,.omw-content .olama-msg-table {border:0;box-shadow:none}
+.omw-content .widefat thead,.omw-content .olama-msg-table thead {background:#f9faff}
+.omw-content .widefat th,.omw-content .widefat td {border-color:var(--omsg-border);vertical-align:middle}
+.omw-content .striped>tbody>:nth-child(odd) {background:#fff}
+.omw-content .widefat tbody tr:hover {background:#fafaff}
+.omw-content .widefat td small {display:block;font-size:12px;margin-top:5px}
+.omw-content .omsg-filterbar {background:#fff;padding:18px;border:1px solid var(--omsg-border);border-radius:15px;gap:12px;margin-bottom:20px}
+.omw-pagination {display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:20px;flex-wrap:wrap}.omw-pagination span {font-size:13px;color:#62718c}.omw-pagination div {display:flex;gap:8px}
+.omw-bottom-nav {display:none}
+.omw-audience-sources {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.omw-recent-list {padding:0 24px 10px}.omw-recent-list>a {display:flex;align-items:center;gap:14px;padding:18px 0;border-bottom:1px solid var(--omsg-border);color:var(--omsg-text)}.omw-recent-list>a:last-child {border:0}.omw-recent-list .omw-metric-icon {flex-shrink:0;margin:0;width:40px;height:40px}.omw-recent-title {flex:1;min-width:0}.omw-recent-title strong {font-size:14px}.omw-recent-title small,.omw-recent-state small {display:block;font-size:11px;color:#62718c;margin-top:5px}.omw-recent-state {text-align:end}.omw-recent-list .omsg-status {white-space:normal}
+.omw-content .widefat td,.omw-content .olama-msg-table td {color:#53627c}.omw-content .widefat td strong {color:#1c2845}.omw-content .widefat th,.omw-content .olama-msg-table th {background:#f9faff!important}.omw-content .form-table th {color:#53627c}
+.omw-content .omsg-stat>span.omw-metric-icon {color:#6658ee;font-weight:400;font-size:21px}
+.omw-chart-track i {min-height:0}
+.omw-content .omw-hero .omw-health-chip {color:#d6f2e9}
+.omw-shell a:focus-visible,.omw-shell button:focus-visible,.omw-shell summary:focus-visible {outline:3px solid #9c90ff;outline-offset:3px}
+.omw-command {border:1px solid var(--omsg-border);border-radius:20px;box-shadow:0 24px 80px #111a3530}
+.omw-drawer {position:fixed;inset-inline-start:auto;inset-inline-end:0;inset-block:0;margin:0;height:100dvh;max-height:100dvh;width:min(460px,100%);max-width:100%;border:0;border-inline-start:1px solid var(--omsg-border);padding:30px;color:var(--omsg-text);background:#fff;box-shadow:-15px 0 70px #111a3515}
+.omw-drawer::backdrop,.omw-command::backdrop {background:#111a3566}.omw-drawer dl>div {padding:14px 0;border-bottom:1px solid var(--omsg-border)}.omw-drawer dt {font-size:12px;color:#62718c}.omw-drawer dd {margin:5px 0 0;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.omw-drawer-close {float:inline-end}.omw-delivery-note {border:1px solid #e2dfff;background:#f1efff;border-radius:15px;padding:18px 22px;margin-block:20px;color:#5044a4}.omw-delivery-note p {margin:5px 0;font-size:13px}
+.omw-delivery-meta {display:flex;gap:16px;flex-wrap:wrap;color:#62718c;font-size:13px;margin-block:15px 25px}.omw-delivery-pipeline {display:flex;list-style:none;padding:18px 22px;margin-block:20px;gap:20px;flex-wrap:wrap;background:#fff;border:1px solid var(--omsg-border);border-radius:15px}.omw-delivery-pipeline li {font-size:13px;color:#62718c}.omw-delivery-pipeline li.is-complete {color:#16856c}.omw-delivery-pipeline li+li:before {content:'←';margin-inline-end:15px;color:#a7aec0}
+.omw-content .omsg-steps {border:0;background:none;gap:14px;grid-template-columns:repeat(3,minmax(0,1fr))}.omw-content .omsg-steps li {color:#62718c}.omw-content .omsg-steps .is-current {color:#5044d4}.omw-content .omsg-steps li.is-current span {background:#6658ee;color:white}
+.omw-content .olama-msg-progress-stats {grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}.omw-content .olama-msg-progress-stat {border-radius:15px;border:1px solid var(--omsg-border);background:#fff}
+.omw-content .om-agent {--oa-brand:#6658ee;--oa-ink:#1c2845;--oa-muted:#62718c;--oa-line:#e9ecf3}.omw-content .om-agent-hero {background:var(--omw-navy)}
+@media(min-width:1200px) {.omw-recent-campaigns .omsg-table th:nth-child(2),.omw-recent-campaigns .omsg-table td:nth-child(2),.omw-recent-campaigns .omsg-table th:nth-child(5),.omw-recent-campaigns .omsg-table td:nth-child(5) {display:none}}
+@media(min-width:783px) and (max-width:1199px) {.omw-sidebar {width:222px}.omw-app {margin-inline-start:222px}.omw-content {padding:28px 24px}.omw-hero {gap:24px;padding:27px;grid-template-columns:1fr}.omw-columns {grid-template-columns:1fr}.omw-columns>aside.omw-stack {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.omw-content .omw-metrics {grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:782px) {
+ .omw-audience-sources {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.omw-audience-sources .omw-panel {padding:16px}.omw-audience-sources h2 {font-size:14px}.omw-recent-list {padding-inline:17px}.omw-recent-list>a {gap:10px;padding:16px 0}.omw-recent-title strong {font-size:13px}.omw-recent-title small {font-size:10px}.omw-recent-state {max-width:95px}.omw-recent-state .omsg-status {font-size:10px}.omw-recent-state small {font-size:10px}
+ .omw-sidebar {width:260px}.omw-app {margin-inline-start:0}.omw-topbar {height:60px;padding-inline:16px}.omw-content {padding:24px 14px calc(95px + env(safe-area-inset-bottom))}.omw-content h1,.omw-content .olama-msg-page-title {font-size:25px!important;line-height:1.6!important}.omw-content .omsg-page-head p {font-size:13px}.omw-content .omsg-page-head {gap:12px}.omw-hero {grid-template-columns:1fr;padding:24px 18px;gap:24px;border-radius:20px}.omw-content .omw-hero h2 {font-size:25px}.omw-hero-snapshot {padding:18px}.omw-content .omw-metrics {grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.omw-content .omsg-stat {padding:16px 13px}.omw-content .omsg-stat>strong {font-size:28px}.omw-content .omsg-stat>span:not(.dashicons) {font-size:12px}.omw-content .omsg-stat>small {font-size:11px}.omw-columns {grid-template-columns:minmax(0,1fr)}.omw-columns>aside.omw-stack {display:grid;grid-template-columns:1fr}.omw-panel {padding:21px}.omw-chart {gap:8px}.omw-chart-column small {font-size:10px}.omw-chart-column strong {font-size:10px}
+ .omw-bottom-nav {display:flex;position:fixed;inset-inline:0;inset-block-end:0;z-index:990;background:#fffffff5;border-top:1px solid var(--omsg-border);padding:9px 8px calc(9px + env(safe-area-inset-bottom));box-shadow:0 -5px 25px #1c284508;justify-content:space-around;gap:4px;backdrop-filter:blur(15px)}.omw-bottom-nav>a {display:flex;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:4px;min-height:44px;color:#62718c;font-size:10px}.omw-bottom-nav small {font-size:10px;line-height:1.4}.omw-bottom-nav [aria-current=page] {color:#5044d4}.omw-bottom-create .dashicons {background:#6658ee;color:#fff;width:42px;height:42px;display:grid;place-items:center;border-radius:13px;font-size:25px}.omw-bottom-create small {position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}
+ .omw-content .omsg-table-scroll:has(.omsg-table),.omw-content .olama-msg-table-wrap {overflow:visible}.omw-content .omsg-table,.omw-content #olama-msg-campaign-progress .olama-msg-table {min-width:0;width:100%}.omw-content .omsg-table thead,.omw-content #olama-msg-campaign-progress .olama-msg-table thead {display:none}.omw-content .omsg-table tbody,.omw-content .omsg-table tr,.omw-content .omsg-table td,.omw-content #olama-msg-campaign-progress .olama-msg-table tbody,.omw-content #olama-msg-campaign-progress .olama-msg-table tr,.omw-content #olama-msg-campaign-progress .olama-msg-table td {display:block;width:100%;min-width:0;max-width:100%}.omw-content .omsg-table tr,.omw-content #olama-msg-campaign-progress .olama-msg-table tr {padding:16px 0;border-bottom:1px solid var(--omsg-border)}.omw-content .omsg-table td,.omw-content #olama-msg-campaign-progress .olama-msg-table td {border:0;padding:6px 14px;font-size:13px;white-space:normal}.omw-content td[data-label]:before {content:attr(data-label);display:inline-block;font-size:11px;color:#62718c;margin-inline-end:10px}.omw-content .omsg-table .omsg-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap}.omw-content .omsg-filterbar {padding:14px}.omw-content .omsg-filterbar select {flex:1;max-width:100%}.omw-wizard-layout {grid-template-columns:1fr}.omw-delivery-pipeline {gap:10px;padding:16px}.omw-delivery-pipeline li {font-size:12px}.omw-delivery-pipeline li+li:before {margin-inline-end:7px}.omw-footer {font-size:11px}
+}
+@media(prefers-reduced-motion:reduce) {.omw-shell * {animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+.omw-content .omsg-step-panel[data-step="1"] {min-height:0;padding-bottom:8px}
+.omw-year-filter {display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 18px;font-size:12px;color:#62718c}.omw-year-filter select {min-height:36px;background:#fff}.omw-year-filter .button {min-height:36px;padding:4px 12px}
+.omw-filter-state {position:fixed;inset-block-start:90px;inset-inline-end:24px;z-index:995;background:#111a35;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;box-shadow:0 6px 24px #111a3520;max-width:calc(100vw - 48px)}
+.omw-content .omsg-review-summary {max-width:100%;min-width:0;margin:0}
+.omw-content .omsg-preview-totals {flex-wrap:wrap;gap:10px}
+.omw-content .omsg-preview-context {grid-template-columns:repeat(2,minmax(0,1fr))}
+.omw-content .omsg-preview-selection-actions {min-width:0}
+@media(max-width:782px) {.omw-content .omsg-preview-context {grid-template-columns:1fr}.omw-content .omsg-preview-selection-actions {justify-content:flex-start}.omw-content .omsg-preview-totals {font-size:12px}.omw-content .omsg-preview-selection-actions .button {font-size:12px}}
+@media(min-width:783px) {.omw-content .olama-msg-progress-stats {grid-template-columns:repeat(4,minmax(0,1fr))}}

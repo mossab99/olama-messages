@@ -278,13 +278,20 @@
 
         function pollCampaignProgress() {
             if (progressRequestActive) { return; }
+            $progressPage = $('#olama-msg-campaign-progress');
+            if (!$progressPage.length) { return; }
+            if (document.hidden) { scheduleProgressPoll(15000); return; }
             progressRequestActive = true;
 
             $.post(olamaMsgAdmin.ajaxUrl, {
                 action: 'olama_msg_campaign_progress',
                 nonce: olamaMsgAdmin.nonce,
                 campaign_id: $progressPage.data('campaign-id'),
-                paged: $progressPage.data('paged') || 1
+                paged: $progressPage.data('paged') || 1,
+                recipient_search: $('[name="recipient_search"]').val() || '',
+                recipient_status: $('[name="recipient_status"]').val() || '',
+                recipient_sort: $('[name="recipient_sort"]').val() || 'id',
+                recipient_order: $('[name="recipient_order"]').val() || 'ASC'
             }).done(function (res) {
                 if (!res.success) {
                     scheduleProgressPoll(5000);
@@ -324,7 +331,7 @@
                 if (d.terminal) {
                     $('#olama-msg-progress-controls').hide();
                 } else {
-                    scheduleProgressPoll(2000);
+                    scheduleProgressPoll(10000);
                 }
             }).fail(function () {
                 scheduleProgressPoll(5000);

@@ -68,6 +68,48 @@ class Olama_Messages_Operations_Service {
         return array( 'submitted' => $submitted, 'authorized' => $authorized, 'review' => $review, 'prepared' => $prepared, 'campaign' => $campaign, 'counts' => $counts );
     }
 
+    /** Read-only dashboard aggregates; dates are UTC in storage, school-local in UI. */
+    public function command_center( string $year = '' ) {
+        global $wpdb;
+        $end = new DateTimeImmutable( 'tomorrow', wp_timezone() );
+        $start = $end->modify( '-1 day' );
+        $bounds = array( $start->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ), $end->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ) );
+        $attempts = $wpdb->prefix . 'olama_msg_dispatch_attempts';
+        $today_attempts = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$attempts} WHERE created_at >= %s AND created_at < %s", $bounds ) );
+        $submitted = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$this->queue} WHERE status='sent' AND sent_at >= %s AND sent_at < %s", $bounds ) );
+        $failed = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->queue} WHERE status='failed'" );
+        $year_where = $year ? $wpdb->prepare( ' AND c.study_year=%s', $year ) : '';
+        $campaigns = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$this->campaigns} c WHERE c.channel='sms' {$year_where}" );
+        $trend = (array) $wpdb->get_results( "SELECT c.id,c.title,c.created_at,c.total_excluded,(SELECT COUNT(*) FROM {$this->queue} q WHERE q.campaign_id=c.id AND q.status='sent') AS submitted FROM {$this->campaigns} c WHERE c.channel='sms' AND c.status NOT IN ('archived','draft') {$year_where} ORDER BY c.created_at DESC,c.id DESC LIMIT 7", ARRAY_A );
+        return compact( 'today_attempts', 'submitted', 'failed', 'campaigns', 'trend', 'year' );
+    }
+
+    /** Shared filtered, bounded recipient query for the explorer and streaming export. */
+    public function campaign_recipients( int $campaign_id, array $args = array() ) {
+        global $wpdb;
+        $args = array_merge( array( 'search' => '', 'status' => '', 'orderby' => 'id', 'order' => 'ASC', 'page' => 1, 'limit' => 12 ), $args );
+        $recipients = $wpdb->prefix . 'olama_msg_campaign_recipients';
+        $where = $wpdb->prepare( 'q.campaign_id=%d', $campaign_id );
+        if ( in_array( $args['status'], array( 'prepared','reserved','sent','failed','unknown','retry_wait','cancelled' ), true ) ) { $where .= $wpdb->prepare( ' AND q.status=%s', $args['status'] ); }
+        if ( '' !== $args['search'] ) { $term = '%' . $wpdb->esc_like( $args['search'] ) . '%'; $where .= $wpdb->prepare( ' AND (r.recipient_name LIKE %s OR q.phone_e164 LIKE %s OR CAST(q.id AS CHAR) LIKE %s)', $term, $term, $term ); }
+        $sort = in_array( $args['orderby'], array( 'id','status','attempt_count','sent_at','updated_at' ), true ) ? 'q.' . $args['orderby'] : 'q.id';
+        $order = 'DESC' === strtoupper( $args['order'] ) ? 'DESC' : 'ASC';
+        $limit = min( 500, max( 1, (int) $args['limit'] ) ); $offset = ( max( 1, (int) $args['page'] ) - 1 ) * $limit;
+        $join = "FROM {$this->queue} q LEFT JOIN {$recipients} r ON r.id=q.campaign_recipient_id WHERE {$where}";
+        $total = (int) $wpdb->get_var( "SELECT COUNT(*) {$join}" );
+        $items = (array) $wpdb->get_results( $wpdb->prepare( "SELECT q.id,q.status,q.phone_e164,q.attempt_count,q.last_error_message,q.reserved_by_agent_id,q.sent_at,q.updated_at,r.recipient_name {$join} ORDER BY {$sort} {$order},q.id {$order} LIMIT %d OFFSET %d", $limit, $offset ), ARRAY_A );
+        return array( 'items' => $items, 'total' => $total, 'pages' => (int) ceil( $total / $limit ) );
+    }
+
+    public static function delivery_csv_row( array $row ) {
+        $phone = $row['phone_e164'] ? substr($row['phone_e164'],0,5).'•••'.substr($row['phone_e164'],-3) : '';
+        $cells = array($row['id'],$row['recipient_name'],$phone,$row['status']==='sent' ? 'submitted_to_KDE' : $row['status'],$row['attempt_count'],$row['last_error_message'],$row['sent_at'],$row['updated_at']);
+        return array_map(static function($cell) {
+            $cell=(string)$cell;
+            return preg_match('/^[\s\x00-\x1F]*[=+@-]/u',$cell) ? "'".$cell : $cell;
+        },$cells);
+    }
+
     public function recent_activity( int $limit = 50, string $status = '' ) {
         global $wpdb;
         $allowed = array( 'reserved','sent','failed','unknown','retry_wait' );

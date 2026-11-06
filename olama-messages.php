@@ -30,6 +30,9 @@ require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-campaign-service.ph
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-operations-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-financial-api-provider.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-core-provider.php';
+require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-collection-report.php';
+require_once OLAMA_MSG_PATH . 'admin/class-olama-messages-collection-report-page.php';
+Olama_Messages_Collection_Report_Page::init();
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-transportation-service.php';
 require_once OLAMA_MSG_PATH . 'includes/class-olama-messages-store-provider.php';
 
