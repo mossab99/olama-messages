@@ -634,6 +634,18 @@ class Olama_Messages_Agent_Service {
 	 * @return array|null Agent data or null.
 	 */
 	public function get_ready_dispatcher_agent() {
+		return $this->find_dispatcher_agent( true );
+	}
+
+	/**
+	 * Find an online, enabled dispatcher for diagnostics, even if its worker stalled.
+	 * This must not be used to authorize starting a campaign.
+	 */
+	public function get_online_dispatcher_agent() {
+		return $this->find_dispatcher_agent( false );
+	}
+
+	private function find_dispatcher_agent( bool $require_progress ) {
 		global $wpdb;
 
 		$five_minutes_ago = gmdate( 'Y-m-d H:i:s', time() - 300 );
@@ -664,9 +676,11 @@ class Olama_Messages_Agent_Service {
 			// continues to report the desktop application as online.
 			if (
 				! empty( $heartbeat['dispatcher_enabled'] ) &&
-				$poll_time &&
-				$poll_time >= ( time() - 90 ) &&
-				'Error' !== $state
+				( ! $require_progress || (
+					$poll_time &&
+					$poll_time >= ( time() - 90 ) &&
+					'Error' !== $state
+				) )
 			) {
 				return $agent;
 			}

@@ -905,6 +905,11 @@ class Olama_Messages_Admin {
 		if ( 'sending' === $campaign['status'] && $pending > 0 ) {
 			$agent = $this->plugin->agents()->get_ready_dispatcher_agent();
 			if ( ! $agent ) {
+				// Keep stalled workers visible so their last error/poll can explain
+				// why an otherwise online agent cannot continue sending.
+				$agent = $this->plugin->agents()->get_online_dispatcher_agent();
+			}
+			if ( ! $agent ) {
 				$dispatch_diagnostic = array(
 					'level'   => 'error',
 					'message' => __( 'Sending is waiting: no ready dispatcher is online to claim the remaining messages.', 'olama-messages' ),
@@ -914,10 +919,10 @@ class Olama_Messages_Admin {
 				$last_error = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_error'] ?? '' ) );
 				$last_poll  = sanitize_text_field( (string) ( $heartbeat['dispatcher_last_poll_at'] ?? '' ) );
 				$poll_time  = $last_poll ? strtotime( $last_poll . ' UTC' ) : false;
-				if ( '' !== $last_error ) {
+				if ( '' !== $last_error || 'Error' === ( $heartbeat['dispatcher_state'] ?? '' ) ) {
 					$dispatch_diagnostic = array(
 						'level'   => 'error',
-						'message' => sprintf( __( 'Sending is waiting: the desktop dispatcher reported an error: %s', 'olama-messages' ), $last_error ),
+						'message' => sprintf( __( 'Sending is waiting: the desktop dispatcher reported an error: %s', 'olama-messages' ), $last_error ?: __( 'Restart or resume the desktop sending agent.', 'olama-messages' ) ),
 					);
 				} elseif ( ! $poll_time || $poll_time < ( time() - 90 ) ) {
 					$dispatch_diagnostic = array(
